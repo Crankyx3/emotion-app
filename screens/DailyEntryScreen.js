@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from "react";
+import React, { useState, useRef, useMemo, useEffect } from "react";
 import ScreenHeader from "../components/ScreenHeader";
 import {
   StyleSheet,
@@ -15,7 +15,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import Slider from "@react-native-community/slider";
-import { collection, addDoc, Timestamp, updateDoc } from "firebase/firestore";
+import { collection, addDoc, Timestamp, updateDoc, query, where, getDocs, orderBy, limit } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
 import { getAiResponse } from "../openaiService";
 import { useNavigation } from "@react-navigation/native";
@@ -36,6 +36,11 @@ export default function DailyEntryScreen() {
   const [loading, setLoading] = useState(false);
   const progress = useRef(new Animated.Value(0)).current;
 
+  // Daily Entry Limit
+  const [canCreateEntry, setCanCreateEntry] = useState(true);
+  const [checkingLimit, setCheckingLimit] = useState(true);
+  const [todayEntry, setTodayEntry] = useState(null);
+
   const emotions = [
     { key: "happy", label: "😊 Glücklich" },
     { key: "sad", label: "😔 Traurig" },
@@ -43,6 +48,42 @@ export default function DailyEntryScreen() {
     { key: "anxious", label: "😟 Ängstlich" },
     { key: "neutral", label: "😐 Neutral" },
   ];
+
+  // Prüfen, ob heute bereits ein Eintrag erstellt wurde
+  useEffect(() => {
+    const checkTodayEntry = async () => {
+      try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        const q = query(
+          collection(db, "entries"),
+          where("userId", "==", auth.currentUser.uid),
+          where("createdAt", ">=", Timestamp.fromDate(today)),
+          where("createdAt", "<", Timestamp.fromDate(tomorrow)),
+          orderBy("createdAt", "desc"),
+          limit(1)
+        );
+
+        const snapshot = await getDocs(q);
+        if (!snapshot.empty) {
+          const entry = snapshot.docs[0].data();
+          setCanCreateEntry(false);
+          setTodayEntry(entry);
+        } else {
+          setCanCreateEntry(true);
+        }
+      } catch (err) {
+        console.error("Fehler beim Prüfen des Eintrags:", err);
+      } finally {
+        setCheckingLimit(false);
+      }
+    };
+
+    checkTodayEntry();
+  }, []);
 
   const computePreviewScore = () => {
     const emotionValue = {
@@ -60,6 +101,14 @@ export default function DailyEntryScreen() {
   const previewScore = useMemo(computePreviewScore, [selectedEmotion, sleep, energy, selfWorth]);
 
   const handleSave = async () => {
+    if (!canCreateEntry) {
+      Alert.alert(
+        "Eintrag bereits vorhanden",
+        "Du hast heute bereits einen Eintrag erstellt. Du kannst nur einmal pro Tag einen neuen Eintrag anlegen."
+      );
+      return;
+    }
+
     if (!selectedEmotion) {
       Alert.alert("Hinweis", "Bitte wähle zuerst eine Emotion.");
       return;
@@ -145,6 +194,18 @@ Beschreibung: ${text}
     return "#E74C3C";
   };
 
+  // Zeige Lade-Indikator während Limit-Prüfung
+  if (checkingLimit) {
+    return (
+      <LinearGradient colors={["#F6FBFF", "#FFFFFF"]} style={styles.background}>
+        <SafeAreaView style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={{ marginTop: 16, fontSize: 16, color: "#8E8E93" }}>Prüfe Verfügbarkeit...</Text>
+        </SafeAreaView>
+      </LinearGradient>
+    );
+  }
+
   return (
     <LinearGradient colors={["#F6FBFF", "#FFFFFF"]} style={styles.background}>
       <SafeAreaView style={{ flex: 1 }}>
@@ -156,6 +217,24 @@ Beschreibung: ${text}
               </TouchableOpacity>
               <ScreenHeader title="Wie fühlst du dich heute?" subtitle="Kurz eintragen — wir analysieren es für dich" />
             </View>
+
+            {/* Status-Karte: Eintrag heute bereits erstellt */}
+            {!canCreateEntry && todayEntry && (
+              <View style={styles.limitCard}>
+                <Ionicons name="checkmark-circle" size={28} color="#37B24D" />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.limitTitle}>✅ Heute bereits eingetragen</Text>
+                  <Text style={styles.limitSubtitle}>
+                    Du hast heute schon einen Eintrag erstellt. Ein neuer Eintrag ist morgen möglich.
+                  </Text>
+                  {todayEntry.emotion && (
+                    <Text style={styles.limitInfo}>
+                      Heutige Emotion: {todayEntry.emotion} • Score: {todayEntry.feelScore}/99
+                    </Text>
+                  )}
+                </View>
+              </View>
+            )}
 
             <View style={styles.previewRow}>
               <View style={[styles.scoreCircle, { borderColor: colorForScore(previewScore) }]}>
@@ -213,9 +292,16 @@ Beschreibung: ${text}
             </View>
 
             <View style={styles.footer}>
-              <TouchableOpacity style={styles.saveWrapper} onPress={handleSave} disabled={loading} activeOpacity={0.9}>
-                <LinearGradient colors={loading ? ["#9ec8ff", "#6fb0ff"] : ["#34a3ff", "#007aff"]} start={[0,0]} end={[1,1]} style={[styles.saveButton, loading && styles.saveButtonDisabled]}>
-                  <Text style={styles.saveText}>{loading ? "Sende & analysiere…" : "Senden & analysieren"}</Text>
+              <TouchableOpacity style={styles.saveWrapper} onPress={handleSave} disabled={loading || !canCreateEntry} activeOpacity={0.9}>
+                <LinearGradient
+                  colors={loading || !canCreateEntry ? ["#CCCCCC", "#999999"] : ["#34a3ff", "#007aff"]}
+                  start={[0,0]}
+                  end={[1,1]}
+                  style={[styles.saveButton, (loading || !canCreateEntry) && styles.saveButtonDisabled]}
+                >
+                  <Text style={styles.saveText}>
+                    {loading ? "Sende & analysiere…" : !canCreateEntry ? "Heute bereits genutzt" : "Senden & analysieren"}
+                  </Text>
                 </LinearGradient>
               </TouchableOpacity>
 
@@ -351,4 +437,34 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   progressBar: { height: "100%", backgroundColor: "#007aff" },
+
+  limitCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E8F5E9",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    width: "100%",
+    borderWidth: 2,
+    borderColor: "#C8E6C9",
+  },
+  limitTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1B5E20",
+    marginBottom: 6,
+  },
+  limitSubtitle: {
+    fontSize: 14,
+    color: "#2E7D32",
+    lineHeight: 20,
+    marginBottom: 6,
+  },
+  limitInfo: {
+    fontSize: 13,
+    color: "#388E3C",
+    fontWeight: "600",
+    marginTop: 4,
+  },
 });
