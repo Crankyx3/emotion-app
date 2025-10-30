@@ -16,7 +16,7 @@ import {
 } from "react-native";
 import Slider from "@react-native-community/slider";
 import { collection, addDoc, Timestamp, updateDoc } from "firebase/firestore";
-import { db } from "../firebaseconfig";
+import { db, auth } from "../firebaseconfig";
 import { getAiResponse } from "../openaiService";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -87,6 +87,7 @@ Beschreibung: ${text}
       const aiReply = await getAiResponse(selectedEmotion, fullInput);
 
       const docRef = await addDoc(collection(db, "entries"), {
+        userId: auth.currentUser?.uid,
         emotion: selectedEmotion,
         sleep,
         energy,

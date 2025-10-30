@@ -23,7 +23,7 @@ import {
   where,
   getDocs,
 } from "firebase/firestore";
-import { db } from "../firebaseconfig";
+import { db, auth } from "../firebaseconfig";
 
 export default function DailyAnalysisScreen({ route, navigation }) {
   const { feelScore, sleep, energy, selfWorth, emotion, text, theme } = route.params || {};
@@ -129,6 +129,7 @@ Gib eine empathische, kurze psychologische Einschätzung mit einem hilfreichen R
         console.log("✅ Analyse in Firestore gespeichert.");
       } else {
         await addDoc(collection(db, "entries"), {
+          userId: auth.currentUser?.uid,
           emotion,
           feelScore,
           sleep,

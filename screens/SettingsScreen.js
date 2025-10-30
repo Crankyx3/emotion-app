@@ -84,31 +84,30 @@ export default function SettingsScreen() {
   const confirmResetData = async () => {
     setLoading(true);
     try {
-      // Hole alle Einträge des Benutzers
-      const entriesSnapshot = await getDocs(
-        query(collection(db, "entries"), where("userId", "==", user.uid))
-      );
+      // Hole ALLE Einträge (auch alte ohne userId)
+      const allEntriesSnapshot = await getDocs(collection(db, "entries"));
 
-      console.log(`Lösche ${entriesSnapshot.size} Einträge...`);
+      // Filtere nach userId (falls vorhanden) oder lösche alle wenn kein User-Filter
+      const userEntries = allEntriesSnapshot.docs.filter((doc) => {
+        const data = doc.data();
+        // Lösche Entry wenn userId dem aktuellen User entspricht ODER wenn kein userId gesetzt ist
+        return !data.userId || data.userId === user.uid;
+      });
+
+      console.log(`Lösche ${userEntries.length} Einträge (von ${allEntriesSnapshot.size} total)...`);
 
       // Erstelle Array mit allen Lösch-Promises
-      const deletePromises = entriesSnapshot.docs.map((doc) =>
-        deleteDoc(doc.ref)
-      );
+      const deletePromises = userEntries.map((doc) => deleteDoc(doc.ref));
 
       // Führe alle Löschungen parallel aus
       await Promise.all(deletePromises);
 
       // Aktualisiere Stats
-      setStats({
-        totalEntries: 0,
-        dailyAnalyses: 0,
-        weeklyAnalyses: 0,
-      });
+      await loadStats();
 
       Alert.alert(
         "✅ Erfolgreich gelöscht",
-        `${entriesSnapshot.size} Einträge wurden vollständig entfernt.`
+        `${userEntries.length} Einträge wurden vollständig entfernt.`
       );
     } catch (error) {
       console.error("Error resetting data:", error);
