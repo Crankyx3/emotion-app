@@ -31,25 +31,18 @@ if (getApps().length === 0) {
 export const db = getFirestore(app);
 console.log("✅ Firestore initialisiert");
 
-// Initialize Auth mit Try-Catch für besseres Debugging
+// Initialize Auth - simplified for SDK 54
 let auth;
-try {
-  // Versuche erst, ob auth bereits existiert
+if (getApps().length === 0) {
+  // First time initialization - use initializeAuth
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage)
+  });
+  console.log("✅ Auth initialisiert mit AsyncStorage Persistence");
+} else {
+  // App already exists - use getAuth
   auth = getAuth(app);
-  console.log("✅ Auth mit getAuth() initialisiert");
-} catch (error) {
-  console.log("⚠️ getAuth() fehlgeschlagen, versuche initializeAuth()...");
-  try {
-    auth = initializeAuth(app, {
-      persistence: getReactNativePersistence(AsyncStorage)
-    });
-    console.log("✅ Auth mit initializeAuth() initialisiert");
-  } catch (initError) {
-    console.error("❌ Auth Initialisierung fehlgeschlagen:", initError);
-    // Fallback: einfaches getAuth ohne Persistence
-    auth = getAuth(app);
-    console.log("⚠️ Fallback: Auth ohne Persistence");
-  }
+  console.log("✅ Auth bereits initialisiert");
 }
 
 export { auth };
