@@ -285,49 +285,97 @@ export default function SettingsScreen() {
         })),
       };
 
+      // Berechne Durchschnittswerte
+      const avgFeel = recentEntries.length > 0
+        ? (recentEntries.reduce((sum, e) => sum + (e.feelScore || 0), 0) / recentEntries.length).toFixed(1)
+        : 'N/A';
+      const avgSleep = recentEntries.length > 0
+        ? (recentEntries.reduce((sum, e) => sum + (e.sleep || 0), 0) / recentEntries.length).toFixed(1)
+        : 'N/A';
+      const avgEnergy = recentEntries.length > 0
+        ? (recentEntries.reduce((sum, e) => sum + (e.energy || 0), 0) / recentEntries.length).toFixed(1)
+        : 'N/A';
+      const avgSelfWorth = recentEntries.length > 0
+        ? (recentEntries.reduce((sum, e) => sum + (e.selfWorth || 0), 0) / recentEntries.length).toFixed(1)
+        : 'N/A';
+
       // Konvertiere zu lesbarem Text
-      const textContent = `
-==============================================
-  KI-STIMMUNGSHELFER - DATENEXPORT
-==============================================
+      const textContent = `╔══════════════════════════════════════════════════════════════╗
+║          KI-STIMMUNGSHELFER - THERAPEUTEN-EXPORT            ║
+╚══════════════════════════════════════════════════════════════╝
 
-Export erstellt: ${new Date().toLocaleDateString("de-DE")} um ${new Date().toLocaleTimeString("de-DE")}
-Zeitraum: ${thirtyDaysAgo.toLocaleDateString("de-DE")} - ${new Date().toLocaleDateString("de-DE")}
+📅 Export erstellt: ${new Date().toLocaleDateString("de-DE")} um ${new Date().toLocaleTimeString("de-DE")}
+⏱️  Zeitraum: ${thirtyDaysAgo.toLocaleDateString("de-DE")} - ${new Date().toLocaleDateString("de-DE")} (30 Tage)
 
-ÜBERSICHT
----------
-• Gesamteinträge: ${recentEntries.length}
-• Wochenanalysen: ${weeklyAnalyses.length}
-• Aktueller Streak: ${currentStreak} Tage
-• Längster Streak: ${longestStreak} Tage
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 ZUSAMMENFASSUNG
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-TAGESEINTRÄGE
--------------
+Einträge gesamt: ${recentEntries.length}
+Wochenanalysen: ${weeklyAnalyses.length}
+Aktueller Streak: ${currentStreak} Tage
+Längster Streak: ${longestStreak} Tage
+
+DURCHSCHNITTSWERTE (${recentEntries.length} Einträge):
+• Wohlfühlscore: ${avgFeel} / 99
+• Schlafqualität: ${avgSleep} / 10
+• Energielevel: ${avgEnergy} / 10
+• Selbstwertgefühl: ${avgSelfWorth} / 10
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📝 TAGESEINTRÄGE (${recentEntries.length})
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 ${recentEntries.map((e, i) => `
-${i + 1}. ${new Date(e.createdAt).toLocaleDateString("de-DE")}
-   Emotion: ${e.emotion}
-   Wohlfühlscore: ${e.feelScore}/99
-   Schlaf: ${e.sleep}/10 | Energie: ${e.energy}/10 | Selbstwert: ${e.selfWorth}/10
-   Thema: ${e.theme || "Kein Thema"}
-   Beschreibung: ${e.text || "Keine Beschreibung"}
-   ${e.gratitude ? `Dankbarkeit: ${e.gratitude}` : ''}
-   ${e.analysis ? `KI-Analyse: ${e.analysis.substring(0, 200)}...` : ''}
+┌─ ${i + 1}. ${new Date(e.createdAt).toLocaleDateString("de-DE", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} ─────────────
+│
+│ 😊 Emotion: ${e.emotion}
+│ 💙 Wohlfühlscore: ${e.feelScore}/99
+│ 🛏️  Schlaf: ${e.sleep}/10  |  ⚡ Energie: ${e.energy}/10  |  ❤️  Selbstwert: ${e.selfWorth}/10
+│
+│ 📌 THEMA:
+│    ${e.theme || "(Kein Thema angegeben)"}
+│
+│ ✍️  BESCHREIBUNG:
+│    ${e.text ? e.text.split('\n').map(line => `   ${line}`).join('\n│') : '   (Keine Beschreibung)'}
+${e.gratitude ? `│\n│ 💚 DANKBARKEIT:\n│    ${e.gratitude.split('\n').map(line => `   ${line}`).join('\n│')}` : ''}
+${e.analysis ? `│\n│ 🧠 KI-ANALYSE:\n│    ${e.analysis.split('\n').map(line => `   ${line}`).join('\n│')}` : ''}
+│
+└────────────────────────────────────────────────────────────────
 `).join('\n')}
 
-WOCHENANALYSEN
---------------
-${weeklyAnalyses.length > 0 ? weeklyAnalyses.map((a, i) => `
-${i + 1}. ${new Date(a.analysisDate).toLocaleDateString("de-DE")}
-   Stimmung: ${a.highlight?.mood || 'Unbekannt'}
-   Einträge: ${a.entriesCount}
-   Durchschnitt: Schlaf ${a.avgStats?.sleep?.toFixed(1)}/10, Energie ${a.avgStats?.energy?.toFixed(1)}/10
-   Analyse: ${a.analysis?.substring(0, 300)}...
-`).join('\n') : 'Keine Wochenanalysen im Zeitraum'}
 
-==============================================
-JSON-DATEN (für digitale Verarbeitung):
-${JSON.stringify(exportData, null, 2)}
-==============================================
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧭 WOCHENANALYSEN (${weeklyAnalyses.length})
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${weeklyAnalyses.length > 0 ? weeklyAnalyses.map((a, i) => `
+┌─ ${i + 1}. ${new Date(a.analysisDate).toLocaleDateString("de-DE", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} ─────────────
+│
+│ 🌡️  Stimmung: ${a.highlight?.mood === 'positiv' ? '🌿 Positiv' : a.highlight?.mood === 'negativ' ? '🌧️  Herausfordernd' : '🌤️  Neutral'}
+│ 📅 Einträge: ${a.entriesCount} Tage
+│ 📊 Durchschnitt: Schlaf ${a.avgStats?.sleep?.toFixed(1)}/10  |  Energie ${a.avgStats?.energy?.toFixed(1)}/10  |  Selbstwert ${a.avgStats?.selfWorth?.toFixed(1)}/10
+│
+│ 🧠 WOCHENANALYSE:
+│    ${a.analysis ? a.analysis.split('\n').map(line => `   ${line}`).join('\n│') : '(Keine Analyse)'}
+│
+└────────────────────────────────────────────────────────────────
+`).join('\n') : '(Keine Wochenanalysen im ausgewählten Zeitraum)'}
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️  HINWEISE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+• Dieser Export wurde automatisch durch die KI-Stimmungshelfer App erstellt
+• Die KI-Analysen basieren auf GPT-4 und dienen zur Unterstützung, nicht zur Diagnose
+• Alle Daten sind vertraulich zu behandeln
+• Patient: ${user.email}
+
+Für Rückfragen: KI-Stimmungshelfer App v1.0.0
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
 
       // Speichere in temporärer Datei
