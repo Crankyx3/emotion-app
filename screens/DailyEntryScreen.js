@@ -157,18 +157,15 @@ export default function DailyEntryScreen() {
     calculateStreak();
   }, [todayEntry]);
 
-  // Vereinfachte Score-Berechnung: Emotion + Textlängen-Bonus
+  // Score basiert auf der gewählten Emotion
+  // Optional: Kleiner Bonus für Dankbarkeit, da Dankbarkeit psychologisch mit Wohlbefinden korreliert
   const computeFeelScore = () => {
     const selectedEmotionObj = emotions.find(e => `${e.emoji} ${e.label}` === selectedEmotion);
     if (!selectedEmotionObj) return 50;
 
     let score = selectedEmotionObj.value;
 
-    // Bonus für detaillierte Beschreibung (max +10 Punkte)
-    if (text.length > 50) score += 5;
-    if (text.length > 150) score += 5;
-
-    // Bonus für Dankbarkeit (max +5 Punkte)
+    // Optional: Bonus für Dankbarkeit (+5 Punkte)
     if (gratitude.trim().length > 20) score += 5;
 
     return Math.min(99, Math.max(1, Math.round(score)));
