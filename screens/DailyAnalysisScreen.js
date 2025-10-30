@@ -45,6 +45,7 @@ export default function DailyAnalysisScreen({ route, navigation }) {
   const [loading, setLoading] = useState(false);
   const [analysisValid, setAnalysisValid] = useState(false);
   const [todayAnalysis, setTodayAnalysis] = useState(null);
+  const [todayEntry, setTodayEntry] = useState(null); // Prüfung ob Eintrag existiert
   const [canAnalyze, setCanAnalyze] = useState(true);
   const [checkingLimit, setCheckingLimit] = useState(true);
 
@@ -105,10 +106,19 @@ export default function DailyAnalysisScreen({ route, navigation }) {
         return analysisDate >= today && analysisDate < tomorrow;
       });
 
+      // Suche auch nach heutigem Eintrag (ohne Analyse)
+      const todayEntries = snapshot.docs.filter((doc) => {
+        const data = doc.data();
+        if (!data.createdAt) return false;
+        const createdDate = data.createdAt.toDate();
+        return createdDate >= today && createdDate < tomorrow;
+      });
+
       if (todayAnalyses.length > 0) {
         // Heute wurde bereits analysiert
         const data = todayAnalyses[0].data();
         setTodayAnalysis(data);
+        setTodayEntry(data); // Eintrag existiert
         setAiText(data.analysis);
         setAnalysisValid(true);
         setCanAnalyze(false);
@@ -123,10 +133,27 @@ export default function DailyAnalysisScreen({ route, navigation }) {
         if (data.theme) setTheme(data.theme);
 
         console.log("✅ Heute bereits analysiert:", data);
-      } else {
-        // Noch keine Analyse heute
+      } else if (todayEntries.length > 0) {
+        // Eintrag vorhanden, aber noch keine Analyse
+        const data = todayEntries[0].data();
+        setTodayEntry(data);
         setCanAnalyze(true);
-        console.log("✅ Analyse heute noch verfügbar");
+
+        // Lade Werte aus Eintrag
+        if (data.feelScore != null) setFeelScore(data.feelScore);
+        if (data.sleep != null) setSleep(data.sleep);
+        if (data.energy != null) setEnergy(data.energy);
+        if (data.selfWorth != null) setSelfWorth(data.selfWorth);
+        if (data.emotion) setEmotion(data.emotion);
+        if (data.text) setText(data.text);
+        if (data.theme) setTheme(data.theme);
+
+        console.log("✅ Eintrag vorhanden, Analyse verfügbar");
+      } else {
+        // Weder Eintrag noch Analyse vorhanden
+        setCanAnalyze(false);
+        setTodayEntry(null);
+        console.log("❌ Kein Eintrag heute - Analyse nicht möglich");
       }
     } catch (error) {
       console.error("Error checking today's analysis:", error);
@@ -171,8 +198,24 @@ export default function DailyAnalysisScreen({ route, navigation }) {
   }, []);
 
   const handleAiAnalysis = async () => {
+    // Prüfe ob ein Tageseintrag vorhanden ist
+    if (!todayEntry && !todayAnalysis) {
+      Alert.alert(
+        "Kein Eintrag vorhanden",
+        "Bitte erstelle zuerst einen Tageseintrag, bevor du eine Analyse durchführst.",
+        [
+          { text: "OK" },
+          {
+            text: "Eintrag erstellen",
+            onPress: () => navigation.navigate("DailyEntry")
+          }
+        ]
+      );
+      return;
+    }
+
     // Prüfe ob heute bereits analysiert wurde
-    if (!canAnalyze) {
+    if (!canAnalyze && todayAnalysis) {
       Alert.alert(
         "Bereits analysiert",
         "Du hast heute bereits eine Tagesanalyse erstellt. Die nächste Analyse ist ab morgen um 00:00 Uhr verfügbar.",
@@ -182,8 +225,18 @@ export default function DailyAnalysisScreen({ route, navigation }) {
     }
 
     // Schutz vor fehlenden Werten — zeige klare Meldung
-    if (feelScore == null || theme == null) {
-      Alert.alert("Bitte erst die Tagesdaten ausfüllen");
+    if (feelScore == null || feelScore === 0 || !emotion) {
+      Alert.alert(
+        "Unvollständige Daten",
+        "Bitte erstelle zuerst einen vollständigen Tageseintrag.",
+        [
+          { text: "OK" },
+          {
+            text: "Eintrag erstellen",
+            onPress: () => navigation.navigate("DailyEntry")
+          }
+        ]
+      );
       setAiText(null);
       setAnalysisValid(false);
       return;
@@ -310,8 +363,20 @@ Gib eine empathische, kurze psychologische Einschätzung mit einem hilfreichen R
         <ScreenHeader title="📊 Tagesanalyse" subtitle="Deine KI-gestützte Auswertung" />
         <ScrollView contentContainerStyle={styles.container}>
 
-          {/* Limit Status Info */}
-          {!canAnalyze && (
+          {/* Status Info */}
+          {!todayEntry && !todayAnalysis && (
+            <View style={styles.noEntryCard}>
+              <Ionicons name="alert-circle" size={24} color="#E03131" />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.noEntryTitle}>Kein Eintrag vorhanden</Text>
+                <Text style={styles.noEntrySubtitle}>
+                  Erstelle zuerst einen Tageseintrag, um eine Analyse zu erhalten
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {todayAnalysis && !canAnalyze && (
             <View style={styles.limitInfoCard}>
               <Ionicons name="checkmark-circle" size={24} color="#34a853" />
               <View style={{ flex: 1, marginLeft: 12 }}>
@@ -323,7 +388,7 @@ Gib eine empathische, kurze psychologische Einschätzung mit einem hilfreichen R
             </View>
           )}
 
-          {canAnalyze && (
+          {todayEntry && canAnalyze && !todayAnalysis && (
             <View style={styles.availableInfoCard}>
               <Ionicons name="time-outline" size={24} color="#007AFF" />
               <View style={{ flex: 1, marginLeft: 12 }}>
@@ -385,18 +450,22 @@ Gib eine empathische, kurze psychologische Einschätzung mit einem hilfreichen R
 
           {!loading && !aiText && (
             <TouchableOpacity
-              style={[styles.analyzeButton, !canAnalyze && styles.analyzeButtonDisabled]}
-              activeOpacity={canAnalyze ? 0.8 : 1}
+              style={[styles.analyzeButton, (!canAnalyze || (!todayEntry && !todayAnalysis)) && styles.analyzeButtonDisabled]}
+              activeOpacity={canAnalyze && (todayEntry || todayAnalysis) ? 0.8 : 1}
               onPress={handleAiAnalysis}
-              disabled={!canAnalyze}
+              disabled={!canAnalyze || (!todayEntry && !todayAnalysis)}
             >
               <Ionicons
-                name={canAnalyze ? "analytics" : "lock-closed"}
+                name={canAnalyze && (todayEntry || todayAnalysis) ? "analytics" : "lock-closed"}
                 size={24}
                 color="#fff"
               />
               <Text style={styles.analyzeButtonText}>
-                {canAnalyze ? "Jetzt analysieren" : "Heute bereits genutzt"}
+                {!todayEntry && !todayAnalysis
+                  ? "Kein Eintrag vorhanden"
+                  : canAnalyze
+                  ? "Jetzt analysieren"
+                  : "Heute bereits genutzt"}
               </Text>
             </TouchableOpacity>
           )}
@@ -492,6 +561,27 @@ const styles = StyleSheet.create({
   availableInfoSubtitle: {
     fontSize: 13,
     color: "#1976D2",
+  },
+  noEntryCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFEBEE",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    width: "100%",
+    borderWidth: 1.5,
+    borderColor: "#FFCDD2",
+  },
+  noEntryTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#C62828",
+    marginBottom: 4,
+  },
+  noEntrySubtitle: {
+    fontSize: 13,
+    color: "#D32F2F",
   },
   circleWrapper: {
     marginVertical: 30,
