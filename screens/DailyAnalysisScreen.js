@@ -292,19 +292,24 @@ export default function DailyAnalysisScreen({ route, navigation }) {
 
     try {
       const prompt = `
-Analysiere den psychischen Zustand basierend auf diesen Tagesdaten:
+Analysiere den psychischen Zustand dieser Person basierend auf diesen Tagesdaten:
 
-Emotion: ${emotion}
-Wohlfühlscore: ${feelScore}/99
-Schlafqualität: ${sleep}/10
-Energielevel: ${energy}/10
-Selbstwertgefühl: ${selfWorth}/10
-Thema des Tages: ${theme}
-Beschreibung: ${text}
+📊 MESSWERTE:
+• Emotion: ${emotion}
+• Wohlfühlscore: ${feelScore}/99
+• Schlafqualität: ${sleep}/10
+• Energielevel: ${energy}/10
+• Selbstwertgefühl: ${selfWorth}/10
 
-Gib eine empathische, kurze psychologische Einschätzung.
+📝 THEMA & PERSÖNLICHE BESCHREIBUNG:
+${theme ? `Thema: ${theme}` : 'Kein Thema angegeben'}
+${text ? `\n"${text}"\n` : '\nKeine Beschreibung angegeben\n'}
 
-Dann gib GENAU 3 konkrete, sofort umsetzbare Handlungsvorschläge in folgendem Format:
+WICHTIG: Gehe in deiner Analyse DIREKT auf die persönliche Beschreibung ein. Beziehe dich auf konkrete Situationen, Gefühle oder Gedanken, die erwähnt wurden. Falls keine Beschreibung vorhanden ist, konzentriere dich auf die Messwerte.
+
+Gib eine empathische, individuelle psychologische Einschätzung (2-4 Sätze), die konkret auf ${text ? 'die beschriebene Situation' : 'die aktuellen Messwerte'} eingeht.
+
+Dann gib GENAU 3 konkrete, sofort umsetzbare Handlungsvorschläge, die ${theme ? `zum Thema "${theme}"` : 'zur aktuellen Situation'} passen:
 [VORSCHLÄGE]
 1. [Kurzer Titel]: [Konkrete Anweisung in 1-2 Sätzen]
 2. [Kurzer Titel]: [Konkrete Anweisung in 1-2 Sätzen]
@@ -319,8 +324,8 @@ Beispiele für gute Vorschläge:
 
       const reply = await getAiResponse("psychologische Tagesanalyse", prompt);
 
-      // Parse Vorschläge aus der Antwort
-      const suggestionsMatch = reply.match(/\[VORSCHLÄGE\](.*?)\[\/VORSCHLÄGE\]/s);
+      // Parse Vorschläge aus der Antwort (unterstützt [VORSCHLÄGE] und [VORSCHLAG])
+      const suggestionsMatch = reply.match(/\[VORSCHL[ÄA]GE?\](.*?)\[\/VORSCHL[ÄA]GE?\]/is);
       if (suggestionsMatch) {
         const suggestionsText = suggestionsMatch[1];
         const suggestions = suggestionsText
@@ -336,8 +341,8 @@ Beispiele für gute Vorschläge:
           .slice(0, 3);
         setActionSuggestions(suggestions);
 
-        // Entferne die Vorschläge aus dem Haupttext
-        setAiText(reply.replace(/\[VORSCHLÄGE\].*?\[\/VORSCHLÄGE\]/s, '').trim());
+        // Entferne die Vorschläge aus dem Haupttext (unterstützt beide Varianten)
+        setAiText(reply.replace(/\[VORSCHL[ÄA]GE?\].*?\[\/VORSCHL[ÄA]GE?\]/gis, '').trim());
       } else {
         setAiText(reply);
         setActionSuggestions([]);

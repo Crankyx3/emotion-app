@@ -254,34 +254,38 @@ export default function AnalysisScreen() {
 
     setAnalyzing(true);
     try {
-      const summary = entries
-        .map(
-          (e) =>
-            `${new Date(e.createdAt.seconds * 1000).toLocaleDateString("de-DE")}: ${
-              e.emotion || "Unbekannt"
-            } | Schlaf=${e.sleep || "?"}/10 | Energie=${e.energy || "?"}/10 | Selbstwert=${
-              e.selfWorth || "?"
-            }/10 | Score=${e.feelScore}/99`
-        )
-        .join("\n");
+      // Erweiterte Zusammenfassung mit Themen und Texten
+      const detailedSummary = entries
+        .map((e, index) => {
+          const date = new Date(e.createdAt.seconds * 1000).toLocaleDateString("de-DE");
+          const basics = `${e.emotion || "Unbekannt"} | Schlaf=${e.sleep || "?"}/10 | Energie=${e.energy || "?"}/10 | Selbstwert=${e.selfWorth || "?"}/10 | Score=${e.feelScore}/99`;
+          const themeText = e.theme ? `\n   Thema: ${e.theme}` : '';
+          const userText = e.text ? `\n   "${e.text}"` : '';
+
+          return `${index + 1}. ${date}: ${basics}${themeText}${userText}`;
+        })
+        .join("\n\n");
 
       const prompt = `
 Analysiere die psychologische Entwicklung dieser Woche basierend auf folgenden Daten:
 
-Durchschnittswerte:
+📊 DURCHSCHNITTSWERTE:
 • Schlafqualität: ${avgSleep.toFixed(1)} / 10
 • Energielevel: ${avgEnergy.toFixed(1)} / 10
 • Selbstwertgefühl: ${avgSelfWorth.toFixed(1)} / 10
 • Wohlfühlscore: ${avg.toFixed(1)} / 99
 
-Tägliche Werte:
-${summary}
+📅 TÄGLICHE EINTRÄGE MIT PERSÖNLICHEN BESCHREIBUNGEN:
+${detailedSummary}
+
+WICHTIG: Gehe in deiner Wochenanalyse auf die KONKRETEN THEMEN und BESCHREIBUNGEN der Person ein. Erkenne Muster in den beschriebenen Situationen und Gedanken. Beziehe dich auf wiederkehrende Themen oder Veränderungen im Wochenverlauf.
 
 Bitte gib eine strukturierte, empathische Analyse mit:
-1️⃣ Allgemeine Stimmung der Woche
-2️⃣ Entwicklung (positiv, stabil, rückläufig)
-3️⃣ Auffällige Trends (Schlaf, Energie, Selbstwert)
-4️⃣ Kurzer psychologischer Rat für nächste Woche
+1️⃣ Allgemeine Stimmung der Woche (beziehe dich auf konkrete Themen, die erwähnt wurden)
+2️⃣ Entwicklung (positiv, stabil, rückläufig) - erkenne Muster in den Beschreibungen
+3️⃣ Auffällige Trends bei Werten UND in den beschriebenen Situationen
+4️⃣ Individueller psychologischer Rat für nächste Woche basierend auf den konkreten Themen
+
 Beende mit einem einzelnen Wort, das die Stimmung beschreibt: POSITIV, NEUTRAL oder NEGATIV.
 `;
 

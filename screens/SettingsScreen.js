@@ -333,9 +333,7 @@ ${JSON.stringify(exportData, null, 2)}
       // Speichere in temporärer Datei
       const filename = `stimmungshelfer_export_${new Date().toISOString().split('T')[0]}.txt`;
       const fileUri = `${FileSystem.documentDirectory}${filename}`;
-      await FileSystem.writeAsStringAsync(fileUri, textContent, {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
+      await FileSystem.writeAsStringAsync(fileUri, textContent);
 
       // Teile Datei
       const canShare = await Sharing.isAvailableAsync();
