@@ -58,7 +58,7 @@ export default function HomeScreen({ navigation }) {
   return (
     <LinearGradient colors={["#EAF4FF", "#FFFFFF"]} style={styles.gradient}>
       <ScrollView contentContainerStyle={styles.container}>
-        <ScreenHeader title="🌿 Emotion App" subtitle="Dein psychologisches Dashboard" />
+        <ScreenHeader title="KI-Stimmungshelfer" subtitle="Dein persönliches Stimmungs-Dashboard" />
 
         {/* User Info Card */}
         {user && (

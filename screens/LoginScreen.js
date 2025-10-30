@@ -152,9 +152,9 @@ export default function LoginScreen() {
             {/* Header */}
             <View style={styles.header}>
               <View style={styles.iconCircle}>
-                <Ionicons name="leaf" size={40} color="#34a853" />
+                <Ionicons name="happy-outline" size={40} color="#007AFF" />
               </View>
-              <Text style={styles.title}>🌿 Emotion App</Text>
+              <Text style={styles.title}>KI-Stimmungshelfer</Text>
               <Text style={styles.subtitle}>
                 {mode === "login"
                   ? "Willkommen zurück!"
