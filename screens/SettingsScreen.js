@@ -96,8 +96,18 @@ export default function SettingsScreen() {
 
       console.log(`Lösche ${userEntries.length} Einträge (von ${allEntriesSnapshot.size} total)...`);
 
-      // Erstelle Array mit allen Lösch-Promises
-      const deletePromises = userEntries.map((doc) => deleteDoc(doc.ref));
+      // Hole auch alle Wochenanalysen des Users
+      const weeklyAnalysesSnapshot = await getDocs(
+        query(collection(db, "weeklyAnalyses"), where("userId", "==", user.uid))
+      );
+
+      console.log(`Lösche ${weeklyAnalysesSnapshot.size} Wochenanalysen...`);
+
+      // Erstelle Array mit allen Lösch-Promises (Einträge + Wochenanalysen)
+      const deletePromises = [
+        ...userEntries.map((doc) => deleteDoc(doc.ref)),
+        ...weeklyAnalysesSnapshot.docs.map((doc) => deleteDoc(doc.ref)),
+      ];
 
       // Führe alle Löschungen parallel aus
       await Promise.all(deletePromises);
@@ -107,7 +117,7 @@ export default function SettingsScreen() {
 
       Alert.alert(
         "✅ Erfolgreich gelöscht",
-        `${userEntries.length} Einträge wurden vollständig entfernt.\n\n💡 Hinweis: Bitte starte die App neu, damit alle Änderungen vollständig übernommen werden.`,
+        `${userEntries.length} Einträge und ${weeklyAnalysesSnapshot.size} Wochenanalysen wurden vollständig entfernt.\n\n💡 Hinweis: Bitte starte die App neu, damit alle Änderungen vollständig übernommen werden.`,
         [{ text: "OK", style: "default" }]
       );
     } catch (error) {
