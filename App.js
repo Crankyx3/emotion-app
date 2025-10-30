@@ -13,6 +13,7 @@ import DailyAnalysisScreen from "./screens/DailyAnalysisScreen";
 import EmotionChartScreen from "./screens/EmotionChartScreen";
 import AnalysisScreen from "./screens/AnalysisScreen";
 import LoginScreen from "./screens/LoginScreen";
+import SettingsScreen from "./screens/SettingsScreen";
 
 import { AuthProvider, useAuth } from "./components/AuthProvider";
 
@@ -76,7 +77,17 @@ function MainTabs() {
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="brain" size={size} color={color} />
           ),
-          tabBarLabel: "KI-Analyse"
+          tabBarLabel: "Analyse"
+        }}
+      />
+      <Tab.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="settings-outline" size={size} color={color} />
+          ),
+          tabBarLabel: "Einstellungen"
         }}
       />
     </Tab.Navigator>
