@@ -58,18 +58,24 @@ export default function DailyEntryScreen() {
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
 
+        // Erst nach userId filtern, dann clientseitig nach Datum
         const q = query(
           collection(db, "entries"),
-          where("userId", "==", auth.currentUser.uid),
-          where("createdAt", ">=", Timestamp.fromDate(today)),
-          where("createdAt", "<", Timestamp.fromDate(tomorrow)),
-          orderBy("createdAt", "desc"),
-          limit(1)
+          where("userId", "==", auth.currentUser.uid)
         );
 
         const snapshot = await getDocs(q);
-        if (!snapshot.empty) {
-          const entry = snapshot.docs[0].data();
+
+        // Clientseitig nach heutigem Datum filtern
+        const todayEntries = snapshot.docs.filter((doc) => {
+          const data = doc.data();
+          if (!data.createdAt) return false;
+          const entryDate = data.createdAt.toDate();
+          return entryDate >= today && entryDate < tomorrow;
+        });
+
+        if (todayEntries.length > 0) {
+          const entry = todayEntries[0].data();
           setCanCreateEntry(false);
           setTodayEntry(entry);
         } else {

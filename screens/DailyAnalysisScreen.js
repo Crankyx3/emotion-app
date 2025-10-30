@@ -68,22 +68,25 @@ export default function DailyAnalysisScreen({ route, navigation }) {
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
-      // Suche nach Analysen von heute
+      // Erst nach userId filtern, dann clientseitig nach Datum
       const q = query(
         collection(db, "entries"),
-        where("userId", "==", auth.currentUser.uid),
-        where("analysisDate", ">=", Timestamp.fromDate(today)),
-        where("analysisDate", "<", Timestamp.fromDate(tomorrow)),
-        orderBy("analysisDate", "desc"),
-        limit(1)
+        where("userId", "==", auth.currentUser.uid)
       );
 
       const snapshot = await getDocs(q);
 
-      if (!snapshot.empty) {
-        // Heute wurde bereits analysiert
-        const doc = snapshot.docs[0];
+      // Clientseitig nach heutigem Datum filtern
+      const todayAnalyses = snapshot.docs.filter((doc) => {
         const data = doc.data();
+        if (!data.analysisDate) return false;
+        const analysisDate = data.analysisDate.toDate();
+        return analysisDate >= today && analysisDate < tomorrow;
+      });
+
+      if (todayAnalyses.length > 0) {
+        // Heute wurde bereits analysiert
+        const data = todayAnalyses[0].data();
         setTodayAnalysis(data);
         setAiText(data.analysis);
         setAnalysisValid(true);

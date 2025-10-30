@@ -38,17 +38,26 @@ export default function AnalysisScreen() {
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
+      // Erst nach userId filtern, dann clientseitig nach Datum
       const q = query(
         collection(db, "weeklyAnalyses"),
-        where("userId", "==", auth.currentUser.uid),
-        where("analysisDate", ">=", Timestamp.fromDate(sevenDaysAgo)),
-        orderBy("analysisDate", "desc"),
-        limit(1)
+        where("userId", "==", auth.currentUser.uid)
       );
 
       const snapshot = await getDocs(q);
-      if (!snapshot.empty) {
-        const lastAnalysis = snapshot.docs[0].data();
+
+      // Clientseitig nach Datum filtern und sortieren
+      const recentAnalyses = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(analysis => {
+          if (!analysis.analysisDate) return false;
+          const analysisDate = analysis.analysisDate.toDate();
+          return analysisDate >= sevenDaysAgo;
+        })
+        .sort((a, b) => b.analysisDate.toMillis() - a.analysisDate.toMillis());
+
+      if (recentAnalyses.length > 0) {
+        const lastAnalysis = recentAnalyses[0];
         const lastDate = lastAnalysis.analysisDate.toDate();
         const now = new Date();
         const diffTime = Math.abs(now - lastDate);
@@ -75,15 +84,22 @@ export default function AnalysisScreen() {
     try {
       const q = query(
         collection(db, "weeklyAnalyses"),
-        where("userId", "==", auth.currentUser.uid),
-        orderBy("analysisDate", "desc")
+        where("userId", "==", auth.currentUser.uid)
       );
 
       const snapshot = await getDocs(q);
-      const analyses = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+
+      // Clientseitig nach Datum sortieren
+      const analyses = snapshot.docs
+        .map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
+        .sort((a, b) => {
+          if (!a.analysisDate || !b.analysisDate) return 0;
+          return b.analysisDate.toMillis() - a.analysisDate.toMillis();
+        });
+
       setAllAnalyses(analyses);
     } catch (err) {
       console.error("Fehler beim Laden der Analysen:", err);
