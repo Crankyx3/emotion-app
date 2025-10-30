@@ -11,8 +11,8 @@ import {
   Modal,
   Alert,
 } from "react-native";
-import { collection, getDocs, orderBy, query, limit, doc, updateDoc } from "firebase/firestore";
-import { db } from "../firebaseconfig";
+import { collection, getDocs, orderBy, query, limit, doc, updateDoc, where } from "firebase/firestore";
+import { db, auth } from "../firebaseconfig";
 import { LineChart } from "react-native-chart-kit";
 import { getAiResponse } from "../openaiService";
 import { LinearGradient } from "expo-linear-gradient";
@@ -29,22 +29,35 @@ export default function EmotionChartScreen() {
   useEffect(() => {
     (async () => {
       try {
-        // Lade die neuesten Einträge (absteigend), begrenze auf 7 Einträge und
-        // drehe die Reihenfolge um, damit Chart von älteste -> neueste darstellt.
-        const q = query(collection(db, "entries"), orderBy("createdAt", "desc"), limit(7));
+        if (!auth.currentUser) {
+          setLoading(false);
+          return;
+        }
+
+        // Lade nur Einträge des aktuellen Users
+        const q = query(
+          collection(db, "entries"),
+          where("userId", "==", auth.currentUser.uid)
+        );
         const snap = await getDocs(q);
 
-        // nimm nur die ersten 7 docs (neueste), mappe & reverse -> oldest..newest
-        const newest = snap.docs.slice(0, 7).map((docSnap) => {
-          const e = docSnap.data();
-          const ts = e.createdAt?.seconds ? new Date(e.createdAt.seconds * 1000) : new Date();
-          return {
-            id: docSnap.id,
-            ...e,
-            date: ts.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }),
-          };
-        });
-        setEntries(newest.reverse());
+        // Mappe alle Einträge und sortiere clientseitig nach Datum
+        const allEntries = snap.docs
+          .map((docSnap) => {
+            const e = docSnap.data();
+            const ts = e.createdAt?.seconds ? new Date(e.createdAt.seconds * 1000) : new Date();
+            return {
+              id: docSnap.id,
+              ...e,
+              date: ts.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }),
+              timestamp: ts.getTime(),
+            };
+          })
+          .sort((a, b) => b.timestamp - a.timestamp) // Neueste zuerst
+          .slice(0, 7) // Nur die letzten 7
+          .reverse(); // Umdrehen für Chart (älteste -> neueste)
+
+        setEntries(allEntries);
       } catch (err) {
         console.error("Fehler beim Laden:", err);
       } finally {

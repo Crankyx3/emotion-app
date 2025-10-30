@@ -84,17 +84,14 @@ export default function SettingsScreen() {
   const confirmResetData = async () => {
     setLoading(true);
     try {
-      // Hole ALLE Einträge (auch alte ohne userId)
-      const allEntriesSnapshot = await getDocs(collection(db, "entries"));
+      // Lade nur Einträge des aktuellen Users
+      const userEntriesQuery = query(
+        collection(db, "entries"),
+        where("userId", "==", user.uid)
+      );
+      const userEntriesSnapshot = await getDocs(userEntriesQuery);
 
-      // Filtere nach userId (falls vorhanden) oder lösche alle wenn kein User-Filter
-      const userEntries = allEntriesSnapshot.docs.filter((doc) => {
-        const data = doc.data();
-        // Lösche Entry wenn userId dem aktuellen User entspricht ODER wenn kein userId gesetzt ist
-        return !data.userId || data.userId === user.uid;
-      });
-
-      console.log(`Lösche ${userEntries.length} Einträge (von ${allEntriesSnapshot.size} total)...`);
+      console.log(`Lösche ${userEntriesSnapshot.size} Einträge des Users...`);
 
       // Hole auch alle Wochenanalysen des Users
       const weeklyAnalysesSnapshot = await getDocs(
@@ -105,7 +102,7 @@ export default function SettingsScreen() {
 
       // Erstelle Array mit allen Lösch-Promises (Einträge + Wochenanalysen)
       const deletePromises = [
-        ...userEntries.map((doc) => deleteDoc(doc.ref)),
+        ...userEntriesSnapshot.docs.map((doc) => deleteDoc(doc.ref)),
         ...weeklyAnalysesSnapshot.docs.map((doc) => deleteDoc(doc.ref)),
       ];
 
@@ -117,7 +114,7 @@ export default function SettingsScreen() {
 
       Alert.alert(
         "✅ Erfolgreich gelöscht",
-        `${userEntries.length} Einträge und ${weeklyAnalysesSnapshot.size} Wochenanalysen wurden vollständig entfernt.\n\n💡 Hinweis: Bitte starte die App neu, damit alle Änderungen vollständig übernommen werden.`,
+        `${userEntriesSnapshot.size} Einträge und ${weeklyAnalysesSnapshot.size} Wochenanalysen wurden vollständig entfernt.\n\n💡 Hinweis: Bitte starte die App neu, damit alle Änderungen vollständig übernommen werden.`,
         [{ text: "OK", style: "default" }]
       );
     } catch (error) {

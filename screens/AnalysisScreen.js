@@ -110,18 +110,36 @@ export default function AnalysisScreen() {
   useEffect(() => {
     const fetchWeekData = async () => {
       try {
+        if (!auth.currentUser) {
+          setLoading(false);
+          return;
+        }
+
         const now = new Date();
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(now.getDate() - 7);
 
+        // Lade nur Einträge des aktuellen Users
         const q = query(
           collection(db, "entries"),
-          where("createdAt", ">=", sevenDaysAgo),
-          orderBy("createdAt", "asc")
+          where("userId", "==", auth.currentUser.uid)
         );
 
         const snap = await getDocs(q);
-        const data = snap.docs.map((doc) => doc.data());
+
+        // Clientseitig nach Datum filtern (letzte 7 Tage)
+        const data = snap.docs
+          .map((doc) => doc.data())
+          .filter((entry) => {
+            if (!entry.createdAt) return false;
+            const entryDate = entry.createdAt.toDate();
+            return entryDate >= sevenDaysAgo;
+          })
+          .sort((a, b) => {
+            if (!a.createdAt || !b.createdAt) return 0;
+            return a.createdAt.toMillis() - b.createdAt.toMillis();
+          });
+
         setEntries(data);
       } catch (err) {
         console.error("Fehler beim Laden:", err);
