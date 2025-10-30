@@ -11,8 +11,8 @@ import {
   Modal,
   Alert,
 } from "react-native";
-import { collection, getDocs, orderBy, query, limit, doc, updateDoc } from "firebase/firestore";
-import { db } from "../firebaseconfig";
+import { collection, getDocs, orderBy, query, limit, doc, updateDoc, where } from "firebase/firestore";
+import { db, auth } from "../firebaseconfig";
 import { LineChart } from "react-native-chart-kit";
 import { getAiResponse } from "../openaiService";
 import { LinearGradient } from "expo-linear-gradient";
@@ -22,36 +22,108 @@ const screenWidth = Dimensions.get("window").width;
 
 export default function EmotionChartScreen() {
   const [entries, setEntries] = useState([]);
+  const [allEntries, setAllEntries] = useState([]); // Für Trend & Insights
   const [loading, setLoading] = useState(true);
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [timeframe, setTimeframe] = useState(7); // 7, 14, 30, 90
 
   useEffect(() => {
     (async () => {
       try {
-        // Lade die neuesten Einträge (absteigend), begrenze auf 7 Einträge und
-        // drehe die Reihenfolge um, damit Chart von älteste -> neueste darstellt.
-        const q = query(collection(db, "entries"), orderBy("createdAt", "desc"), limit(7));
+        if (!auth.currentUser) {
+          setLoading(false);
+          return;
+        }
+
+        // Lade alle Einträge des aktuellen Users
+        const q = query(
+          collection(db, "entries"),
+          where("userId", "==", auth.currentUser.uid)
+        );
         const snap = await getDocs(q);
 
-        // nimm nur die ersten 7 docs (neueste), mappe & reverse -> oldest..newest
-        const newest = snap.docs.slice(0, 7).map((docSnap) => {
-          const e = docSnap.data();
-          const ts = e.createdAt?.seconds ? new Date(e.createdAt.seconds * 1000) : new Date();
-          return {
-            id: docSnap.id,
-            ...e,
-            date: ts.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }),
-          };
-        });
-        setEntries(newest.reverse());
+        // Mappe alle Einträge und sortiere clientseitig nach Datum
+        const all = snap.docs
+          .map((docSnap) => {
+            const e = docSnap.data();
+            const ts = e.createdAt?.seconds ? new Date(e.createdAt.seconds * 1000) : new Date();
+            return {
+              id: docSnap.id,
+              ...e,
+              date: ts.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }),
+              timestamp: ts.getTime(),
+            };
+          })
+          .sort((a, b) => b.timestamp - a.timestamp); // Neueste zuerst
+
+        setAllEntries(all);
+
+        // Filtere nach gewähltem Zeitraum
+        const filtered = all.slice(0, timeframe).reverse(); // Umdrehen für Chart (älteste -> neueste)
+        setEntries(filtered);
       } catch (err) {
         console.error("Fehler beim Laden:", err);
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [timeframe]);
+
+  // Trend-Berechnung: Aktueller Zeitraum vs. vorheriger Zeitraum
+  const calculateTrend = () => {
+    const validAll = allEntries.filter((e) => typeof e.feelScore === "number" && e.feelScore > 0);
+    if (validAll.length < timeframe) return null;
+
+    const currentPeriod = validAll.slice(0, timeframe);
+    const previousPeriod = validAll.slice(timeframe, timeframe * 2);
+
+    if (previousPeriod.length === 0) return null;
+
+    const currentAvg = currentPeriod.reduce((sum, e) => sum + e.feelScore, 0) / currentPeriod.length;
+    const previousAvg = previousPeriod.reduce((sum, e) => sum + e.feelScore, 0) / previousPeriod.length;
+
+    const change = ((currentAvg - previousAvg) / previousAvg) * 100;
+    const emoji = change > 5 ? "↗️" : change < -5 ? "↘️" : "➡️";
+    const label = change > 5 ? "Aufwärts" : change < -5 ? "Abwärts" : "Stabil";
+
+    return { change: change.toFixed(1), emoji, label };
+  };
+
+  // Insight-Berechnung
+  const calculateInsights = () => {
+    const validAll = allEntries.filter((e) => typeof e.feelScore === "number" && e.feelScore > 0);
+    const currentPeriod = validAll.slice(0, timeframe);
+
+    if (currentPeriod.length === 0) return null;
+
+    // 1. Bester Tag
+    const bestDay = currentPeriod.reduce((best, e) => (e.feelScore > best.feelScore ? e : best), currentPeriod[0]);
+
+    // 2. Längste positive Serie (über Durchschnitt)
+    const allAvg = validAll.reduce((sum, e) => sum + e.feelScore, 0) / validAll.length;
+    let longestStreak = 0;
+    let currentStreak = 0;
+
+    for (const entry of currentPeriod.reverse()) {
+      if (entry.feelScore >= allAvg) {
+        currentStreak++;
+        longestStreak = Math.max(longestStreak, currentStreak);
+      } else {
+        currentStreak = 0;
+      }
+    }
+
+    // 3. Percentile: Wie viel Prozent der Tage waren schlechter als der aktuelle Durchschnitt?
+    const currentAvg = currentPeriod.reduce((sum, e) => sum + e.feelScore, 0) / currentPeriod.length;
+    const worseDays = validAll.filter((e) => e.feelScore < currentAvg).length;
+    const percentile = Math.round((worseDays / validAll.length) * 100);
+
+    return { bestDay, longestStreak, percentile };
+  };
+
+  const trend = calculateTrend();
+  const insights = calculateInsights();
 
   if (loading) {
     return (
@@ -141,6 +213,60 @@ Gib eine empathische, kurze psychologische Einschätzung mit einem hilfreichen R
     <LinearGradient colors={["#F6FBFF", "#FFFFFF"]} style={styles.background}>
       <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
         <ScreenHeader title="📈 Dein Wohlfühlverlauf" subtitle={`Durchschnitt: ${avg.toFixed(1)}/99`} />
+
+        {/* Zeitfilter-Buttons */}
+        <View style={styles.filterContainer}>
+          {[7, 14, 30, 90].map((days) => (
+            <TouchableOpacity
+              key={days}
+              style={[styles.filterButton, timeframe === days && styles.filterButtonActive]}
+              onPress={() => setTimeframe(days)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.filterText, timeframe === days && styles.filterTextActive]}>{days}T</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Trend-Indikator */}
+        {trend && (
+          <View style={styles.trendCard}>
+            <Text style={styles.trendEmoji}>{trend.emoji}</Text>
+            <View style={styles.trendContent}>
+              <Text style={styles.trendLabel}>{trend.label}</Text>
+              <Text style={styles.trendChange}>
+                {trend.change > 0 ? "+" : ""}
+                {trend.change}% vs. vorherige {timeframe} Tage
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Insight-Cards */}
+        {insights && (
+          <View style={styles.insightsContainer}>
+            <View style={styles.insightCard}>
+              <Text style={styles.insightEmoji}>🏆</Text>
+              <Text style={styles.insightTitle}>Bester Tag</Text>
+              <Text style={styles.insightValue}>{insights.bestDay.date}</Text>
+              <Text style={styles.insightDetail}>{insights.bestDay.feelScore}/99</Text>
+            </View>
+
+            <View style={styles.insightCard}>
+              <Text style={styles.insightEmoji}>🔥</Text>
+              <Text style={styles.insightTitle}>Längste Serie</Text>
+              <Text style={styles.insightValue}>{insights.longestStreak}</Text>
+              <Text style={styles.insightDetail}>gute Tage hintereinander</Text>
+            </View>
+
+            <View style={styles.insightCard}>
+              <Text style={styles.insightEmoji}>📊</Text>
+              <Text style={styles.insightTitle}>Dein Ranking</Text>
+              <Text style={styles.insightValue}>Top {100 - insights.percentile}%</Text>
+              <Text style={styles.insightDetail}>deiner bisherigen Tage</Text>
+            </View>
+          </View>
+        )}
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Verlauf</Text>
@@ -256,6 +382,108 @@ const styles = StyleSheet.create({
   scrollContainer: { paddingBottom: 80, backgroundColor: "#F7F9FB", alignItems: "center" },
   center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#F7F9FB" },
   placeholder: { color: "#9aa4b2", fontSize: 16 },
+
+  // Zeitfilter
+  filterContainer: {
+    flexDirection: "row",
+    width: screenWidth - 36,
+    marginTop: 12,
+    marginBottom: 8,
+    gap: 8,
+  },
+  filterButton: {
+    flex: 1,
+    backgroundColor: "#fff",
+    paddingVertical: 10,
+    borderRadius: 12,
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#E5E5EA",
+    elevation: 1,
+  },
+  filterButtonActive: {
+    backgroundColor: "#007aff",
+    borderColor: "#007aff",
+    elevation: 3,
+  },
+  filterText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#666",
+  },
+  filterTextActive: {
+    color: "#fff",
+    fontWeight: "700",
+  },
+
+  // Trend-Indikator
+  trendCard: {
+    width: screenWidth - 36,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 8,
+    marginBottom: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    elevation: 2,
+  },
+  trendEmoji: {
+    fontSize: 32,
+    marginRight: 12,
+  },
+  trendContent: {
+    flex: 1,
+  },
+  trendLabel: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#111",
+    marginBottom: 2,
+  },
+  trendChange: {
+    fontSize: 14,
+    color: "#666",
+  },
+
+  // Insight-Cards
+  insightsContainer: {
+    width: screenWidth - 36,
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  insightCard: {
+    flex: 1,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 12,
+    alignItems: "center",
+    elevation: 2,
+  },
+  insightEmoji: {
+    fontSize: 28,
+    marginBottom: 6,
+  },
+  insightTitle: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 4,
+  },
+  insightValue: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#007aff",
+    marginBottom: 2,
+  },
+  insightDetail: {
+    fontSize: 10,
+    color: "#999",
+    textAlign: "center",
+  },
 
   card: {
     width: screenWidth - 32,

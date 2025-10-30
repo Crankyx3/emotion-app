@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import ScreenHeader from "../components/ScreenHeader";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -12,42 +12,213 @@ import {
   Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
-import { db } from "../firebaseconfig";
+import { collection, getDocs, query, where, orderBy, addDoc, Timestamp, limit } from "firebase/firestore";
+import { db, auth } from "../firebaseconfig";
 import { getAiResponse } from "../openaiService";
 
 export default function AnalysisScreen() {
   const navigation = useNavigation();
+  const scrollViewRef = useRef(null);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [aiText, setAiText] = useState(null);
   const [highlight, setHighlight] = useState(null);
-  const [expanded, setExpanded] = useState(false); // <--- NEU: Text ein-/ausklappen
+  const [expanded, setExpanded] = useState(false);
+
+  // Neue States für 7-Tage-Limit und Verlauf
+  const [canAnalyze, setCanAnalyze] = useState(true);
+  const [checkingLimit, setCheckingLimit] = useState(true);
+  const [lastAnalysisDate, setLastAnalysisDate] = useState(null);
+  const [daysUntilNext, setDaysUntilNext] = useState(0);
+  const [allAnalyses, setAllAnalyses] = useState([]); // Verlauf aller Analysen
+  const [insights, setInsights] = useState([]); // Muster-Erkennung: Korrelationen
+
+  // Prüfen, ob Analyse in den letzten 7 Tagen erstellt wurde
+  const checkRecentAnalysis = async () => {
+    try {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      // Erst nach userId filtern, dann clientseitig nach Datum
+      const q = query(
+        collection(db, "weeklyAnalyses"),
+        where("userId", "==", auth.currentUser.uid)
+      );
+
+      const snapshot = await getDocs(q);
+
+      // Clientseitig nach Datum filtern und sortieren
+      const recentAnalyses = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(analysis => {
+          if (!analysis.analysisDate) return false;
+          const analysisDate = analysis.analysisDate.toDate();
+          return analysisDate >= sevenDaysAgo;
+        })
+        .sort((a, b) => b.analysisDate.toMillis() - a.analysisDate.toMillis());
+
+      if (recentAnalyses.length > 0) {
+        const lastAnalysis = recentAnalyses[0];
+        const lastDate = lastAnalysis.analysisDate.toDate();
+        const now = new Date();
+        const diffTime = Math.abs(now - lastDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const daysLeft = 7 - diffDays;
+
+        setCanAnalyze(false);
+        setLastAnalysisDate(lastDate);
+        setDaysUntilNext(daysLeft > 0 ? daysLeft : 0);
+        setAiText(lastAnalysis.analysis);
+        setHighlight(lastAnalysis.highlight);
+      } else {
+        setCanAnalyze(true);
+      }
+    } catch (err) {
+      console.error("Fehler beim Prüfen der Analyse:", err);
+    } finally {
+      setCheckingLimit(false);
+    }
+  };
+
+  // Alle bisherigen Analysen laden (für Verlauf)
+  const loadAnalysisHistory = async () => {
+    try {
+      const q = query(
+        collection(db, "weeklyAnalyses"),
+        where("userId", "==", auth.currentUser.uid)
+      );
+
+      const snapshot = await getDocs(q);
+
+      // Clientseitig nach Datum sortieren
+      const analyses = snapshot.docs
+        .map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
+        .sort((a, b) => {
+          if (!a.analysisDate || !b.analysisDate) return 0;
+          return b.analysisDate.toMillis() - a.analysisDate.toMillis();
+        });
+
+      setAllAnalyses(analyses);
+    } catch (err) {
+      console.error("Fehler beim Laden der Analysen:", err);
+    }
+  };
+
+  // Muster-Erkennung: Berechne Korrelationen
+  const calculateInsights = (data) => {
+    if (data.length < 5) {
+      setInsights([]);
+      return; // Zu wenige Daten für aussagekräftige Korrelationen
+    }
+
+    const correlations = [];
+
+    // Teile Daten in High/Low Schlaf
+    const highSleep = data.filter(e => (e.sleep || 0) >= 7);
+    const lowSleep = data.filter(e => (e.sleep || 0) < 7);
+
+    if (highSleep.length > 0 && lowSleep.length > 0) {
+      const avgEnergyHighSleep = highSleep.reduce((s, e) => s + (e.energy || 0), 0) / highSleep.length;
+      const avgEnergyLowSleep = lowSleep.reduce((s, e) => s + (e.energy || 0), 0) / lowSleep.length;
+      const energyDiff = ((avgEnergyHighSleep - avgEnergyLowSleep) / avgEnergyLowSleep) * 100;
+
+      if (Math.abs(energyDiff) > 15) {
+        correlations.push({
+          icon: "🛏️",
+          title: "Schlaf → Energie",
+          text: `Dein Energielevel ist ${Math.abs(energyDiff).toFixed(0)}% ${energyDiff > 0 ? "höher" : "niedriger"} nach gutem Schlaf (≥7/10).`,
+          type: energyDiff > 0 ? "positive" : "negative"
+        });
+      }
+    }
+
+    // Schlaf vs feelScore
+    if (highSleep.length > 0 && lowSleep.length > 0) {
+      const avgFeelHighSleep = highSleep.reduce((s, e) => s + (e.feelScore || 0), 0) / highSleep.length;
+      const avgFeelLowSleep = lowSleep.reduce((s, e) => s + (e.feelScore || 0), 0) / lowSleep.length;
+      const feelDiff = ((avgFeelHighSleep - avgFeelLowSleep) / avgFeelLowSleep) * 100;
+
+      if (Math.abs(feelDiff) > 15) {
+        correlations.push({
+          icon: "💤",
+          title: "Schlaf → Stimmung",
+          text: `Deine Gesamtstimmung ist ${Math.abs(feelDiff).toFixed(0)}% ${feelDiff > 0 ? "besser" : "schlechter"} nach erholsamem Schlaf.`,
+          type: feelDiff > 0 ? "positive" : "negative"
+        });
+      }
+    }
+
+    // Energie vs selfWorth
+    const highEnergy = data.filter(e => (e.energy || 0) >= 7);
+    const lowEnergy = data.filter(e => (e.energy || 0) < 7);
+
+    if (highEnergy.length > 0 && lowEnergy.length > 0) {
+      const avgSelfWorthHigh = highEnergy.reduce((s, e) => s + (e.selfWorth || 0), 0) / highEnergy.length;
+      const avgSelfWorthLow = lowEnergy.reduce((s, e) => s + (e.selfWorth || 0), 0) / lowEnergy.length;
+      const selfWorthDiff = ((avgSelfWorthHigh - avgSelfWorthLow) / avgSelfWorthLow) * 100;
+
+      if (Math.abs(selfWorthDiff) > 15) {
+        correlations.push({
+          icon: "⚡",
+          title: "Energie → Selbstwert",
+          text: `Dein Selbstwertgefühl ist ${Math.abs(selfWorthDiff).toFixed(0)}% ${selfWorthDiff > 0 ? "höher" : "niedriger"} an Tagen mit viel Energie.`,
+          type: selfWorthDiff > 0 ? "positive" : "negative"
+        });
+      }
+    }
+
+    setInsights(correlations);
+  };
 
   useEffect(() => {
     const fetchWeekData = async () => {
       try {
+        if (!auth.currentUser) {
+          setLoading(false);
+          return;
+        }
+
         const now = new Date();
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(now.getDate() - 7);
 
+        // Lade nur Einträge des aktuellen Users
         const q = query(
           collection(db, "entries"),
-          where("createdAt", ">=", sevenDaysAgo),
-          orderBy("createdAt", "asc")
+          where("userId", "==", auth.currentUser.uid)
         );
 
         const snap = await getDocs(q);
-        const data = snap.docs.map((doc) => doc.data());
+
+        // Clientseitig nach Datum filtern (letzte 7 Tage)
+        const data = snap.docs
+          .map((doc) => doc.data())
+          .filter((entry) => {
+            if (!entry.createdAt) return false;
+            const entryDate = entry.createdAt.toDate();
+            return entryDate >= sevenDaysAgo;
+          })
+          .sort((a, b) => {
+            if (!a.createdAt || !b.createdAt) return 0;
+            return a.createdAt.toMillis() - b.createdAt.toMillis();
+          });
+
         setEntries(data);
+        calculateInsights(data); // Berechne Muster
       } catch (err) {
         console.error("Fehler beim Laden:", err);
       } finally {
         setLoading(false);
       }
     };
+
     fetchWeekData();
+    checkRecentAnalysis();
+    loadAnalysisHistory();
   }, []);
 
   if (loading) {
@@ -73,36 +244,48 @@ export default function AnalysisScreen() {
   const avgSelfWorth = entries.reduce((s, e) => s + (e.selfWorth ?? 0), 0) / entries.length;
 
   const handleWeeklyAnalysis = async () => {
+    if (!canAnalyze) {
+      Alert.alert(
+        "Analyse nicht verfügbar",
+        `Du kannst die Wochenanalyse nur alle 7 Tage nutzen. Nächste Analyse verfügbar in ${daysUntilNext} Tag(en).`
+      );
+      return;
+    }
+
     setAnalyzing(true);
     try {
-      const summary = entries
-        .map(
-          (e) =>
-            `${new Date(e.createdAt.seconds * 1000).toLocaleDateString("de-DE")}: ${
-              e.emotion || "Unbekannt"
-            } | Schlaf=${e.sleep || "?"}/10 | Energie=${e.energy || "?"}/10 | Selbstwert=${
-              e.selfWorth || "?"
-            }/10 | Score=${e.feelScore}/99`
-        )
-        .join("\n");
+      // Erweiterte Zusammenfassung mit Themen und Texten
+      const detailedSummary = entries
+        .map((e, index) => {
+          const date = new Date(e.createdAt.seconds * 1000).toLocaleDateString("de-DE");
+          const basics = `${e.emotion || "Unbekannt"} | Schlaf=${e.sleep || "?"}/10 | Energie=${e.energy || "?"}/10 | Selbstwert=${e.selfWorth || "?"}/10 | Score=${e.feelScore}/99`;
+          const themeText = e.theme ? `\n   Thema: ${e.theme}` : '';
+          const userText = e.text ? `\n   "${e.text}"` : '';
+
+          return `${index + 1}. ${date}: ${basics}${themeText}${userText}`;
+        })
+        .join("\n\n");
 
       const prompt = `
 Analysiere die psychologische Entwicklung dieser Woche basierend auf folgenden Daten:
 
-Durchschnittswerte:
+📊 DURCHSCHNITTSWERTE:
 • Schlafqualität: ${avgSleep.toFixed(1)} / 10
 • Energielevel: ${avgEnergy.toFixed(1)} / 10
 • Selbstwertgefühl: ${avgSelfWorth.toFixed(1)} / 10
 • Wohlfühlscore: ${avg.toFixed(1)} / 99
 
-Tägliche Werte:
-${summary}
+📅 TÄGLICHE EINTRÄGE MIT PERSÖNLICHEN BESCHREIBUNGEN:
+${detailedSummary}
+
+WICHTIG: Gehe in deiner Wochenanalyse auf die KONKRETEN THEMEN und BESCHREIBUNGEN der Person ein. Erkenne Muster in den beschriebenen Situationen und Gedanken. Beziehe dich auf wiederkehrende Themen oder Veränderungen im Wochenverlauf.
 
 Bitte gib eine strukturierte, empathische Analyse mit:
-1️⃣ Allgemeine Stimmung der Woche
-2️⃣ Entwicklung (positiv, stabil, rückläufig)
-3️⃣ Auffällige Trends (Schlaf, Energie, Selbstwert)
-4️⃣ Kurzer psychologischer Rat für nächste Woche
+1️⃣ Allgemeine Stimmung der Woche (beziehe dich auf konkrete Themen, die erwähnt wurden)
+2️⃣ Entwicklung (positiv, stabil, rückläufig) - erkenne Muster in den Beschreibungen
+3️⃣ Auffällige Trends bei Werten UND in den beschriebenen Situationen
+4️⃣ Individueller psychologischer Rat für nächste Woche basierend auf den konkreten Themen
+
 Beende mit einem einzelnen Wort, das die Stimmung beschreibt: POSITIV, NEUTRAL oder NEGATIV.
 `;
 
@@ -127,14 +310,40 @@ Beende mit einem einzelnen Wort, das die Stimmung beschreibt: POSITIV, NEUTRAL o
         negativ: "🌧️ Deine Woche war eher herausfordernd",
       };
 
-      setHighlight({
+      const highlightData = {
         mood,
         title: titleMap[mood],
         colors: colorMap[mood],
+      };
+
+      setHighlight(highlightData);
+      setAiText(reply);
+      setExpanded(false);
+
+      // In Firestore speichern
+      await addDoc(collection(db, "weeklyAnalyses"), {
+        userId: auth.currentUser.uid,
+        analysis: reply,
+        highlight: highlightData,
+        analysisDate: Timestamp.now(),
+        entriesCount: entries.length,
+        avgStats: {
+          sleep: avgSleep,
+          energy: avgEnergy,
+          selfWorth: avgSelfWorth,
+          feelScore: avg,
+        },
       });
 
-      setAiText(reply);
-      setExpanded(false); // zurücksetzen bei neuer Analyse
+      // Status aktualisieren
+      setCanAnalyze(false);
+      setLastAnalysisDate(new Date());
+      setDaysUntilNext(7);
+
+      // Verlauf neu laden
+      await loadAnalysisHistory();
+
+      Alert.alert("Erfolg", "Wochenanalyse wurde gespeichert!");
     } catch (err) {
       Alert.alert("Fehler bei der Analyse", err.message);
     } finally {
@@ -144,11 +353,42 @@ Beende mit einem einzelnen Wort, das die Stimmung beschreibt: POSITIV, NEUTRAL o
 
   return (
     <LinearGradient colors={["#EAF4FF", "#FFFFFF"]} style={styles.gradient}>
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView ref={scrollViewRef} contentContainerStyle={styles.container}>
         <ScreenHeader
           title="🧭 KI-Wochenanalyse"
           subtitle="Deine psychologische Wochenauswertung"
         />
+
+        {/* Lade-Indikator während Limit-Check */}
+        {checkingLimit && (
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="small" color="#007AFF" />
+            <Text style={styles.loadingText}>Prüfe Verfügbarkeit...</Text>
+          </View>
+        )}
+
+        {/* Status-Karte: Verfügbarkeit */}
+        {!checkingLimit && (
+          <View style={[styles.statusCard, canAnalyze ? styles.statusAvailable : styles.statusUsed]}>
+            <Ionicons
+              name={canAnalyze ? "checkmark-circle" : "lock-closed"}
+              size={24}
+              color={canAnalyze ? "#37B24D" : "#E03131"}
+            />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.statusTitle}>
+                {canAnalyze ? "Analyse verfügbar" : "Bereits genutzt"}
+              </Text>
+              <Text style={styles.statusSubtitle}>
+                {canAnalyze
+                  ? "Du kannst jetzt eine Wochenanalyse erstellen"
+                  : lastAnalysisDate
+                  ? `Letzte Analyse: ${lastAnalysisDate.toLocaleDateString("de-DE")} • Verfügbar in ${daysUntilNext} Tag(en)`
+                  : "Nächste Analyse in wenigen Tagen verfügbar"}
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* Statistikkarte */}
         <View style={styles.statsBox}>
@@ -159,13 +399,49 @@ Beende mit einem einzelnen Wort, das die Stimmung beschreibt: POSITIV, NEUTRAL o
           <Text style={styles.stat}>❤️ Ø Selbstwert: {avgSelfWorth.toFixed(1)} / 10</Text>
         </View>
 
+        {/* Muster-Erkennung: Insights */}
+        {insights.length > 0 && (
+          <View style={styles.insightsSection}>
+            <View style={styles.insightsHeader}>
+              <Ionicons name="analytics" size={22} color="#007AFF" />
+              <Text style={styles.insightsTitle}>🔍 Deine Muster</Text>
+            </View>
+            <Text style={styles.insightsSubtitle}>
+              Diese Zusammenhänge haben wir in deinen Daten gefunden:
+            </Text>
+
+            {insights.map((insight, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.insightCard,
+                  insight.type === "positive" ? styles.insightPositive : styles.insightNegative
+                ]}
+              >
+                <Text style={styles.insightIcon}>{insight.icon}</Text>
+                <View style={styles.insightContent}>
+                  <Text style={styles.insightTitle}>{insight.title}</Text>
+                  <Text style={styles.insightText}>{insight.text}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
         <TouchableOpacity
-          style={styles.button}
+          style={[styles.button, !canAnalyze && styles.buttonDisabled]}
           onPress={handleWeeklyAnalysis}
-          disabled={analyzing}
+          disabled={analyzing || !canAnalyze}
         >
+          {!canAnalyze && (
+            <Ionicons name="lock-closed" size={18} color="#fff" style={{ marginRight: 8 }} />
+          )}
           <Text style={styles.buttonText}>
-            {analyzing ? "Analysiere Woche..." : "KI-Wochenanalyse starten"}
+            {analyzing
+              ? "Analysiere Woche..."
+              : canAnalyze
+              ? "KI-Wochenanalyse starten"
+              : `Verfügbar in ${daysUntilNext} Tag(en)`}
           </Text>
         </TouchableOpacity>
 
@@ -219,6 +495,79 @@ Beende mit einem einzelnen Wort, das die Stimmung beschreibt: POSITIV, NEUTRAL o
                 <Text style={[styles.buttonText, { marginLeft: 10 }]}>Reflexions-Chat starten</Text>
               </View>
             </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Verlauf aller Wochenanalysen */}
+        {allAnalyses.length > 0 && (
+          <View style={styles.historySection}>
+            <View style={styles.historyHeader}>
+              <Ionicons name="time-outline" size={24} color="#007AFF" />
+              <Text style={styles.historyTitle}>Verlauf ({allAnalyses.length})</Text>
+            </View>
+
+            {allAnalyses.map((item, index) => {
+              const date = item.analysisDate?.toDate();
+              return (
+                <View key={item.id} style={styles.historyItem}>
+                  <View style={styles.historyItemHeader}>
+                    <Text style={styles.historyDate}>
+                      {date ? date.toLocaleDateString("de-DE", {
+                        weekday: "short",
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric"
+                      }) : "Unbekannt"}
+                    </Text>
+                    {item.highlight?.mood && (
+                      <View style={[
+                        styles.moodBadge,
+                        { backgroundColor:
+                          item.highlight.mood === "positiv" ? "#37B24D" :
+                          item.highlight.mood === "negativ" ? "#E03131" :
+                          "#F59F00"
+                        }
+                      ]}>
+                        <Text style={styles.moodBadgeText}>
+                          {item.highlight.mood === "positiv" ? "🌿 Positiv" :
+                           item.highlight.mood === "negativ" ? "🌧️ Herausfordernd" :
+                           "🌤️ Ausgeglichen"}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {item.entriesCount && (
+                    <Text style={styles.historyStats}>
+                      📅 {item.entriesCount} Tage •
+                      💙 {item.avgStats?.feelScore?.toFixed(1) || "?"}/99 •
+                      🛏️ {item.avgStats?.sleep?.toFixed(1) || "?"}/10
+                    </Text>
+                  )}
+
+                  <Text
+                    style={styles.historyText}
+                    numberOfLines={3}
+                  >
+                    {item.analysis || "Keine Analyse verfügbar"}
+                  </Text>
+
+                  <TouchableOpacity
+                    style={styles.viewButton}
+                    onPress={() => {
+                      setAiText(item.analysis);
+                      setHighlight(item.highlight);
+                      setExpanded(false);
+                      // Nach oben scrollen zur Analyse-Anzeige
+                      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+                    }}
+                  >
+                    <Text style={styles.viewButtonText}>Vollständig anzeigen</Text>
+                    <Ionicons name="arrow-forward" size={16} color="#007AFF" />
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
           </View>
         )}
       </ScrollView>
@@ -308,4 +657,194 @@ const styles = StyleSheet.create({
     backgroundColor: "#f7f8fa",
   },
   placeholder: { fontSize: 16, color: "#888" },
+  loadingCard: {
+    backgroundColor: "#fff",
+    borderRadius: 15,
+    padding: 16,
+    width: "90%",
+    marginTop: 20,
+    marginBottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  loadingText: {
+    marginLeft: 12,
+    fontSize: 15,
+    color: "#666",
+    fontWeight: "500",
+  },
+  statusCard: {
+    backgroundColor: "#fff",
+    borderRadius: 15,
+    padding: 16,
+    width: "90%",
+    marginTop: 20,
+    marginBottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  statusAvailable: {
+    borderLeftWidth: 4,
+    borderLeftColor: "#37B24D",
+  },
+  statusUsed: {
+    borderLeftWidth: 4,
+    borderLeftColor: "#E03131",
+  },
+  statusTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#222",
+    marginBottom: 4,
+  },
+  statusSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    lineHeight: 18,
+  },
+  buttonDisabled: {
+    backgroundColor: "#999",
+    opacity: 0.6,
+  },
+  historySection: {
+    width: "90%",
+    marginTop: 30,
+    marginBottom: 20,
+  },
+  historyHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  historyTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#222",
+    marginLeft: 10,
+  },
+  historyItem: {
+    backgroundColor: "#fff",
+    borderRadius: 15,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  historyItemHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  historyDate: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#444",
+  },
+  moodBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  moodBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#fff",
+  },
+  historyStats: {
+    fontSize: 13,
+    color: "#666",
+    marginBottom: 8,
+  },
+  historyText: {
+    fontSize: 14,
+    color: "#555",
+    lineHeight: 20,
+    marginBottom: 10,
+  },
+  viewButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 8,
+  },
+  viewButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#007AFF",
+    marginRight: 6,
+  },
+  // Insights / Muster-Erkennung
+  insightsSection: {
+    width: "90%",
+    marginTop: 20,
+    marginBottom: 20,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 18,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  insightsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  insightsTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1C1C1E",
+    marginLeft: 8,
+  },
+  insightsSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 16,
+    fontStyle: "italic",
+  },
+  insightCard: {
+    flexDirection: "row",
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+  },
+  insightPositive: {
+    backgroundColor: "#E8F5E9",
+    borderLeftColor: "#37B24D",
+  },
+  insightNegative: {
+    backgroundColor: "#FFF5F5",
+    borderLeftColor: "#E03131",
+  },
+  insightIcon: {
+    fontSize: 28,
+    marginRight: 12,
+  },
+  insightContent: {
+    flex: 1,
+  },
+  insightTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1C1C1E",
+    marginBottom: 4,
+  },
+  insightText: {
+    fontSize: 14,
+    color: "#3C3C43",
+    lineHeight: 20,
+  },
 });
