@@ -6,7 +6,7 @@ import ScreenHeader from "../components/ScreenHeader";
 import { useAuth } from "../components/AuthProvider";
 
 export default function HomeScreen({ navigation }) {
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
 
   const handleLogout = () => {
     Alert.alert(
@@ -60,6 +60,23 @@ export default function HomeScreen({ navigation }) {
       <ScrollView contentContainerStyle={styles.container}>
         <ScreenHeader title="🌿 Emotion App" subtitle="Dein psychologisches Dashboard" />
 
+        {/* User Info Card */}
+        {user && (
+          <View style={styles.userCard}>
+            <View style={styles.userIconContainer}>
+              <Ionicons name="person" size={24} color="#007AFF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.userLabel}>Angemeldet als</Text>
+              <Text style={styles.userEmail}>{user.email}</Text>
+            </View>
+            <View style={styles.statusBadge}>
+              <View style={styles.statusDot} />
+              <Text style={styles.statusText}>Online</Text>
+            </View>
+          </View>
+        )}
+
         {menuItems.map((item, index) => (
           <TouchableOpacity
             key={index}
@@ -103,6 +120,62 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 40,
     paddingHorizontal: 20,
+  },
+  userCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    width: "100%",
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+    borderWidth: 1.5,
+    borderColor: "#E3F2FD",
+  },
+  userIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#E3F2FD",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  userLabel: {
+    fontSize: 12,
+    color: "#8E8E93",
+    fontWeight: "500",
+    marginBottom: 2,
+  },
+  userEmail: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1C1C1E",
+  },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E8F5E9",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#34a853",
+    marginRight: 6,
+  },
+  statusText: {
+    fontSize: 12,
+    color: "#34a853",
+    fontWeight: "600",
   },
   card: {
     flexDirection: "row",
