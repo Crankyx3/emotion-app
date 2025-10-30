@@ -30,7 +30,17 @@ import {
 import { db, auth } from "../firebaseconfig";
 
 export default function DailyAnalysisScreen({ route, navigation }) {
-  const { feelScore, sleep, energy, selfWorth, emotion, text, theme } = route.params || {};
+  const paramsData = route.params || {};
+
+  // Lokale States für alle Werte (aus route.params oder Firestore)
+  const [feelScore, setFeelScore] = useState(paramsData.feelScore || 0);
+  const [sleep, setSleep] = useState(paramsData.sleep || 0);
+  const [energy, setEnergy] = useState(paramsData.energy || 0);
+  const [selfWorth, setSelfWorth] = useState(paramsData.selfWorth || 0);
+  const [emotion, setEmotion] = useState(paramsData.emotion || null);
+  const [text, setText] = useState(paramsData.text || "");
+  const [theme, setTheme] = useState(paramsData.theme || "");
+
   const [aiText, setAiText] = useState(null);
   const [loading, setLoading] = useState(false);
   const [analysisValid, setAnalysisValid] = useState(false);
@@ -52,6 +62,17 @@ export default function DailyAnalysisScreen({ route, navigation }) {
   useEffect(() => {
     checkTodayAnalysis();
   }, []);
+
+  // Aktualisiere States wenn neue route.params kommen
+  useEffect(() => {
+    if (paramsData.feelScore != null) setFeelScore(paramsData.feelScore);
+    if (paramsData.sleep != null) setSleep(paramsData.sleep);
+    if (paramsData.energy != null) setEnergy(paramsData.energy);
+    if (paramsData.selfWorth != null) setSelfWorth(paramsData.selfWorth);
+    if (paramsData.emotion) setEmotion(paramsData.emotion);
+    if (paramsData.text) setText(paramsData.text);
+    if (paramsData.theme) setTheme(paramsData.theme);
+  }, [route.params]);
 
   const checkTodayAnalysis = async () => {
     if (!auth.currentUser) {
@@ -91,7 +112,17 @@ export default function DailyAnalysisScreen({ route, navigation }) {
         setAiText(data.analysis);
         setAnalysisValid(true);
         setCanAnalyze(false);
-        console.log("✅ Heute bereits analysiert");
+
+        // Lade alle Werte aus Firestore
+        if (data.feelScore != null) setFeelScore(data.feelScore);
+        if (data.sleep != null) setSleep(data.sleep);
+        if (data.energy != null) setEnergy(data.energy);
+        if (data.selfWorth != null) setSelfWorth(data.selfWorth);
+        if (data.emotion) setEmotion(data.emotion);
+        if (data.text) setText(data.text);
+        if (data.theme) setTheme(data.theme);
+
+        console.log("✅ Heute bereits analysiert:", data);
       } else {
         // Noch keine Analyse heute
         setCanAnalyze(true);
