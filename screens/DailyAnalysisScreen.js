@@ -10,6 +10,8 @@ import {
   ScrollView,
   Alert,
   SafeAreaView,
+  Modal,
+  Linking,
 } from "react-native";
 import { AnimatedCircularProgress } from "react-native-circular-progress";
 import { LinearGradient } from "expo-linear-gradient";
@@ -49,6 +51,8 @@ export default function DailyAnalysisScreen({ route, navigation }) {
   const [canAnalyze, setCanAnalyze] = useState(true);
   const [checkingLimit, setCheckingLimit] = useState(true);
   const [actionSuggestions, setActionSuggestions] = useState([]); // Konkrete Handlungsvorschläge
+  const [showCrisisModal, setShowCrisisModal] = useState(false); // Modal für Notfall-Strategien
+  const [suggestionFeedback, setSuggestionFeedback] = useState({}); // Feedback für jeden Vorschlag: {0: "helpful", 1: "not_helpful", ...}
 
   // progress für Ladebalken
   const progress = useRef(new Animated.Value(0)).current;
@@ -411,6 +415,32 @@ Beispiele für gute Vorschläge:
     }
   };
 
+  const handleSuggestionFeedback = async (index, feedbackType) => {
+    try {
+      // Speichere Feedback lokal
+      setSuggestionFeedback(prev => ({
+        ...prev,
+        [index]: feedbackType
+      }));
+
+      // Speichere in Firestore
+      await addDoc(collection(db, "suggestionFeedback"), {
+        userId: auth.currentUser?.uid,
+        suggestionIndex: index,
+        suggestionTitle: actionSuggestions[index]?.title || "",
+        suggestionAction: actionSuggestions[index]?.action || "",
+        feedback: feedbackType, // "helpful" oder "not_helpful"
+        feelScore: feelScore,
+        emotion: emotion,
+        timestamp: Timestamp.now(),
+      });
+
+      console.log(`✅ Feedback gespeichert: ${feedbackType} für Vorschlag ${index + 1}`);
+    } catch (error) {
+      console.error("Fehler beim Speichern des Feedbacks:", error);
+    }
+  };
+
   // Zeige Lade-Indikator während der Limit-Prüfung
   if (checkingLimit) {
     return (
@@ -496,6 +526,53 @@ Beispiele für gute Vorschläge:
             </View>
           )}
 
+          {/* Krisen-Erkennung bei sehr niedrigem Score */}
+          {feelScore > 0 && feelScore < 25 && (
+            <View style={styles.crisisCard}>
+              <View style={styles.crisisHeader}>
+                <Ionicons name="warning" size={28} color="#E03131" />
+                <Text style={styles.crisisTitle}>Akute Belastung erkannt</Text>
+              </View>
+              <Text style={styles.crisisText}>
+                Dein Wohlfühlwert ist sehr niedrig. Bitte hol dir professionelle Unterstützung, wenn du sie brauchst.
+              </Text>
+
+              <View style={styles.crisisHotlines}>
+                <Text style={styles.crisisHotlineTitle}>🆘 Sofort erreichbar:</Text>
+
+                <TouchableOpacity
+                  style={styles.hotlineButton}
+                  onPress={() => Linking.openURL('tel:08001110111')}
+                >
+                  <Ionicons name="call" size={20} color="#fff" />
+                  <View style={{ flex: 1, marginLeft: 10 }}>
+                    <Text style={styles.hotlineTitle}>Telefonseelsorge</Text>
+                    <Text style={styles.hotlineNumber}>0800 111 0 111</Text>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.hotlineButton}
+                  onPress={() => Linking.openURL('tel:08001110222')}
+                >
+                  <Ionicons name="call" size={20} color="#fff" />
+                  <View style={{ flex: 1, marginLeft: 10 }}>
+                    <Text style={styles.hotlineTitle}>Telefonseelsorge</Text>
+                    <Text style={styles.hotlineNumber}>0800 111 0 222</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                style={styles.crisisStrategiesButton}
+                onPress={() => setShowCrisisModal(true)}
+              >
+                <Ionicons name="medical" size={20} color="#E03131" />
+                <Text style={styles.crisisStrategiesText}>Notfall-Strategien anzeigen</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* Analyse-Button oder geladene Analyse */}
           {loading && (
             <View style={styles.loadingCard}>
@@ -574,6 +651,49 @@ Beispiele für gute Vorschläge:
                       <View style={styles.suggestionContent}>
                         <Text style={styles.suggestionTitle}>{suggestion.title}</Text>
                         <Text style={styles.suggestionAction}>{suggestion.action}</Text>
+
+                        {/* Feedback Buttons */}
+                        <View style={styles.feedbackButtons}>
+                          <TouchableOpacity
+                            style={[
+                              styles.feedbackButton,
+                              suggestionFeedback[index] === "helpful" && styles.feedbackButtonActive
+                            ]}
+                            onPress={() => handleSuggestionFeedback(index, "helpful")}
+                          >
+                            <Ionicons
+                              name="checkmark-circle"
+                              size={18}
+                              color={suggestionFeedback[index] === "helpful" ? "#37B24D" : "#8E8E93"}
+                            />
+                            <Text style={[
+                              styles.feedbackButtonText,
+                              suggestionFeedback[index] === "helpful" && styles.feedbackButtonTextActive
+                            ]}>
+                              Hat geholfen
+                            </Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            style={[
+                              styles.feedbackButton,
+                              suggestionFeedback[index] === "not_helpful" && styles.feedbackButtonActive
+                            ]}
+                            onPress={() => handleSuggestionFeedback(index, "not_helpful")}
+                          >
+                            <Ionicons
+                              name="close-circle"
+                              size={18}
+                              color={suggestionFeedback[index] === "not_helpful" ? "#E03131" : "#8E8E93"}
+                            />
+                            <Text style={[
+                              styles.feedbackButtonText,
+                              suggestionFeedback[index] === "not_helpful" && styles.feedbackButtonTextActive
+                            ]}>
+                              Nicht hilfreich
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
                     </View>
                   ))}
@@ -591,6 +711,88 @@ Beispiele für gute Vorschläge:
             </View>
           )}
         </ScrollView>
+
+        {/* Modal mit Notfall-Strategien */}
+        <Modal
+          visible={showCrisisModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowCrisisModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>🛟 Notfall-Strategien</Text>
+                <TouchableOpacity onPress={() => setShowCrisisModal(false)}>
+                  <Ionicons name="close-circle" size={32} color="#8E8E93" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.modalScroll}>
+                <Text style={styles.modalIntro}>
+                  Diese Übungen helfen dir, dich zu stabilisieren und im Hier und Jetzt zu bleiben:
+                </Text>
+
+                <View style={styles.strategyCard}>
+                  <Text style={styles.strategyTitle}>1. 5-4-3-2-1 Grounding</Text>
+                  <Text style={styles.strategyText}>
+                    Benenne laut oder in Gedanken:{'\n'}
+                    • 5 Dinge, die du SEHEN kannst{'\n'}
+                    • 4 Dinge, die du HÖREN kannst{'\n'}
+                    • 3 Dinge, die du FÜHLEN kannst{'\n'}
+                    • 2 Dinge, die du RIECHEN kannst{'\n'}
+                    • 1 Ding, das du SCHMECKEN kannst
+                  </Text>
+                </View>
+
+                <View style={styles.strategyCard}>
+                  <Text style={styles.strategyTitle}>2. Atemübung (4-7-8)</Text>
+                  <Text style={styles.strategyText}>
+                    • 4 Sekunden einatmen{'\n'}
+                    • 7 Sekunden Atem anhalten{'\n'}
+                    • 8 Sekunden ausatmen{'\n'}
+                    Wiederhole 4x
+                  </Text>
+                </View>
+
+                <View style={styles.strategyCard}>
+                  <Text style={styles.strategyTitle}>3. Kaltes Wasser</Text>
+                  <Text style={styles.strategyText}>
+                    Halte deine Hände unter kaltes Wasser oder lege ein kaltes Tuch auf dein Gesicht. Die Kälte aktiviert deinen Vagusnerv und beruhigt dein Nervensystem.
+                  </Text>
+                </View>
+
+                <View style={styles.strategyCard}>
+                  <Text style={styles.strategyTitle}>4. Sicherer Ort</Text>
+                  <Text style={styles.strategyText}>
+                    Stelle dir einen Ort vor, an dem du dich sicher und geborgen fühlst. Was siehst du dort? Was hörst du? Wie fühlt sich der Boden unter deinen Füßen an?
+                  </Text>
+                </View>
+
+                <View style={styles.strategyCard}>
+                  <Text style={styles.strategyTitle}>5. Körperkontakt</Text>
+                  <Text style={styles.strategyText}>
+                    Drücke deine Füße fest auf den Boden. Umarme dich selbst. Drücke deine Handflächen gegeneinander. Spüre die Verbindung zu deinem Körper.
+                  </Text>
+                </View>
+
+                <View style={styles.modalWarning}>
+                  <Ionicons name="information-circle" size={20} color="#FF9500" />
+                  <Text style={styles.modalWarningText}>
+                    Diese Übungen ersetzen keine professionelle Hilfe. Bei anhaltenden Beschwerden wende dich bitte an einen Therapeuten oder die Telefonseelsorge.
+                  </Text>
+                </View>
+              </ScrollView>
+
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => setShowCrisisModal(false)}
+              >
+                <Text style={styles.modalCloseButtonText}>Schließen</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -878,5 +1080,199 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#3C3C43",
     lineHeight: 20,
+    marginBottom: 12,
+  },
+  feedbackButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
+  feedbackButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: "#F2F2F7",
+    marginHorizontal: 4,
+  },
+  feedbackButtonActive: {
+    backgroundColor: "#E8F5E9",
+  },
+  feedbackButtonText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#8E8E93",
+    marginLeft: 4,
+  },
+  feedbackButtonTextActive: {
+    color: "#2E7D32",
+  },
+  // Krisen-Erkennung
+  crisisCard: {
+    backgroundColor: "#FFF5F5",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    width: "100%",
+    borderWidth: 2,
+    borderColor: "#E03131",
+  },
+  crisisHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  crisisTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#C92A2A",
+    marginLeft: 10,
+  },
+  crisisText: {
+    fontSize: 15,
+    color: "#5C5F66",
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+  crisisHotlines: {
+    marginBottom: 16,
+  },
+  crisisHotlineTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#C92A2A",
+    marginBottom: 10,
+  },
+  hotlineButton: {
+    backgroundColor: "#E03131",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    shadowColor: "#E03131",
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  hotlineTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#fff",
+  },
+  hotlineNumber: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#fff",
+    marginTop: 2,
+  },
+  crisisStrategiesButton: {
+    backgroundColor: "#fff",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#E03131",
+  },
+  crisisStrategiesText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#E03131",
+    marginLeft: 8,
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingBottom: 40,
+    maxHeight: "85%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E5EA",
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#1C1C1E",
+  },
+  modalScroll: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  modalIntro: {
+    fontSize: 15,
+    color: "#5C5F66",
+    lineHeight: 22,
+    marginBottom: 20,
+    fontStyle: "italic",
+  },
+  strategyCard: {
+    backgroundColor: "#F7F9FC",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: "#007AFF",
+  },
+  strategyTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1C1C1E",
+    marginBottom: 8,
+  },
+  strategyText: {
+    fontSize: 14,
+    color: "#3C3C43",
+    lineHeight: 22,
+  },
+  modalWarning: {
+    flexDirection: "row",
+    backgroundColor: "#FFF9DB",
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 8,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#FFE066",
+  },
+  modalWarningText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#996A13",
+    lineHeight: 20,
+    marginLeft: 10,
+  },
+  modalCloseButton: {
+    backgroundColor: "#007AFF",
+    marginHorizontal: 20,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  modalCloseButtonText: {
+    color: "#fff",
+    fontSize: 17,
+    fontWeight: "600",
   },
 });

@@ -14,6 +14,8 @@ import { useAuth } from "../components/AuthProvider";
 import { db } from "../firebaseconfig";
 import { collection, query, where, getDocs, deleteDoc } from "firebase/firestore";
 import ScreenHeader from "../components/ScreenHeader";
+import * as Sharing from "expo-sharing";
+import * as FileSystem from "expo-file-system";
 
 export default function SettingsScreen() {
   const { user, signOut } = useAuth();
@@ -23,9 +25,12 @@ export default function SettingsScreen() {
     dailyAnalyses: 0,
     weeklyAnalyses: 0,
   });
+  const [currentStreak, setCurrentStreak] = useState(0);
+  const [longestStreak, setLongestStreak] = useState(0);
 
   useEffect(() => {
     loadStats();
+    calculateStreak();
   }, []);
 
   const loadStats = async () => {
@@ -63,6 +68,74 @@ export default function SettingsScreen() {
       });
     } catch (error) {
       console.error("Error loading stats:", error);
+    }
+  };
+
+  const calculateStreak = async () => {
+    try {
+      if (!user) return;
+
+      // Lade alle Einträge des Users
+      const q = query(
+        collection(db, "entries"),
+        where("userId", "==", user.uid)
+      );
+      const snapshot = await getDocs(q);
+
+      // Extrahiere Datum (ohne Uhrzeit) für jeden Eintrag
+      const entryDates = snapshot.docs
+        .map(doc => {
+          const data = doc.data();
+          if (!data.createdAt) return null;
+          const date = data.createdAt.toDate();
+          // Normalisiere auf Mitternacht
+          const normalized = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+          return normalized.getTime();
+        })
+        .filter(d => d !== null);
+
+      // Entferne Duplikate (mehrere Einträge am selben Tag)
+      const uniqueDates = [...new Set(entryDates)].sort((a, b) => b - a); // Neueste zuerst
+
+      if (uniqueDates.length === 0) {
+        setCurrentStreak(0);
+        setLongestStreak(0);
+        return;
+      }
+
+      // Berechne Current Streak (ab heute rückwärts)
+      let current = 0;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayTime = today.getTime();
+
+      for (let i = 0; i < uniqueDates.length; i++) {
+        const expectedDate = todayTime - (i * 24 * 60 * 60 * 1000);
+        if (uniqueDates[i] === expectedDate) {
+          current++;
+        } else {
+          break; // Lücke gefunden
+        }
+      }
+
+      // Berechne Longest Streak (alle Einträge durchgehen)
+      let longest = 1;
+      let tempStreak = 1;
+
+      for (let i = 1; i < uniqueDates.length; i++) {
+        const diff = (uniqueDates[i - 1] - uniqueDates[i]) / (24 * 60 * 60 * 1000);
+        if (diff === 1) {
+          tempStreak++;
+          longest = Math.max(longest, tempStreak);
+        } else {
+          tempStreak = 1;
+        }
+      }
+
+      setCurrentStreak(current);
+      setLongestStreak(Math.max(longest, current));
+    } catch (err) {
+      console.error("Fehler beim Berechnen des Streaks:", err);
     }
   };
 
@@ -123,6 +196,167 @@ export default function SettingsScreen() {
         "Fehler",
         "Daten konnten nicht gelöscht werden. Bitte erneut versuchen.\n\n" + error.message
       );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExportData = async () => {
+    setLoading(true);
+    try {
+      // Sammle alle Daten der letzten 30 Tage
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      // Lade Einträge
+      const entriesQuery = query(
+        collection(db, "entries"),
+        where("userId", "==", user.uid)
+      );
+      const entriesSnapshot = await getDocs(entriesQuery);
+
+      // Filtere nach den letzten 30 Tagen
+      const recentEntries = entriesSnapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate().toISOString(),
+          analysisDate: doc.data().analysisDate?.toDate().toISOString(),
+        }))
+        .filter(entry => {
+          const entryDate = new Date(entry.createdAt);
+          return entryDate >= thirtyDaysAgo;
+        })
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      // Lade Wochenanalysen
+      const weeklyQuery = query(
+        collection(db, "weeklyAnalyses"),
+        where("userId", "==", user.uid)
+      );
+      const weeklySnapshot = await getDocs(weeklyQuery);
+      const weeklyAnalyses = weeklySnapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          analysisDate: doc.data().analysisDate?.toDate().toISOString(),
+        }))
+        .filter(analysis => {
+          const analysisDate = new Date(analysis.analysisDate);
+          return analysisDate >= thirtyDaysAgo;
+        });
+
+      // Erstelle Export-Objekt
+      const exportData = {
+        exportDate: new Date().toISOString(),
+        user: {
+          email: user.email,
+          userId: user.uid,
+          memberSince: user.metadata?.creationTime,
+        },
+        period: {
+          from: thirtyDaysAgo.toISOString(),
+          to: new Date().toISOString(),
+        },
+        summary: {
+          totalEntries: recentEntries.length,
+          weeklyAnalyses: weeklyAnalyses.length,
+          currentStreak: currentStreak,
+          longestStreak: longestStreak,
+        },
+        entries: recentEntries.map(e => ({
+          date: e.createdAt,
+          emotion: e.emotion,
+          feelScore: e.feelScore,
+          sleep: e.sleep,
+          energy: e.energy,
+          selfWorth: e.selfWorth,
+          theme: e.theme,
+          text: e.text,
+          gratitude: e.gratitude,
+          analysis: e.analysis,
+        })),
+        weeklyAnalyses: weeklyAnalyses.map(a => ({
+          date: a.analysisDate,
+          analysis: a.analysis,
+          mood: a.highlight?.mood,
+          entriesCount: a.entriesCount,
+          avgStats: a.avgStats,
+        })),
+      };
+
+      // Konvertiere zu lesbarem Text
+      const textContent = `
+==============================================
+  KI-STIMMUNGSHELFER - DATENEXPORT
+==============================================
+
+Export erstellt: ${new Date().toLocaleDateString("de-DE")} um ${new Date().toLocaleTimeString("de-DE")}
+Zeitraum: ${thirtyDaysAgo.toLocaleDateString("de-DE")} - ${new Date().toLocaleDateString("de-DE")}
+
+ÜBERSICHT
+---------
+• Gesamteinträge: ${recentEntries.length}
+• Wochenanalysen: ${weeklyAnalyses.length}
+• Aktueller Streak: ${currentStreak} Tage
+• Längster Streak: ${longestStreak} Tage
+
+TAGESEINTRÄGE
+-------------
+${recentEntries.map((e, i) => `
+${i + 1}. ${new Date(e.createdAt).toLocaleDateString("de-DE")}
+   Emotion: ${e.emotion}
+   Wohlfühlscore: ${e.feelScore}/99
+   Schlaf: ${e.sleep}/10 | Energie: ${e.energy}/10 | Selbstwert: ${e.selfWorth}/10
+   Thema: ${e.theme || "Kein Thema"}
+   Beschreibung: ${e.text || "Keine Beschreibung"}
+   ${e.gratitude ? `Dankbarkeit: ${e.gratitude}` : ''}
+   ${e.analysis ? `KI-Analyse: ${e.analysis.substring(0, 200)}...` : ''}
+`).join('\n')}
+
+WOCHENANALYSEN
+--------------
+${weeklyAnalyses.length > 0 ? weeklyAnalyses.map((a, i) => `
+${i + 1}. ${new Date(a.analysisDate).toLocaleDateString("de-DE")}
+   Stimmung: ${a.highlight?.mood || 'Unbekannt'}
+   Einträge: ${a.entriesCount}
+   Durchschnitt: Schlaf ${a.avgStats?.sleep?.toFixed(1)}/10, Energie ${a.avgStats?.energy?.toFixed(1)}/10
+   Analyse: ${a.analysis?.substring(0, 300)}...
+`).join('\n') : 'Keine Wochenanalysen im Zeitraum'}
+
+==============================================
+JSON-DATEN (für digitale Verarbeitung):
+${JSON.stringify(exportData, null, 2)}
+==============================================
+`;
+
+      // Speichere in temporärer Datei
+      const filename = `stimmungshelfer_export_${new Date().toISOString().split('T')[0]}.txt`;
+      const fileUri = `${FileSystem.documentDirectory}${filename}`;
+      await FileSystem.writeAsStringAsync(fileUri, textContent, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+
+      // Teile Datei
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: "text/plain",
+          dialogTitle: "Export für Therapeuten teilen",
+        });
+        Alert.alert(
+          "✅ Export erfolgreich",
+          `Daten der letzten 30 Tage (${recentEntries.length} Einträge) wurden exportiert.`
+        );
+      } else {
+        Alert.alert(
+          "Fehler",
+          "Teilen ist auf diesem Gerät nicht verfügbar."
+        );
+      }
+    } catch (error) {
+      console.error("Error exporting data:", error);
+      Alert.alert("Fehler", "Export fehlgeschlagen.\n\n" + error.message);
     } finally {
       setLoading(false);
     }
@@ -216,11 +450,55 @@ export default function SettingsScreen() {
               <Text style={styles.statLabel}>Wochenanalysen</Text>
             </View>
           </View>
+
+          {/* Streak Stats */}
+          {currentStreak > 0 && (
+            <View style={[styles.statsContainer, { marginTop: 12 }]}>
+              <View style={[styles.statCard, styles.streakStatCard]}>
+                <Text style={styles.streakEmoji}>🔥</Text>
+                <Text style={[styles.statNumber, styles.streakNumber]}>
+                  {currentStreak}
+                </Text>
+                <Text style={styles.statLabel}>
+                  Aktueller Streak ({currentStreak === 1 ? "Tag" : "Tage"})
+                </Text>
+              </View>
+              <View style={[styles.statCard, styles.streakStatCard]}>
+                <Text style={styles.streakEmoji}>💪</Text>
+                <Text style={[styles.statNumber, styles.streakNumber]}>
+                  {longestStreak}
+                </Text>
+                <Text style={styles.statLabel}>
+                  Längster Streak ({longestStreak === 1 ? "Tag" : "Tage"})
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Datenverwaltung */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>🗂️ Datenverwaltung</Text>
+
+          <TouchableOpacity
+            style={styles.exportButton}
+            onPress={handleExportData}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#007AFF" />
+            ) : (
+              <>
+                <Ionicons name="download-outline" size={24} color="#007AFF" />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.exportButtonTitle}>Daten exportieren</Text>
+                  <Text style={styles.exportButtonSubtitle}>
+                    Letzte 30 Tage für Therapeuten exportieren
+                  </Text>
+                </View>
+              </>
+            )}
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.dangerButton}
@@ -390,5 +668,42 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 24,
     marginBottom: 8,
+  },
+  streakStatCard: {
+    backgroundColor: "#FFF5E5",
+    borderWidth: 2,
+    borderColor: "#FFD280",
+  },
+  streakEmoji: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  streakNumber: {
+    color: "#FF6B35",
+  },
+  exportButton: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: "#007AFF",
+    shadowColor: "#007AFF",
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  exportButtonTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#007AFF",
+    marginBottom: 2,
+  },
+  exportButtonSubtitle: {
+    fontSize: 13,
+    color: "#007AFF",
+    opacity: 0.8,
   },
 });

@@ -44,6 +44,10 @@ export default function DailyEntryScreen() {
   // Dankbarkeit (optional)
   const [gratitude, setGratitude] = useState("");
 
+  // Streak Tracker
+  const [currentStreak, setCurrentStreak] = useState(0);
+  const [longestStreak, setLongestStreak] = useState(0);
+
   const emotions = [
     { key: "happy", label: "😊 Glücklich" },
     { key: "sad", label: "😔 Traurig" },
@@ -93,6 +97,81 @@ export default function DailyEntryScreen() {
 
     checkTodayEntry();
   }, []);
+
+  // Berechne Streak (Anzahl aufeinanderfolgender Tage mit Einträgen)
+  useEffect(() => {
+    const calculateStreak = async () => {
+      try {
+        if (!auth.currentUser) return;
+
+        // Lade alle Einträge des Users
+        const q = query(
+          collection(db, "entries"),
+          where("userId", "==", auth.currentUser.uid)
+        );
+        const snapshot = await getDocs(q);
+
+        // Extrahiere Datum (ohne Uhrzeit) für jeden Eintrag
+        const entryDates = snapshot.docs
+          .map(doc => {
+            const data = doc.data();
+            if (!data.createdAt) return null;
+            const date = data.createdAt.toDate();
+            // Normalisiere auf Mitternacht
+            const normalized = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            return normalized.getTime();
+          })
+          .filter(d => d !== null);
+
+        // Entferne Duplikate (mehrere Einträge am selben Tag)
+        const uniqueDates = [...new Set(entryDates)].sort((a, b) => b - a); // Neueste zuerst
+
+        if (uniqueDates.length === 0) {
+          setCurrentStreak(0);
+          setLongestStreak(0);
+          return;
+        }
+
+        // Berechne Current Streak (ab heute rückwärts)
+        let current = 0;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayTime = today.getTime();
+
+        for (let i = 0; i < uniqueDates.length; i++) {
+          const expectedDate = todayTime - (i * 24 * 60 * 60 * 1000);
+          if (uniqueDates[i] === expectedDate) {
+            current++;
+          } else {
+            break; // Lücke gefunden
+          }
+        }
+
+        // Berechne Longest Streak (alle Einträge durchgehen)
+        let longest = 1;
+        let tempStreak = 1;
+
+        for (let i = 1; i < uniqueDates.length; i++) {
+          const diff = (uniqueDates[i - 1] - uniqueDates[i]) / (24 * 60 * 60 * 1000);
+          if (diff === 1) {
+            tempStreak++;
+            longest = Math.max(longest, tempStreak);
+          } else {
+            tempStreak = 1;
+          }
+        }
+
+        setCurrentStreak(current);
+        setLongestStreak(Math.max(longest, current));
+
+        console.log(`🔥 Current Streak: ${current}, Longest Streak: ${longest}`);
+      } catch (err) {
+        console.error("Fehler beim Berechnen des Streaks:", err);
+      }
+    };
+
+    calculateStreak();
+  }, [todayEntry]); // Neu berechnen wenn Eintrag erstellt wurde
 
   const computePreviewScore = () => {
     const emotionValue = {
@@ -242,6 +321,31 @@ Beschreibung: ${text}
                     <Text style={styles.limitInfo}>
                       Heutige Emotion: {todayEntry.emotion} • Score: {todayEntry.feelScore}/99
                     </Text>
+                  )}
+                </View>
+              </View>
+            )}
+
+            {/* Streak Tracker */}
+            {currentStreak > 0 && (
+              <View style={styles.streakCard}>
+                <View style={styles.streakContent}>
+                  <View style={styles.streakMain}>
+                    <Text style={styles.streakEmoji}>🔥</Text>
+                    <View style={styles.streakInfo}>
+                      <Text style={styles.streakNumber}>{currentStreak}</Text>
+                      <Text style={styles.streakLabel}>
+                        {currentStreak === 1 ? "Tag" : "Tage"} am Stück
+                      </Text>
+                    </View>
+                  </View>
+                  {longestStreak > currentStreak && (
+                    <View style={styles.longestBadge}>
+                      <Ionicons name="trophy" size={14} color="#FFB900" />
+                      <Text style={styles.longestText}>
+                        Rekord: {longestStreak} {longestStreak === 1 ? "Tag" : "Tage"}
+                      </Text>
+                    </View>
                   )}
                 </View>
               </View>
@@ -524,5 +628,62 @@ const styles = StyleSheet.create({
     backgroundColor: "#F9FFF9",
     borderColor: "#C8E6C9",
     borderWidth: 1,
+  },
+  // Streak Tracker
+  streakCard: {
+    width: "100%",
+    backgroundColor: "#FFF5E5",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: "#FFD280",
+    shadowColor: "#FF9500",
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  streakContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  streakMain: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  streakEmoji: {
+    fontSize: 40,
+    marginRight: 12,
+  },
+  streakInfo: {
+    justifyContent: "center",
+  },
+  streakNumber: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#FF6B35",
+    lineHeight: 32,
+  },
+  streakLabel: {
+    fontSize: 13,
+    color: "#8B5E3C",
+    fontWeight: "600",
+  },
+  longestBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#FFD280",
+  },
+  longestText: {
+    fontSize: 12,
+    color: "#8B5E3C",
+    fontWeight: "700",
+    marginLeft: 4,
   },
 });

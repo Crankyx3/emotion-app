@@ -32,6 +32,7 @@ export default function AnalysisScreen() {
   const [lastAnalysisDate, setLastAnalysisDate] = useState(null);
   const [daysUntilNext, setDaysUntilNext] = useState(0);
   const [allAnalyses, setAllAnalyses] = useState([]); // Verlauf aller Analysen
+  const [insights, setInsights] = useState([]); // Muster-Erkennung: Korrelationen
 
   // Prüfen, ob Analyse in den letzten 7 Tagen erstellt wurde
   const checkRecentAnalysis = async () => {
@@ -107,6 +108,72 @@ export default function AnalysisScreen() {
     }
   };
 
+  // Muster-Erkennung: Berechne Korrelationen
+  const calculateInsights = (data) => {
+    if (data.length < 5) {
+      setInsights([]);
+      return; // Zu wenige Daten für aussagekräftige Korrelationen
+    }
+
+    const correlations = [];
+
+    // Teile Daten in High/Low Schlaf
+    const highSleep = data.filter(e => (e.sleep || 0) >= 7);
+    const lowSleep = data.filter(e => (e.sleep || 0) < 7);
+
+    if (highSleep.length > 0 && lowSleep.length > 0) {
+      const avgEnergyHighSleep = highSleep.reduce((s, e) => s + (e.energy || 0), 0) / highSleep.length;
+      const avgEnergyLowSleep = lowSleep.reduce((s, e) => s + (e.energy || 0), 0) / lowSleep.length;
+      const energyDiff = ((avgEnergyHighSleep - avgEnergyLowSleep) / avgEnergyLowSleep) * 100;
+
+      if (Math.abs(energyDiff) > 15) {
+        correlations.push({
+          icon: "🛏️",
+          title: "Schlaf → Energie",
+          text: `Dein Energielevel ist ${Math.abs(energyDiff).toFixed(0)}% ${energyDiff > 0 ? "höher" : "niedriger"} nach gutem Schlaf (≥7/10).`,
+          type: energyDiff > 0 ? "positive" : "negative"
+        });
+      }
+    }
+
+    // Schlaf vs feelScore
+    if (highSleep.length > 0 && lowSleep.length > 0) {
+      const avgFeelHighSleep = highSleep.reduce((s, e) => s + (e.feelScore || 0), 0) / highSleep.length;
+      const avgFeelLowSleep = lowSleep.reduce((s, e) => s + (e.feelScore || 0), 0) / lowSleep.length;
+      const feelDiff = ((avgFeelHighSleep - avgFeelLowSleep) / avgFeelLowSleep) * 100;
+
+      if (Math.abs(feelDiff) > 15) {
+        correlations.push({
+          icon: "💤",
+          title: "Schlaf → Stimmung",
+          text: `Deine Gesamtstimmung ist ${Math.abs(feelDiff).toFixed(0)}% ${feelDiff > 0 ? "besser" : "schlechter"} nach erholsamem Schlaf.`,
+          type: feelDiff > 0 ? "positive" : "negative"
+        });
+      }
+    }
+
+    // Energie vs selfWorth
+    const highEnergy = data.filter(e => (e.energy || 0) >= 7);
+    const lowEnergy = data.filter(e => (e.energy || 0) < 7);
+
+    if (highEnergy.length > 0 && lowEnergy.length > 0) {
+      const avgSelfWorthHigh = highEnergy.reduce((s, e) => s + (e.selfWorth || 0), 0) / highEnergy.length;
+      const avgSelfWorthLow = lowEnergy.reduce((s, e) => s + (e.selfWorth || 0), 0) / lowEnergy.length;
+      const selfWorthDiff = ((avgSelfWorthHigh - avgSelfWorthLow) / avgSelfWorthLow) * 100;
+
+      if (Math.abs(selfWorthDiff) > 15) {
+        correlations.push({
+          icon: "⚡",
+          title: "Energie → Selbstwert",
+          text: `Dein Selbstwertgefühl ist ${Math.abs(selfWorthDiff).toFixed(0)}% ${selfWorthDiff > 0 ? "höher" : "niedriger"} an Tagen mit viel Energie.`,
+          type: selfWorthDiff > 0 ? "positive" : "negative"
+        });
+      }
+    }
+
+    setInsights(correlations);
+  };
+
   useEffect(() => {
     const fetchWeekData = async () => {
       try {
@@ -141,6 +208,7 @@ export default function AnalysisScreen() {
           });
 
         setEntries(data);
+        calculateInsights(data); // Berechne Muster
       } catch (err) {
         console.error("Fehler beim Laden:", err);
       } finally {
@@ -326,6 +394,35 @@ Beende mit einem einzelnen Wort, das die Stimmung beschreibt: POSITIV, NEUTRAL o
           <Text style={styles.stat}>⚡ Ø Energie: {avgEnergy.toFixed(1)} / 10</Text>
           <Text style={styles.stat}>❤️ Ø Selbstwert: {avgSelfWorth.toFixed(1)} / 10</Text>
         </View>
+
+        {/* Muster-Erkennung: Insights */}
+        {insights.length > 0 && (
+          <View style={styles.insightsSection}>
+            <View style={styles.insightsHeader}>
+              <Ionicons name="analytics" size={22} color="#007AFF" />
+              <Text style={styles.insightsTitle}>🔍 Deine Muster</Text>
+            </View>
+            <Text style={styles.insightsSubtitle}>
+              Diese Zusammenhänge haben wir in deinen Daten gefunden:
+            </Text>
+
+            {insights.map((insight, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.insightCard,
+                  insight.type === "positive" ? styles.insightPositive : styles.insightNegative
+                ]}
+              >
+                <Text style={styles.insightIcon}>{insight.icon}</Text>
+                <View style={styles.insightContent}>
+                  <Text style={styles.insightTitle}>{insight.title}</Text>
+                  <Text style={styles.insightText}>{insight.text}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
 
         <TouchableOpacity
           style={[styles.button, !canAnalyze && styles.buttonDisabled]}
@@ -682,5 +779,68 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#007AFF",
     marginRight: 6,
+  },
+  // Insights / Muster-Erkennung
+  insightsSection: {
+    width: "90%",
+    marginTop: 20,
+    marginBottom: 20,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 18,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  insightsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  insightsTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1C1C1E",
+    marginLeft: 8,
+  },
+  insightsSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 16,
+    fontStyle: "italic",
+  },
+  insightCard: {
+    flexDirection: "row",
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+  },
+  insightPositive: {
+    backgroundColor: "#E8F5E9",
+    borderLeftColor: "#37B24D",
+  },
+  insightNegative: {
+    backgroundColor: "#FFF5F5",
+    borderLeftColor: "#E03131",
+  },
+  insightIcon: {
+    fontSize: 28,
+    marginRight: 12,
+  },
+  insightContent: {
+    flex: 1,
+  },
+  insightTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1C1C1E",
+    marginBottom: 4,
+  },
+  insightText: {
+    fontSize: 14,
+    color: "#3C3C43",
+    lineHeight: 20,
   },
 });
