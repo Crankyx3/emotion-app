@@ -2,7 +2,6 @@ import React from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { MotiView } from "moti";
 import ScreenHeader from "../components/ScreenHeader";
 
 export default function HomeScreen({ navigation }) {
@@ -39,25 +38,19 @@ export default function HomeScreen({ navigation }) {
         <ScreenHeader title="🌿 Emotion App" subtitle="Dein psychologisches Dashboard" />
 
         {menuItems.map((item, index) => (
-          <MotiView
+          <TouchableOpacity
             key={index}
-            from={{ opacity: 0, translateY: 20 }}
-            animate={{ opacity: 1, translateY: 0 }}
-            transition={{ delay: index * 200, type: "timing", duration: 600 }}
+            style={styles.card}
+            activeOpacity={0.9}
+            onPress={() => navigation.navigate(item.screen)}
           >
-            <TouchableOpacity
-              style={styles.card}
-              activeOpacity={0.9}
-              onPress={() => navigation.navigate(item.screen)}
-            >
-              <View style={styles.iconContainer}>{item.icon}</View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={22} color="#ccc" />
-            </TouchableOpacity>
-          </MotiView>
+            <View style={styles.iconContainer}>{item.icon}</View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardTitle}>{item.title}</Text>
+              <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={22} color="#ccc" />
+          </TouchableOpacity>
         ))}
       </ScrollView>
     </LinearGradient>
