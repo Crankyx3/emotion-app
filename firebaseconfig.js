@@ -31,19 +31,11 @@ if (getApps().length === 0) {
 export const db = getFirestore(app);
 console.log("✅ Firestore initialisiert");
 
-// Initialize Auth - simplified for SDK 54
-let auth;
-if (getApps().length === 0) {
-  // First time initialization - use initializeAuth
-  auth = initializeAuth(app, {
-    persistence: getReactNativePersistence(AsyncStorage)
-  });
-  console.log("✅ Auth initialisiert mit AsyncStorage Persistence");
-} else {
-  // App already exists - use getAuth
-  auth = getAuth(app);
-  console.log("✅ Auth bereits initialisiert");
-}
+// Initialize Auth with AsyncStorage persistence
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(AsyncStorage)
+});
+console.log("✅ Auth initialisiert mit AsyncStorage Persistence");
 
 export { auth };
 
