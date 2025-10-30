@@ -32,25 +32,34 @@ export default function SettingsScreen() {
     if (!user) return;
 
     try {
-      // Zähle Tageseinträge
+      // Zähle alle Einträge
       const entriesSnapshot = await getDocs(
-        query(collection(db, "dailyEntries"), where("userId", "==", user.uid))
+        query(collection(db, "entries"), where("userId", "==", user.uid))
       );
 
-      // Zähle Tagesanalysen
-      const dailyAnalysesSnapshot = await getDocs(
-        query(collection(db, "dailyAnalyses"), where("userId", "==", user.uid))
-      );
+      // Filtere nach Typ
+      let totalEntries = 0;
+      let dailyAnalyses = 0;
+      let weeklyAnalyses = 0;
 
-      // Zähle Wochenanalysen
-      const weeklyAnalysesSnapshot = await getDocs(
-        query(collection(db, "weeklyAnalyses"), where("userId", "==", user.uid))
-      );
+      entriesSnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.type === "dailyEntry") {
+          totalEntries++;
+        } else if (data.type === "dailyAnalysis") {
+          dailyAnalyses++;
+        } else if (data.type === "weeklyAnalysis") {
+          weeklyAnalyses++;
+        } else {
+          // Falls kein type gesetzt ist, zähle als Entry
+          totalEntries++;
+        }
+      });
 
       setStats({
-        totalEntries: entriesSnapshot.size,
-        dailyAnalyses: dailyAnalysesSnapshot.size,
-        weeklyAnalyses: weeklyAnalysesSnapshot.size,
+        totalEntries,
+        dailyAnalyses,
+        weeklyAnalyses,
       });
     } catch (error) {
       console.error("Error loading stats:", error);
@@ -75,36 +84,20 @@ export default function SettingsScreen() {
   const confirmResetData = async () => {
     setLoading(true);
     try {
-      // Lösche Tageseinträge
+      // Hole alle Einträge des Benutzers
       const entriesSnapshot = await getDocs(
-        query(collection(db, "dailyEntries"), where("userId", "==", user.uid))
-      );
-      const deleteEntriesPromises = entriesSnapshot.docs.map((doc) =>
-        deleteDoc(doc.ref)
+        query(collection(db, "entries"), where("userId", "==", user.uid))
       );
 
-      // Lösche Tagesanalysen
-      const dailyAnalysesSnapshot = await getDocs(
-        query(collection(db, "dailyAnalyses"), where("userId", "==", user.uid))
-      );
-      const deleteDailyAnalysesPromises = dailyAnalysesSnapshot.docs.map((doc) =>
-        deleteDoc(doc.ref)
-      );
+      console.log(`Lösche ${entriesSnapshot.size} Einträge...`);
 
-      // Lösche Wochenanalysen
-      const weeklyAnalysesSnapshot = await getDocs(
-        query(collection(db, "weeklyAnalyses"), where("userId", "==", user.uid))
-      );
-      const deleteWeeklyAnalysesPromises = weeklyAnalysesSnapshot.docs.map((doc) =>
+      // Erstelle Array mit allen Lösch-Promises
+      const deletePromises = entriesSnapshot.docs.map((doc) =>
         deleteDoc(doc.ref)
       );
 
       // Führe alle Löschungen parallel aus
-      await Promise.all([
-        ...deleteEntriesPromises,
-        ...deleteDailyAnalysesPromises,
-        ...deleteWeeklyAnalysesPromises,
-      ]);
+      await Promise.all(deletePromises);
 
       // Aktualisiere Stats
       setStats({
@@ -115,13 +108,13 @@ export default function SettingsScreen() {
 
       Alert.alert(
         "✅ Erfolgreich gelöscht",
-        "Alle Daten wurden vollständig entfernt."
+        `${entriesSnapshot.size} Einträge wurden vollständig entfernt.`
       );
     } catch (error) {
       console.error("Error resetting data:", error);
       Alert.alert(
         "Fehler",
-        "Daten konnten nicht gelöscht werden. Bitte erneut versuchen."
+        "Daten konnten nicht gelöscht werden. Bitte erneut versuchen.\n\n" + error.message
       );
     } finally {
       setLoading(false);
