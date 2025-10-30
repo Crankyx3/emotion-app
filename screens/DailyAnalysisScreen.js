@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { AnimatedCircularProgress } from "react-native-circular-progress";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { getAiResponse } from "../openaiService";
 import {
   doc,
@@ -22,6 +23,9 @@ import {
   query,
   where,
   getDocs,
+  Timestamp,
+  orderBy,
+  limit,
 } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
 
@@ -30,16 +34,74 @@ export default function DailyAnalysisScreen({ route, navigation }) {
   const [aiText, setAiText] = useState(null);
   const [loading, setLoading] = useState(false);
   const [analysisValid, setAnalysisValid] = useState(false);
-  
+  const [todayAnalysis, setTodayAnalysis] = useState(null);
+  const [canAnalyze, setCanAnalyze] = useState(true);
+  const [checkingLimit, setCheckingLimit] = useState(true);
+
   // progress für Ladebalken
   const progress = useRef(new Animated.Value(0)).current;
-  
+
   // Für animierten Textzähler
   const animatedValue = useRef(new Animated.Value(0)).current;
   const [displayedScore, setDisplayedScore] = useState(0);
 
-  // Für den „Atem“-Effekt
+  // Für den „Atem"-Effekt
   const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  // Prüfe beim Start ob heute bereits eine Analyse existiert
+  useEffect(() => {
+    checkTodayAnalysis();
+  }, []);
+
+  const checkTodayAnalysis = async () => {
+    if (!auth.currentUser) {
+      setCheckingLimit(false);
+      return;
+    }
+
+    try {
+      // Hole heutiges Datum (Start des Tages)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Hole morgiges Datum (Ende des Tages)
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      // Suche nach Analysen von heute
+      const q = query(
+        collection(db, "entries"),
+        where("userId", "==", auth.currentUser.uid),
+        where("analysisDate", ">=", Timestamp.fromDate(today)),
+        where("analysisDate", "<", Timestamp.fromDate(tomorrow)),
+        orderBy("analysisDate", "desc"),
+        limit(1)
+      );
+
+      const snapshot = await getDocs(q);
+
+      if (!snapshot.empty) {
+        // Heute wurde bereits analysiert
+        const doc = snapshot.docs[0];
+        const data = doc.data();
+        setTodayAnalysis(data);
+        setAiText(data.analysis);
+        setAnalysisValid(true);
+        setCanAnalyze(false);
+        console.log("✅ Heute bereits analysiert");
+      } else {
+        // Noch keine Analyse heute
+        setCanAnalyze(true);
+        console.log("✅ Analyse heute noch verfügbar");
+      }
+    } catch (error) {
+      console.error("Error checking today's analysis:", error);
+      // Im Fehlerfall: Analyse erlauben
+      setCanAnalyze(true);
+    } finally {
+      setCheckingLimit(false);
+    }
+  };
 
   useEffect(() => {
     Animated.timing(animatedValue, {
@@ -75,6 +137,16 @@ export default function DailyAnalysisScreen({ route, navigation }) {
   }, []);
 
   const handleAiAnalysis = async () => {
+    // Prüfe ob heute bereits analysiert wurde
+    if (!canAnalyze) {
+      Alert.alert(
+        "Bereits analysiert",
+        "Du hast heute bereits eine Tagesanalyse erstellt. Die nächste Analyse ist ab morgen um 00:00 Uhr verfügbar.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
     // Schutz vor fehlenden Werten — zeige klare Meldung
     if (feelScore == null || theme == null) {
       Alert.alert("Bitte erst die Tagesdaten ausfüllen");
@@ -114,6 +186,9 @@ Gib eine empathische, kurze psychologische Einschätzung mit einem hilfreichen R
       const ok = typeof reply === "string" && reply.trim().length > 20 && !/fehler/i.test(reply);
       setAnalysisValid(ok);
 
+      // Speichere mit analysisDate für das Daily Limit
+      const analysisDate = Timestamp.now();
+
       // Nur wenn Werte gültig sind, Query ausführen
       const q = query(
         collection(db, "entries"),
@@ -125,7 +200,10 @@ Gib eine empathische, kurze psychologische Einschätzung mit einem hilfreichen R
 
       if (!snap.empty) {
         const entryDoc = snap.docs[0].ref;
-        await updateDoc(entryDoc, { analysis: reply });
+        await updateDoc(entryDoc, {
+          analysis: reply,
+          analysisDate: analysisDate
+        });
         console.log("✅ Analyse in Firestore gespeichert.");
       } else {
         await addDoc(collection(db, "entries"), {
@@ -138,10 +216,26 @@ Gib eine empathische, kurze psychologische Einschätzung mit einem hilfreichen R
           theme,
           text,
           analysis: reply,
-          createdAt: new Date(),
+          analysisDate: analysisDate,
+          createdAt: Timestamp.now(),
         });
         console.log("📄 Neuer Eintrag mit Analyse erstellt.");
       }
+
+      // Markiere als heute bereits verwendet
+      setCanAnalyze(false);
+      setTodayAnalysis({
+        emotion,
+        feelScore,
+        sleep,
+        energy,
+        selfWorth,
+        theme,
+        text,
+        analysis: reply,
+        analysisDate: analysisDate.toDate(),
+      });
+
     } catch (error) {
       setAiText("Fehler bei der Analyse 😕");
       setAnalysisValid(false);
@@ -156,117 +250,140 @@ Gib eine empathische, kurze psychologische Einschätzung mit einem hilfreichen R
         setTimeout(() => {
           setLoading(false);
           progress.setValue(0);
-        }, 250);
+        }, 500);
       });
     }
   };
 
-  const getColor = (score) => {
-    if (score >= 70) return "#4CAF50";
-    if (score >= 40) return "#FFC107";
-    return "#F44336";
-  };
+  // Zeige Lade-Indikator während der Limit-Prüfung
+  if (checkingLimit) {
+    return (
+      <LinearGradient colors={["#f0f4ff", "#ffffff"]} style={styles.gradient}>
+        <SafeAreaView style={styles.safe}>
+          <ScreenHeader title="📊 Tagesanalyse" subtitle="Deine KI-gestützte Auswertung" />
+          <View style={styles.checkingContainer}>
+            <ActivityIndicator size="large" color="#007AFF" />
+            <Text style={styles.checkingText}>Prüfe Verfügbarkeit...</Text>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
+    );
+  }
 
   return (
-    <LinearGradient colors={["#F6FBFF", "#FFFFFF"]} style={styles.gradient}>
-      <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-          <View style={styles.inner}>
-            <ScreenHeader title="☀️ Dein Wohlfühlscore" subtitle="Kurz, klar, hilfreich" />
+    <LinearGradient colors={["#f0f4ff", "#ffffff"]} style={styles.gradient}>
+      <SafeAreaView style={styles.safe}>
+        <ScreenHeader title="📊 Tagesanalyse" subtitle="Deine KI-gestützte Auswertung" />
+        <ScrollView contentContainerStyle={styles.container}>
 
-            <Animated.View style={[styles.pulseContainer, { transform: [{ scale: pulseAnim }] }]}>
-              <AnimatedCircularProgress
-                size={200}
-                width={14}
-                fill={(displayedScore / 99) * 100}
-                tintColor={getColor(displayedScore)}
-                backgroundColor="#eef6fb"
-                duration={800}
-                rotation={0}
-                lineCap="round"
-              >
-                {() => (
-                  <View style={styles.innerCircle}>
-                    <Text style={[styles.score, { color: getColor(displayedScore) }]}>
-                      {displayedScore}
-                    </Text>
-                    <Text style={styles.subtext}>von 99</Text>
-                  </View>
-                )}
-              </AnimatedCircularProgress>
-            </Animated.View>
-
-            <View style={styles.statsRow}>
-              <View style={styles.chip}><Text style={styles.chipText}>🛏 Schlaf {sleep}/10</Text></View>
-              <View style={styles.chip}><Text style={styles.chipText}>⚡ Energie {energy}/10</Text></View>
-              <View style={styles.chip}><Text style={styles.chipText}>❤️ Selbstwert {selfWorth}/10</Text></View>
-            </View>
-
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={handleAiAnalysis}
-              style={styles.actionWrapper}
-              disabled={loading}
-            >
-              <LinearGradient
-                colors={loading ? ["#9ec8ff", "#6fb0ff"] : ["#34a3ff", "#007aff"]}
-                start={[0, 0]}
-                end={[1, 1]}
-                style={[styles.button, loading && styles.buttonDisabled]}
-              >
-                <Text style={styles.buttonText}>
-                  {loading ? "Analysiere…" : "KI‑Tagesanalyse starten"}
+          {/* Limit Status Info */}
+          {!canAnalyze && (
+            <View style={styles.limitInfoCard}>
+              <Ionicons name="checkmark-circle" size={24} color="#34a853" />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.limitInfoTitle}>✅ Heute bereits analysiert</Text>
+                <Text style={styles.limitInfoSubtitle}>
+                  Nächste Analyse verfügbar: Morgen um 00:00 Uhr
                 </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            {loading && (
-              <View style={styles.loadingRow}>
-                <View style={styles.progressTrack}>
-                  <Animated.View
-                    style={[
-                      styles.progressFill,
-                      {
-                        width: progress.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: ["0%", "100%"],
-                        }),
-                      },
-                    ]}
-                  />
-                </View>
-                <ActivityIndicator size="small" color="#007aff" style={{ marginLeft: 12 }} />
               </View>
-            )}
+            </View>
+          )}
 
-            {aiText && (
-              <>
-                <View style={styles.analysisBox}>
-                  <Text style={styles.analysisHeader}>🧠 Deine KI‑Analyse</Text>
-                  <Text style={styles.analysisText}>{aiText}</Text>
+          {canAnalyze && (
+            <View style={styles.availableInfoCard}>
+              <Ionicons name="time-outline" size={24} color="#007AFF" />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.availableInfoTitle}>Analyse verfügbar</Text>
+                <Text style={styles.availableInfoSubtitle}>
+                  Du kannst heute noch eine Analyse erstellen
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Score-Kreis */}
+          <Animated.View style={[styles.circleWrapper, { transform: [{ scale: pulseAnim }] }]}>
+            <AnimatedCircularProgress
+              size={220}
+              width={18}
+              fill={(displayedScore / 99) * 100}
+              tintColor="#007aff"
+              backgroundColor="#eef3fb"
+              rotation={0}
+              lineCap="round"
+            >
+              {() => (
+                <View style={{ alignItems: "center" }}>
+                  <Text style={styles.scoreNumber}>{displayedScore}</Text>
+                  <Text style={styles.scoreLabel}>von 99</Text>
                 </View>
+              )}
+            </AnimatedCircularProgress>
+          </Animated.View>
 
-                <TouchableOpacity
+          {/* Emotion-Badge */}
+          {emotion && (
+            <View style={styles.emotionBadge}>
+              <Text style={styles.emotionText}>{emotion}</Text>
+            </View>
+          )}
+
+          {/* Analyse-Button oder geladene Analyse */}
+          {loading && (
+            <View style={styles.loadingCard}>
+              <View style={styles.progressContainer}>
+                <Animated.View
                   style={[
-                    styles.chatButton,
-                    { backgroundColor: analysisValid ? "#34C759" : "#D1D1D6" },
+                    styles.progressBar,
+                    {
+                      width: progress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ["0%", "100%"],
+                      }),
+                    },
                   ]}
-                  onPress={() => {
-                    if (!analysisValid) {
-                      Alert.alert("Bitte erst die Tagesdaten ausfüllen");
-                      return;
-                    }
-                    navigation.navigate("Chat", { context: aiText });
-                  }}
-                  disabled={!analysisValid}
-                >
-                  <Text style={[styles.buttonText, { color: analysisValid ? "#fff" : "#888" }]}>
-                    {analysisValid ? "💬 Mit KI weiterreden" : "💬 Chat (nicht verfügbar)"}
+                />
+              </View>
+              <ActivityIndicator size="large" color="#007aff" style={{ marginVertical: 20 }} />
+              <Text style={styles.loadingText}>KI analysiert deine Daten...</Text>
+            </View>
+          )}
+
+          {!loading && !aiText && (
+            <TouchableOpacity
+              style={[styles.analyzeButton, !canAnalyze && styles.analyzeButtonDisabled]}
+              activeOpacity={canAnalyze ? 0.8 : 1}
+              onPress={handleAiAnalysis}
+              disabled={!canAnalyze}
+            >
+              <Ionicons
+                name={canAnalyze ? "analytics" : "lock-closed"}
+                size={24}
+                color="#fff"
+              />
+              <Text style={styles.analyzeButtonText}>
+                {canAnalyze ? "Jetzt analysieren" : "Heute bereits genutzt"}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {aiText && (
+            <View style={styles.resultCard}>
+              <View style={styles.resultHeader}>
+                <Ionicons name="bulb" size={24} color="#fbbc05" />
+                <Text style={styles.resultTitle}>Deine persönliche Analyse</Text>
+              </View>
+              <Text style={styles.resultText}>{aiText}</Text>
+              {analysisValid && (
+                <View style={styles.successBadge}>
+                  <Ionicons name="checkmark-circle" size={16} color="#34a853" />
+                  <Text style={styles.successText}>
+                    {!canAnalyze ? "Heute erstellt" : "Gespeichert"}
                   </Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
+                </View>
+              )}
+            </View>
+          )}
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>
@@ -275,123 +392,184 @@ Gib eine empathische, kurze psychologische Einschätzung mit einem hilfreichen R
 
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
+  safe: { flex: 1 },
   container: {
-    alignItems: "center",
-    paddingVertical: 30,
-    paddingHorizontal: 16,
-  },
-  inner: {
-    width: "100%",
-    maxWidth: 720,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
     alignItems: "center",
   },
-  pulseContainer: {
-    marginVertical: 18,
-    alignItems: "center",
+  checkingContainer: {
+    flex: 1,
     justifyContent: "center",
-  },
-  innerCircle: {
     alignItems: "center",
-    justifyContent: "center",
   },
-  score: {
-    fontSize: 40,
-    fontWeight: "800",
+  checkingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: "#8E8E93",
   },
-  subtext: {
-    fontSize: 13,
-    color: "#778089",
-    marginTop: 6,
-  },
-  statsRow: {
+  limitInfoCard: {
     flexDirection: "row",
-    marginTop: 8,
-    justifyContent: "space-between",
-    width: "100%",
-    paddingHorizontal: 10,
-  },
-  chip: {
-    backgroundColor: "#fff",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    shadowColor: "#000",
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 1,
-  },
-  chipText: {
-    color: "#333",
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  actionWrapper: {
-    width: "100%",
-    paddingHorizontal: 12,
-    marginTop: 20,
-  },
-  button: {
-    paddingVertical: 14,
-    borderRadius: 28,
     alignItems: "center",
-    justifyContent: "center",
-    elevation: 2,
+    backgroundColor: "#E8F5E9",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    width: "100%",
+    borderWidth: 1.5,
+    borderColor: "#C8E6C9",
   },
-  buttonDisabled: {
-    opacity: 0.9,
-  },
-  buttonText: {
-    color: "#fff",
+  limitInfoTitle: {
     fontSize: 16,
     fontWeight: "700",
+    color: "#1B5E20",
+    marginBottom: 4,
   },
-  loadingRow: {
+  limitInfoSubtitle: {
+    fontSize: 13,
+    color: "#558B2F",
+  },
+  availableInfoCard: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 12,
-    width: "90%",
-    maxWidth: 680,
-  },
-  progressTrack: {
-    flex: 1,
-    height: 8,
-    backgroundColor: "#eef6fb",
-    borderRadius: 8,
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: "#007aff",
-  },
-  analysisBox: {
-    backgroundColor: "#fff",
-    marginTop: 22,
-    padding: 18,
+    backgroundColor: "#E3F2FD",
     borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
     width: "100%",
+    borderWidth: 1.5,
+    borderColor: "#BBDEFB",
+  },
+  availableInfoTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#0D47A1",
+    marginBottom: 4,
+  },
+  availableInfoSubtitle: {
+    fontSize: 13,
+    color: "#1976D2",
+  },
+  circleWrapper: {
+    marginVertical: 30,
+  },
+  scoreNumber: {
+    fontSize: 64,
+    fontWeight: "800",
+    color: "#007aff",
+  },
+  scoreLabel: {
+    fontSize: 16,
+    color: "#8E8E93",
+    marginTop: 4,
+  },
+  emotionBadge: {
+    backgroundColor: "#fff",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 20,
+    marginBottom: 24,
     shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
     elevation: 3,
   },
-  analysisHeader: {
-    fontSize: 15,
-    fontWeight: "700",
-    marginBottom: 8,
-    color: "#111",
+  emotionText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1C1C1E",
   },
-  analysisText: {
-    fontSize: 15,
-    color: "#333",
-    lineHeight: 22,
-  },
-  chatButton: {
-    marginTop: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderRadius: 24,
+  analyzeButton: {
+    backgroundColor: "#007AFF",
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    paddingVertical: 18,
+    paddingHorizontal: 32,
+    borderRadius: 16,
     width: "100%",
+    shadowColor: "#007AFF",
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  analyzeButtonDisabled: {
+    backgroundColor: "#8E8E93",
+    shadowOpacity: 0.1,
+  },
+  analyzeButtonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+    marginLeft: 8,
+  },
+  loadingCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 24,
+    width: "100%",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  progressContainer: {
+    width: "100%",
+    height: 6,
+    backgroundColor: "#eef3fb",
+    borderRadius: 3,
+    overflow: "hidden",
+    marginBottom: 16,
+  },
+  progressBar: {
+    height: "100%",
+    backgroundColor: "#007aff",
+    borderRadius: 3,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: "#8E8E93",
+  },
+  resultCard: {
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    padding: 24,
+    width: "100%",
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+    marginTop: 20,
+  },
+  resultHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  resultTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1C1C1E",
+    marginLeft: 8,
+  },
+  resultText: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: "#3C3C43",
+  },
+  successBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#F2F2F7",
+  },
+  successText: {
+    fontSize: 14,
+    color: "#34a853",
+    marginLeft: 6,
+    fontWeight: "600",
   },
 });
