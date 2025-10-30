@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import ScreenHeader from "../components/ScreenHeader";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,6 +18,7 @@ import { getAiResponse } from "../openaiService";
 
 export default function AnalysisScreen() {
   const navigation = useNavigation();
+  const scrollViewRef = useRef(null);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
@@ -262,7 +263,7 @@ Beende mit einem einzelnen Wort, das die Stimmung beschreibt: POSITIV, NEUTRAL o
 
   return (
     <LinearGradient colors={["#EAF4FF", "#FFFFFF"]} style={styles.gradient}>
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView ref={scrollViewRef} contentContainerStyle={styles.container}>
         <ScreenHeader
           title="🧭 KI-Wochenanalyse"
           subtitle="Deine psychologische Wochenauswertung"
@@ -438,6 +439,8 @@ Beende mit einem einzelnen Wort, das die Stimmung beschreibt: POSITIV, NEUTRAL o
                       setAiText(item.analysis);
                       setHighlight(item.highlight);
                       setExpanded(false);
+                      // Nach oben scrollen zur Analyse-Anzeige
+                      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
                     }}
                   >
                     <Text style={styles.viewButtonText}>Vollständig anzeigen</Text>

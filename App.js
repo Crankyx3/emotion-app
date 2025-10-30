@@ -77,7 +77,7 @@ function MainTabs() {
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="brain" size={size} color={color} />
           ),
-          tabBarLabel: "Analyse"
+          tabBarLabel: "Wochenanalyse"
         }}
       />
       <Tab.Screen
