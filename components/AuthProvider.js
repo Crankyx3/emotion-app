@@ -23,10 +23,10 @@ export function AuthProvider({ children }) {
 
   const signIn = (email, password) => signInWithEmailAndPassword(auth, email, password);
   const signUp = (email, password) => createUserWithEmailAndPassword(auth, email, password);
-  const signOutUser = () => signOut(auth);
+  const handleSignOut = () => signOut(auth);
 
   return (
-    <AuthContext.Provider value={{ user, initializing, signIn, signUp, signOutUser }}>
+    <AuthContext.Provider value={{ user, initializing, signIn, signUp, signOut: handleSignOut }}>
       {children}
     </AuthContext.Provider>
   );

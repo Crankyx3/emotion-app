@@ -2,10 +2,11 @@ import React from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { MotiView } from "moti";
 import ScreenHeader from "../components/ScreenHeader";
+import { useAuth } from "../components/AuthProvider";
 
 export default function HomeScreen({ navigation }) {
+  const { user } = useAuth();
   const menuItems = [
     {
       title: "Tagesdaten eintragen",
@@ -48,28 +49,39 @@ export default function HomeScreen({ navigation }) {
   return (
     <LinearGradient colors={["#EAF4FF", "#FFFFFF"]} style={styles.gradient}>
       <ScrollView contentContainerStyle={styles.container}>
-        <ScreenHeader title="🌿 Emotion App" subtitle="Dein psychologisches Dashboard" />
+        <ScreenHeader title="KI-Stimmungshelfer" subtitle="Dein persönliches Stimmungs-Dashboard" />
+
+        {/* User Info Card */}
+        {user && (
+          <View style={styles.userCard}>
+            <View style={styles.userIconContainer}>
+              <Ionicons name="person" size={24} color="#007AFF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.userLabel}>Angemeldet als</Text>
+              <Text style={styles.userEmail}>{user.email}</Text>
+            </View>
+            <View style={styles.statusBadge}>
+              <View style={styles.statusDot} />
+              <Text style={styles.statusText}>Online</Text>
+            </View>
+          </View>
+        )}
 
         {menuItems.map((item, index) => (
-          <MotiView
+          <TouchableOpacity
             key={index}
-            from={{ opacity: 0, translateY: 20 }}
-            animate={{ opacity: 1, translateY: 0 }}
-            transition={{ delay: index * 200, type: "timing", duration: 600 }}
+            style={styles.card}
+            activeOpacity={0.9}
+            onPress={() => navigation.navigate(item.screen)}
           >
-            <TouchableOpacity
-              style={styles.card}
-              activeOpacity={0.9}
-              onPress={() => navigation.navigate(item.screen)}
-            >
-              <View style={styles.iconContainer}>{item.icon}</View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={22} color="#ccc" />
-            </TouchableOpacity>
-          </MotiView>
+            <View style={styles.iconContainer}>{item.icon}</View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardTitle}>{item.title}</Text>
+              <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={22} color="#ccc" />
+          </TouchableOpacity>
         ))}
       </ScrollView>
     </LinearGradient>
@@ -84,6 +96,62 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 40,
     paddingHorizontal: 20,
+  },
+  userCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    width: "100%",
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+    borderWidth: 1.5,
+    borderColor: "#E3F2FD",
+  },
+  userIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#E3F2FD",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  userLabel: {
+    fontSize: 12,
+    color: "#8E8E93",
+    fontWeight: "500",
+    marginBottom: 2,
+  },
+  userEmail: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1C1C1E",
+  },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E8F5E9",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#34a853",
+    marginRight: 6,
+  },
+  statusText: {
+    fontSize: 12,
+    color: "#34a853",
+    fontWeight: "600",
   },
   card: {
     flexDirection: "row",
