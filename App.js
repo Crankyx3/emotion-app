@@ -29,11 +29,56 @@ function MainTabs() {
         tabBarInactiveTintColor: "#8E8E93",
       }}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="DailyEntry" component={DailyEntryScreen} />
-      <Tab.Screen name="DailyAnalysis" component={DailyAnalysisScreen} />
-      <Tab.Screen name="EmotionChart" component={EmotionChartScreen} />
-      <Tab.Screen name="Analysis" component={AnalysisScreen} />
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home" size={size} color={color} />
+          ),
+          tabBarLabel: "Home"
+        }}
+      />
+      <Tab.Screen
+        name="DailyEntry"
+        component={DailyEntryScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="create-outline" size={size} color={color} />
+          ),
+          tabBarLabel: "Eintrag"
+        }}
+      />
+      <Tab.Screen
+        name="DailyAnalysis"
+        component={DailyAnalysisScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="analytics-outline" size={size} color={color} />
+          ),
+          tabBarLabel: "Analyse"
+        }}
+      />
+      <Tab.Screen
+        name="EmotionChart"
+        component={EmotionChartScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="bar-chart-outline" size={size} color={color} />
+          ),
+          tabBarLabel: "Chart"
+        }}
+      />
+      <Tab.Screen
+        name="Analysis"
+        component={AnalysisScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="brain" size={size} color={color} />
+          ),
+          tabBarLabel: "KI-Analyse"
+        }}
+      />
     </Tab.Navigator>
   );
 }
