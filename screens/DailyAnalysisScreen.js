@@ -67,13 +67,28 @@ export default function DailyAnalysisScreen({ route, navigation }) {
 
   // Aktualisiere States wenn neue route.params kommen
   useEffect(() => {
-    if (paramsData.feelScore != null) setFeelScore(paramsData.feelScore);
-    if (paramsData.sleep != null) setSleep(paramsData.sleep);
-    if (paramsData.energy != null) setEnergy(paramsData.energy);
-    if (paramsData.selfWorth != null) setSelfWorth(paramsData.selfWorth);
-    if (paramsData.emotion) setEmotion(paramsData.emotion);
-    if (paramsData.text) setText(paramsData.text);
-    if (paramsData.theme) setTheme(paramsData.theme);
+    if (paramsData.feelScore != null) {
+      setFeelScore(paramsData.feelScore);
+      setSleep(paramsData.sleep);
+      setEnergy(paramsData.energy);
+      setSelfWorth(paramsData.selfWorth);
+      setEmotion(paramsData.emotion);
+      setText(paramsData.text);
+      setTheme(paramsData.theme);
+
+      // Wenn wir von DailyEntry kommen, markiere als "Eintrag vorhanden"
+      setTodayEntry({
+        feelScore: paramsData.feelScore,
+        emotion: paramsData.emotion,
+        sleep: paramsData.sleep,
+        energy: paramsData.energy,
+        selfWorth: paramsData.selfWorth,
+        text: paramsData.text,
+        theme: paramsData.theme,
+      });
+      setCanAnalyze(true);
+      console.log("✅ Daten von DailyEntry geladen, Analyse möglich");
+    }
   }, [route.params]);
 
   const checkTodayAnalysis = async () => {
@@ -99,21 +114,36 @@ export default function DailyAnalysisScreen({ route, navigation }) {
 
       const snapshot = await getDocs(q);
 
+      console.log(`📊 Gefunden: ${snapshot.size} Einträge für User`);
+
       // Clientseitig nach heutigem Datum filtern
       const todayAnalyses = snapshot.docs.filter((doc) => {
         const data = doc.data();
         if (!data.analysisDate) return false;
         const analysisDate = data.analysisDate.toDate();
-        return analysisDate >= today && analysisDate < tomorrow;
+        const isToday = analysisDate >= today && analysisDate < tomorrow;
+        if (isToday) console.log("📅 Analyse heute gefunden:", data);
+        return isToday;
       });
 
-      // Suche auch nach heutigem Eintrag (ohne Analyse)
+      // Suche nach heutigem Eintrag (mit createdAt heute)
       const todayEntries = snapshot.docs.filter((doc) => {
         const data = doc.data();
         if (!data.createdAt) return false;
         const createdDate = data.createdAt.toDate();
-        return createdDate >= today && createdDate < tomorrow;
+        const isToday = createdDate >= today && createdDate < tomorrow;
+        if (isToday) {
+          console.log("📝 Eintrag heute gefunden:", {
+            emotion: data.emotion,
+            feelScore: data.feelScore,
+            hasAnalysis: !!data.analysis,
+            hasAnalysisDate: !!data.analysisDate,
+          });
+        }
+        return isToday;
       });
+
+      console.log(`✅ Heute: ${todayAnalyses.length} Analysen, ${todayEntries.length} Einträge`);
 
       if (todayAnalyses.length > 0) {
         // Heute wurde bereits analysiert
@@ -133,7 +163,7 @@ export default function DailyAnalysisScreen({ route, navigation }) {
         if (data.text) setText(data.text);
         if (data.theme) setTheme(data.theme);
 
-        console.log("✅ Heute bereits analysiert:", data);
+        console.log("✅ Heute bereits analysiert");
       } else if (todayEntries.length > 0) {
         // Eintrag vorhanden, aber noch keine Analyse
         const data = todayEntries[0].data();
@@ -149,12 +179,15 @@ export default function DailyAnalysisScreen({ route, navigation }) {
         if (data.text) setText(data.text);
         if (data.theme) setTheme(data.theme);
 
-        console.log("✅ Eintrag vorhanden, Analyse verfügbar");
+        console.log("✅ Eintrag vorhanden, Analyse verfügbar", {
+          canAnalyze: true,
+          todayEntry: !!data
+        });
       } else {
         // Weder Eintrag noch Analyse vorhanden
         setCanAnalyze(false);
         setTodayEntry(null);
-        console.log("❌ Kein Eintrag heute - Analyse nicht möglich");
+        console.log("❌ Kein Eintrag heute gefunden");
       }
     } catch (error) {
       console.error("Error checking today's analysis:", error);
