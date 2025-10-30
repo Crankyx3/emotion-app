@@ -20,6 +20,18 @@ export default function HomeScreen({ navigation }) {
       screen: "DailyAnalysis",
     },
     {
+      title: "Meditation & Achtsamkeit",
+      subtitle: "Geführte Meditationen und Atemübungen (2-5 Min.)",
+      icon: <Ionicons name="leaf-outline" size={28} color="#2ecc71" />,
+      screen: "Meditation",
+    },
+    {
+      title: "Psycho-Edukation",
+      subtitle: "Lerne über mentale Gesundheit und Bewältigungsstrategien",
+      icon: <Ionicons name="school-outline" size={28} color="#a142f4" />,
+      screen: "PsychoEducation",
+    },
+    {
       title: "EmotionChart",
       subtitle: "Verfolge deinen emotionalen Verlauf über Zeit",
       icon: <Ionicons name="bar-chart-outline" size={28} color="#fbbc05" />,

@@ -12,6 +12,8 @@ import DailyEntryScreen from "./screens/DailyEntryScreen";
 import DailyAnalysisScreen from "./screens/DailyAnalysisScreen";
 import EmotionChartScreen from "./screens/EmotionChartScreen";
 import AnalysisScreen from "./screens/AnalysisScreen";
+import MeditationScreen from "./screens/MeditationScreen";
+import PsychoEducationScreen from "./screens/PsychoEducationScreen";
 import LoginScreen from "./screens/LoginScreen";
 
 import { AuthProvider, useAuth } from "./components/AuthProvider";
@@ -53,6 +55,8 @@ function RootNavigator() {
           <>
             <Stack.Screen name="Main" component={MainTabs} />
             <Stack.Screen name="Chat" component={ChatScreen} />
+            <Stack.Screen name="Meditation" component={MeditationScreen} />
+            <Stack.Screen name="PsychoEducation" component={PsychoEducationScreen} />
           </>
         ) : (
           <Stack.Screen name="Auth" component={LoginScreen} />
