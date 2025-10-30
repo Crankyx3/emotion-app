@@ -14,8 +14,7 @@ import {
   Animated,
   ActivityIndicator,
 } from "react-native";
-import Slider from "@react-native-community/slider";
-import { collection, addDoc, Timestamp, updateDoc, query, where, getDocs, orderBy, limit } from "firebase/firestore";
+import { collection, addDoc, Timestamp, updateDoc, query, where, getDocs } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
 import { getAiResponse } from "../openaiService";
 import { useNavigation } from "@react-navigation/native";
@@ -27,10 +26,7 @@ export default function DailyEntryScreen() {
 
   const [selectedEmotion, setSelectedEmotion] = useState(null);
   const [text, setText] = useState("");
-  const [theme, setTheme] = useState("");
-  const [sleep, setSleep] = useState(5);
-  const [energy, setEnergy] = useState(5);
-  const [selfWorth, setSelfWorth] = useState(5);
+  const [gratitude, setGratitude] = useState("");
 
   // Ladezustand + progress für Ladebalken
   const [loading, setLoading] = useState(false);
@@ -41,19 +37,17 @@ export default function DailyEntryScreen() {
   const [checkingLimit, setCheckingLimit] = useState(true);
   const [todayEntry, setTodayEntry] = useState(null);
 
-  // Dankbarkeit (optional)
-  const [gratitude, setGratitude] = useState("");
-
   // Streak Tracker
   const [currentStreak, setCurrentStreak] = useState(0);
   const [longestStreak, setLongestStreak] = useState(0);
 
   const emotions = [
-    { key: "happy", label: "😊 Glücklich" },
-    { key: "sad", label: "😔 Traurig" },
-    { key: "stressed", label: "😤 Gestresst" },
-    { key: "anxious", label: "😟 Ängstlich" },
-    { key: "neutral", label: "😐 Neutral" },
+    { key: "happy", emoji: "😊", label: "Glücklich", value: 85 },
+    { key: "content", emoji: "😌", label: "Zufrieden", value: 75 },
+    { key: "neutral", emoji: "😐", label: "Neutral", value: 50 },
+    { key: "stressed", emoji: "😤", label: "Gestresst", value: 35 },
+    { key: "anxious", emoji: "😟", label: "Ängstlich", value: 30 },
+    { key: "sad", emoji: "😔", label: "Traurig", value: 25 },
   ];
 
   // Prüfen, ob heute bereits ein Eintrag erstellt wurde
@@ -65,7 +59,6 @@ export default function DailyEntryScreen() {
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
 
-        // Erst nach userId filtern, dann clientseitig nach Datum
         const q = query(
           collection(db, "entries"),
           where("userId", "==", auth.currentUser.uid)
@@ -73,7 +66,6 @@ export default function DailyEntryScreen() {
 
         const snapshot = await getDocs(q);
 
-        // Clientseitig nach heutigem Datum filtern
         const todayEntries = snapshot.docs.filter((doc) => {
           const data = doc.data();
           if (!data.createdAt) return false;
@@ -98,33 +90,29 @@ export default function DailyEntryScreen() {
     checkTodayEntry();
   }, []);
 
-  // Berechne Streak (Anzahl aufeinanderfolgender Tage mit Einträgen)
+  // Berechne Streak
   useEffect(() => {
     const calculateStreak = async () => {
       try {
         if (!auth.currentUser) return;
 
-        // Lade alle Einträge des Users
         const q = query(
           collection(db, "entries"),
           where("userId", "==", auth.currentUser.uid)
         );
         const snapshot = await getDocs(q);
 
-        // Extrahiere Datum (ohne Uhrzeit) für jeden Eintrag
         const entryDates = snapshot.docs
           .map(doc => {
             const data = doc.data();
             if (!data.createdAt) return null;
             const date = data.createdAt.toDate();
-            // Normalisiere auf Mitternacht
             const normalized = new Date(date.getFullYear(), date.getMonth(), date.getDate());
             return normalized.getTime();
           })
           .filter(d => d !== null);
 
-        // Entferne Duplikate (mehrere Einträge am selben Tag)
-        const uniqueDates = [...new Set(entryDates)].sort((a, b) => b - a); // Neueste zuerst
+        const uniqueDates = [...new Set(entryDates)].sort((a, b) => b - a);
 
         if (uniqueDates.length === 0) {
           setCurrentStreak(0);
@@ -132,7 +120,6 @@ export default function DailyEntryScreen() {
           return;
         }
 
-        // Berechne Current Streak (ab heute rückwärts)
         let current = 0;
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -143,11 +130,10 @@ export default function DailyEntryScreen() {
           if (uniqueDates[i] === expectedDate) {
             current++;
           } else {
-            break; // Lücke gefunden
+            break;
           }
         }
 
-        // Berechne Longest Streak (alle Einträge durchgehen)
         let longest = 1;
         let tempStreak = 1;
 
@@ -163,30 +149,32 @@ export default function DailyEntryScreen() {
 
         setCurrentStreak(current);
         setLongestStreak(Math.max(longest, current));
-
-        console.log(`🔥 Current Streak: ${current}, Longest Streak: ${longest}`);
       } catch (err) {
         console.error("Fehler beim Berechnen des Streaks:", err);
       }
     };
 
     calculateStreak();
-  }, [todayEntry]); // Neu berechnen wenn Eintrag erstellt wurde
+  }, [todayEntry]);
 
-  const computePreviewScore = () => {
-    const emotionValue = {
-      "😊 Glücklich": 10,
-      "😐 Neutral": 6,
-      "😤 Gestresst": 4,
-      "😟 Ängstlich": 3,
-      "😔 Traurig": 2,
-    }[selectedEmotion] || 5;
-    const baseScore = emotionValue * 0.4 + sleep * 0.2 + energy * 0.2 + selfWorth * 0.2;
-    const feelScore = Math.min(99, Math.max(1, Math.round(baseScore * 9.9)));
-    return feelScore;
+  // Vereinfachte Score-Berechnung: Emotion + Textlängen-Bonus
+  const computeFeelScore = () => {
+    const selectedEmotionObj = emotions.find(e => `${e.emoji} ${e.label}` === selectedEmotion);
+    if (!selectedEmotionObj) return 50;
+
+    let score = selectedEmotionObj.value;
+
+    // Bonus für detaillierte Beschreibung (max +10 Punkte)
+    if (text.length > 50) score += 5;
+    if (text.length > 150) score += 5;
+
+    // Bonus für Dankbarkeit (max +5 Punkte)
+    if (gratitude.trim().length > 20) score += 5;
+
+    return Math.min(99, Math.max(1, Math.round(score)));
   };
 
-  const previewScore = useMemo(computePreviewScore, [selectedEmotion, sleep, energy, selfWorth]);
+  const feelScore = useMemo(computeFeelScore, [selectedEmotion, text, gratitude]);
 
   const handleSave = async () => {
     if (!canCreateEntry) {
@@ -198,11 +186,15 @@ export default function DailyEntryScreen() {
     }
 
     if (!selectedEmotion) {
-      Alert.alert("Hinweis", "Bitte wähle zuerst eine Emotion.");
+      Alert.alert("Hinweis", "Bitte wähle zuerst deine Stimmung.");
       return;
     }
 
-    // Start Ladeanimation
+    if (!text.trim()) {
+      Alert.alert("Hinweis", "Bitte beschreibe kurz, was dich beschäftigt.");
+      return;
+    }
+
     setLoading(true);
     progress.setValue(0);
     Animated.timing(progress, {
@@ -214,33 +206,29 @@ export default function DailyEntryScreen() {
     try {
       const fullInput = `
 Emotion: ${selectedEmotion}
-Schlafqualität: ${sleep}/10
-Energielevel: ${energy}/10
-Selbstwertgefühl: ${selfWorth}/10
-Wohlfühlscore: ${previewScore}/99
-Thema: ${theme}
+Wohlfühlscore: ${feelScore}/99
 Beschreibung: ${text}
+${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
 `;
       const aiReply = await getAiResponse(selectedEmotion, fullInput);
 
+      // Setze Default-Werte für Kompatibilität mit bestehendem System
       const docRef = await addDoc(collection(db, "entries"), {
         userId: auth.currentUser?.uid,
         emotion: selectedEmotion,
-        sleep,
-        energy,
-        selfWorth,
-        feelScore: previewScore,
-        theme,
+        sleep: 7, // Default-Werte für Kompatibilität
+        energy: 7,
+        selfWorth: 7,
+        feelScore: feelScore,
+        theme: text.substring(0, 50), // Erste 50 Zeichen als "Thema"
         text,
-        gratitude: gratitude.trim() || null, // Optional
+        gratitude: gratitude.trim() || null,
         analysis: aiReply || null,
         createdAt: Timestamp.now(),
       });
 
-      // ID im Dokument speichern
       await updateDoc(docRef, { id: docRef.id });
 
-      // Ladebalken auf 100% animieren und dann navigieren
       Animated.timing(progress, {
         toValue: 1,
         duration: 400,
@@ -254,11 +242,11 @@ Beschreibung: ${text}
             aiReply,
             emotion: selectedEmotion,
             text,
-            theme,
-            sleep,
-            energy,
-            selfWorth,
-            feelScore: previewScore,
+            theme: text.substring(0, 50),
+            sleep: 7,
+            energy: 7,
+            selfWorth: 7,
+            feelScore: feelScore,
           });
         }, 220);
       });
@@ -266,11 +254,7 @@ Beschreibung: ${text}
       // Reset
       setSelectedEmotion(null);
       setText("");
-      setTheme("");
       setGratitude("");
-      setSleep(5);
-      setEnergy(5);
-      setSelfWorth(5);
     } catch (error) {
       setLoading(false);
       console.error("Fehler beim Speichern:", error);
@@ -278,13 +262,6 @@ Beschreibung: ${text}
     }
   };
 
-  const colorForScore = (s) => {
-    if (s >= 70) return "#2ECC71";
-    if (s >= 40) return "#F1C40F";
-    return "#E74C3C";
-  };
-
-  // Zeige Lade-Indikator während Limit-Prüfung
   if (checkingLimit) {
     return (
       <LinearGradient colors={["#F6FBFF", "#FFFFFF"]} style={styles.background}>
@@ -305,10 +282,10 @@ Beschreibung: ${text}
               <TouchableOpacity style={styles.back} onPress={() => navigation.goBack()}>
                 <Ionicons name="chevron-back" size={24} color="#007AFF" />
               </TouchableOpacity>
-              <ScreenHeader title="Wie fühlst du dich heute?" subtitle="Kurz eintragen — wir analysieren es für dich" />
+              <ScreenHeader title="Wie fühlst du dich?" subtitle="Nimm dir einen Moment für dich" />
             </View>
 
-            {/* Status-Karte: Eintrag heute bereits erstellt */}
+            {/* Status: Eintrag bereits vorhanden */}
             {!canCreateEntry && todayEntry && (
               <View style={styles.limitCard}>
                 <Ionicons name="checkmark-circle" size={28} color="#37B24D" />
@@ -319,7 +296,7 @@ Beschreibung: ${text}
                   </Text>
                   {todayEntry.emotion && (
                     <Text style={styles.limitInfo}>
-                      Heutige Emotion: {todayEntry.emotion} • Score: {todayEntry.feelScore}/99
+                      Heutige Stimmung: {todayEntry.emotion}
                     </Text>
                   )}
                 </View>
@@ -351,90 +328,81 @@ Beschreibung: ${text}
               </View>
             )}
 
-            <View style={styles.previewRow}>
-              <View style={[styles.scoreCircle, { borderColor: colorForScore(previewScore) }]}>
-                <Text style={[styles.scoreNumber, { color: colorForScore(previewScore) }]}>{previewScore}</Text>
-                <Text style={styles.scoreLabel}>von 99</Text>
-              </View>
-              <View style={styles.previewText}>
-                <Text style={styles.previewTitle}>Sofort-Vorschau</Text>
-                <Text style={styles.previewSub}>Dein Wohlfühlscore basiert auf Emotion, Schlaf, Energie und Selbstwert.</Text>
-              </View>
-            </View>
-
+            {/* Emotion-Auswahl mit großen Buttons */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Emotion wählen</Text>
-              <View style={styles.emotionsContainer}>
+              <Text style={styles.sectionTitle}>Wie fühlst du dich gerade?</Text>
+              <View style={styles.emotionsGrid}>
                 {emotions.map((emo) => {
-                  const selected = selectedEmotion === emo.label;
+                  const selected = selectedEmotion === `${emo.emoji} ${emo.label}`;
                   return (
                     <TouchableOpacity
                       key={emo.key}
-                      style={[styles.emotionButton, selected && styles.selectedEmotion]}
-                      onPress={() => setSelectedEmotion(emo.label)}
-                      activeOpacity={0.85}
+                      style={[styles.emotionCard, selected && styles.emotionCardSelected]}
+                      onPress={() => setSelectedEmotion(`${emo.emoji} ${emo.label}`)}
+                      activeOpacity={0.7}
                     >
-                      <Text style={[styles.emotionText, selected && styles.emotionTextSelected]}>{emo.label}</Text>
+                      <Text style={styles.emotionEmoji}>{emo.emoji}</Text>
+                      <Text style={[styles.emotionLabel, selected && styles.emotionLabelSelected]}>
+                        {emo.label}
+                      </Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
             </View>
 
+            {/* Haupttext: Was beschäftigt dich? */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Schlafqualität: <Text style={styles.badge}>{sleep}</Text></Text>
-              <Slider style={styles.slider} minimumValue={1} maximumValue={10} step={1} value={sleep} onValueChange={setSleep} minimumTrackTintColor="#007aff" maximumTrackTintColor="#dfe6ef" />
+              <Text style={styles.sectionTitle}>Was beschäftigt dich heute?</Text>
+              <TextInput
+                style={[styles.input, styles.mainTextArea]}
+                placeholder="Erzähl, was dich bewegt, wie dein Tag war, was du fühlst oder denkst..."
+                placeholderTextColor="#999"
+                value={text}
+                onChangeText={setText}
+                multiline
+                numberOfLines={8}
+                textAlignVertical="top"
+              />
+              <Text style={styles.charCount}>{text.length} Zeichen</Text>
             </View>
 
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Energielevel: <Text style={styles.badge}>{energy}</Text></Text>
-              <Slider style={styles.slider} minimumValue={1} maximumValue={10} step={1} value={energy} onValueChange={setEnergy} minimumTrackTintColor="#007aff" maximumTrackTintColor="#dfe6ef" />
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Selbstwertgefühl: <Text style={styles.badge}>{selfWorth}</Text></Text>
-              <Slider style={styles.slider} minimumValue={1} maximumValue={10} step={1} value={selfWorth} onValueChange={setSelfWorth} minimumTrackTintColor="#007aff" maximumTrackTintColor="#dfe6ef" />
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Hauptthema</Text>
-              <TextInput style={styles.input} placeholder="z. B. Arbeit, Beziehung..." value={theme} onChangeText={setTheme} returnKeyType="next" />
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Kurzbeschreibung</Text>
-              <TextInput style={[styles.input, styles.textArea]} placeholder="Was beschäftigt dich heute?" value={text} onChangeText={setText} multiline />
-            </View>
-
-            {/* Dankbarkeits-Feld (optional, positive Psychologie) */}
+            {/* Dankbarkeit (optional) */}
             <View style={styles.section}>
               <View style={styles.gratitudeHeader}>
-                <Text style={styles.sectionTitle}>💚 Dankbarkeit</Text>
-                <Text style={styles.optionalBadge}>Optional</Text>
+                <Text style={styles.sectionTitle}>💚 Wofür bist du dankbar?</Text>
+                <View style={styles.optionalBadge}>
+                  <Text style={styles.optionalBadgeText}>Optional</Text>
+                </View>
               </View>
-              <Text style={styles.gratitudeSubtitle}>
-                Wofür bist du heute dankbar? (Hilft dir, Positives zu sehen)
-              </Text>
               <TextInput
                 style={[styles.input, styles.gratitudeInput]}
-                placeholder="z.B. Sonnenschein, nettes Gespräch, guter Kaffee..."
+                placeholder="z.B. Sonnenschein, nettes Gespräch, Zeit für mich..."
+                placeholderTextColor="#999"
                 value={gratitude}
                 onChangeText={setGratitude}
                 multiline
-                numberOfLines={2}
+                numberOfLines={3}
+                textAlignVertical="top"
               />
             </View>
 
+            {/* Speichern-Button */}
             <View style={styles.footer}>
-              <TouchableOpacity style={styles.saveWrapper} onPress={handleSave} disabled={loading || !canCreateEntry} activeOpacity={0.9}>
+              <TouchableOpacity
+                style={styles.saveWrapper}
+                onPress={handleSave}
+                disabled={loading || !canCreateEntry}
+                activeOpacity={0.9}
+              >
                 <LinearGradient
                   colors={loading || !canCreateEntry ? ["#CCCCCC", "#999999"] : ["#34a3ff", "#007aff"]}
-                  start={[0,0]}
-                  end={[1,1]}
+                  start={[0, 0]}
+                  end={[1, 1]}
                   style={[styles.saveButton, (loading || !canCreateEntry) && styles.saveButtonDisabled]}
                 >
                   <Text style={styles.saveText}>
-                    {loading ? "Sende & analysiere…" : !canCreateEntry ? "Heute bereits genutzt" : "Senden & analysieren"}
+                    {loading ? "Speichere..." : !canCreateEntry ? "Heute bereits genutzt" : "Speichern & Analysieren"}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -442,7 +410,17 @@ Beschreibung: ${text}
               {loading && (
                 <View style={styles.loadingRow}>
                   <View style={styles.progressWrapper}>
-                    <Animated.View style={[styles.progressBar, { width: progress.interpolate({ inputRange: [0,1], outputRange: ["0%","100%"] }) }]} />
+                    <Animated.View
+                      style={[
+                        styles.progressBar,
+                        {
+                          width: progress.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: ["0%", "100%"],
+                          }),
+                        },
+                      ]}
+                    />
                   </View>
                   <ActivityIndicator size="small" color="#007aff" style={{ marginLeft: 12 }} />
                 </View>
@@ -460,13 +438,12 @@ const styles = StyleSheet.create({
   container: {
     padding: 18,
     paddingBottom: 40,
-    alignItems: "center",
   },
   topRow: {
     width: "100%",
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 20,
   },
   back: {
     width: 44,
@@ -475,90 +452,120 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 6,
   },
-  previewRow: {
-    width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    padding: 12,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    marginBottom: 16,
+  section: { width: "100%", marginTop: 20 },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1C1C1E",
+    marginBottom: 14,
   },
-  scoreCircle: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    borderWidth: 3,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-    backgroundColor: "rgba(255,255,255,0.9)",
-  },
-  scoreNumber: {
-    fontSize: 20,
-    fontWeight: "800",
-  },
-  scoreLabel: {
-    fontSize: 12,
-    color: "#7f8c8d",
-    marginTop: 4,
-  },
-  previewText: { flex: 1 },
-  previewTitle: { fontSize: 14, fontWeight: "700", color: "#222", marginBottom: 4 },
-  previewSub: { fontSize: 12, color: "#6b7280" },
 
-  section: { width: "100%", marginTop: 12 },
-  sectionTitle: { fontSize: 14, fontWeight: "700", color: "#333", marginBottom: 8 },
-  emotionsContainer: { flexDirection: "row", flexWrap: "wrap" },
-  emotionButton: {
+  // Emotion Grid
+  emotionsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  emotionCard: {
+    width: "31%",
+    aspectRatio: 1,
     backgroundColor: "#fff",
     borderRadius: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    marginRight: 8,
+    padding: 12,
+    marginBottom: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#E5E5EA",
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  emotionCardSelected: {
+    backgroundColor: "#E3F2FD",
+    borderColor: "#007AFF",
+    shadowColor: "#007AFF",
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  emotionEmoji: {
+    fontSize: 42,
     marginBottom: 8,
-    borderWidth: 1,
-    borderColor: "transparent",
   },
-  selectedEmotion: {
-    backgroundColor: "#e6f6ff",
-    borderColor: "#b3e0ff",
+  emotionLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#666",
+    textAlign: "center",
   },
-  emotionText: { fontSize: 15 },
-  emotionTextSelected: { color: "#007aff", fontWeight: "700" },
+  emotionLabelSelected: {
+    color: "#007AFF",
+    fontWeight: "700",
+  },
 
-  slider: { width: "100%", height: 40 },
-
+  // Text Inputs
   input: {
     backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 16,
+    padding: 16,
     width: "100%",
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: "transparent",
+    borderWidth: 1.5,
+    borderColor: "#E5E5EA",
+    fontSize: 15,
+    color: "#1C1C1E",
   },
-  textArea: { height: 110, textAlignVertical: "top" },
+  mainTextArea: {
+    minHeight: 180,
+    textAlignVertical: "top",
+  },
+  gratitudeInput: {
+    minHeight: 90,
+    textAlignVertical: "top",
+    backgroundColor: "#F9FFF9",
+    borderColor: "#C8E6C9",
+  },
+  charCount: {
+    fontSize: 12,
+    color: "#999",
+    marginTop: 6,
+    textAlign: "right",
+  },
 
-  badge: { fontWeight: "800", color: "#111" },
+  // Gratitude Header
+  gratitudeHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  optionalBadge: {
+    backgroundColor: "#F0F0F0",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  optionalBadgeText: {
+    fontSize: 11,
+    color: "#666",
+    fontWeight: "600",
+  },
 
-  footer: { width: "100%", marginTop: 18, alignItems: "center" },
+  // Footer & Button
+  footer: { width: "100%", marginTop: 30, alignItems: "center" },
   saveWrapper: { width: "100%", paddingHorizontal: 6 },
   saveButton: {
-    paddingVertical: 14,
-    borderRadius: 28,
+    paddingVertical: 18,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
   },
   saveButtonDisabled: { opacity: 0.95 },
-  saveText: { color: "#fff", fontSize: 16, fontWeight: "800" },
+  saveText: { color: "#fff", fontSize: 17, fontWeight: "800" },
 
   loadingRow: {
-    marginTop: 12,
+    marginTop: 16,
     width: "100%",
     flexDirection: "row",
     alignItems: "center",
@@ -572,6 +579,7 @@ const styles = StyleSheet.create({
   },
   progressBar: { height: "100%", backgroundColor: "#007aff" },
 
+  // Limit Card
   limitCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -601,34 +609,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginTop: 4,
   },
-  gratitudeHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 6,
-  },
-  optionalBadge: {
-    fontSize: 12,
-    color: "#888",
-    backgroundColor: "#F0F0F0",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    fontWeight: "600",
-  },
-  gratitudeSubtitle: {
-    fontSize: 13,
-    color: "#666",
-    marginBottom: 10,
-    fontStyle: "italic",
-  },
-  gratitudeInput: {
-    minHeight: 65,
-    textAlignVertical: "top",
-    backgroundColor: "#F9FFF9",
-    borderColor: "#C8E6C9",
-    borderWidth: 1,
-  },
+
   // Streak Tracker
   streakCard: {
     width: "100%",
