@@ -4,10 +4,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "cross-env EXPO_NO_DOCTOR=1 expo start",
-    "android": "cross-env EXPO_NO_DOCTOR=1 expo start --android",
-    "ios": "cross-env EXPO_NO_DOCTOR=1 expo start --ios",
-    "web": "cross-env EXPO_NO_DOCTOR=1 expo start --web",
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
     "clean": "rm -rf node_modules .expo node_modules/.cache && npm install --legacy-peer-deps"
   },
   "dependencies": {
