@@ -107,7 +107,8 @@ export default function SettingsScreen() {
 
       Alert.alert(
         "✅ Erfolgreich gelöscht",
-        `${userEntries.length} Einträge wurden vollständig entfernt.`
+        `${userEntries.length} Einträge wurden vollständig entfernt.\n\n💡 Hinweis: Bitte starte die App neu, damit alle Änderungen vollständig übernommen werden.`,
+        [{ text: "OK", style: "default" }]
       );
     } catch (error) {
       console.error("Error resetting data:", error);
