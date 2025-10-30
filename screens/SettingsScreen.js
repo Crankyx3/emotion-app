@@ -15,7 +15,7 @@ import { db } from "../firebaseconfig";
 import { collection, query, where, getDocs, deleteDoc } from "firebase/firestore";
 import ScreenHeader from "../components/ScreenHeader";
 import * as Sharing from "expo-sharing";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 
 export default function SettingsScreen() {
   const { user, signOut } = useAuth();
