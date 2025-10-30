@@ -48,6 +48,7 @@ export default function DailyAnalysisScreen({ route, navigation }) {
   const [todayEntry, setTodayEntry] = useState(null); // Prüfung ob Eintrag existiert
   const [canAnalyze, setCanAnalyze] = useState(true);
   const [checkingLimit, setCheckingLimit] = useState(true);
+  const [actionSuggestions, setActionSuggestions] = useState([]); // Konkrete Handlungsvorschläge
 
   // progress für Ladebalken
   const progress = useRef(new Animated.Value(0)).current;
@@ -264,11 +265,46 @@ Selbstwertgefühl: ${selfWorth}/10
 Thema des Tages: ${theme}
 Beschreibung: ${text}
 
-Gib eine empathische, kurze psychologische Einschätzung mit einem hilfreichen Ratschlag.
+Gib eine empathische, kurze psychologische Einschätzung.
+
+Dann gib GENAU 3 konkrete, sofort umsetzbare Handlungsvorschläge in folgendem Format:
+[VORSCHLÄGE]
+1. [Kurzer Titel]: [Konkrete Anweisung in 1-2 Sätzen]
+2. [Kurzer Titel]: [Konkrete Anweisung in 1-2 Sätzen]
+3. [Kurzer Titel]: [Konkrete Anweisung in 1-2 Sätzen]
+[/VORSCHLÄGE]
+
+Beispiele für gute Vorschläge:
+- "5-Minuten-Pause: Steh auf, öffne das Fenster und atme 5x tief ein und aus."
+- "Soziale Verbindung: Ruf eine Person an, mit der du gerne sprichst."
+- "Bewegung: Mach einen 10-minütigen Spaziergang um den Block."
 `;
 
       const reply = await getAiResponse("psychologische Tagesanalyse", prompt);
-      setAiText(reply);
+
+      // Parse Vorschläge aus der Antwort
+      const suggestionsMatch = reply.match(/\[VORSCHLÄGE\](.*?)\[\/VORSCHLÄGE\]/s);
+      if (suggestionsMatch) {
+        const suggestionsText = suggestionsMatch[1];
+        const suggestions = suggestionsText
+          .split(/\d+\./)
+          .filter(s => s.trim())
+          .map(s => {
+            const parts = s.split(':');
+            return {
+              title: parts[0]?.trim() || "Vorschlag",
+              action: parts.slice(1).join(':').trim() || s.trim()
+            };
+          })
+          .slice(0, 3);
+        setActionSuggestions(suggestions);
+
+        // Entferne die Vorschläge aus dem Haupttext
+        setAiText(reply.replace(/\[VORSCHLÄGE\].*?\[\/VORSCHLÄGE\]/s, '').trim());
+      } else {
+        setAiText(reply);
+        setActionSuggestions([]);
+      }
       // Prüfung, ob die Antwort plausibel ist (kein Fehler-Text)
       const ok = typeof reply === "string" && reply.trim().length > 20 && !/fehler/i.test(reply);
       setAnalysisValid(ok);
@@ -483,6 +519,31 @@ Gib eine empathische, kurze psychologische Einschätzung mit einem hilfreichen R
                   <Text style={styles.successText}>
                     {!canAnalyze ? "Heute erstellt" : "Gespeichert"}
                   </Text>
+                </View>
+              )}
+
+              {/* Handlungsvorschläge */}
+              {actionSuggestions.length > 0 && (
+                <View style={styles.suggestionsSection}>
+                  <View style={styles.suggestionsHeader}>
+                    <Ionicons name="fitness" size={22} color="#007AFF" />
+                    <Text style={styles.suggestionsTitle}>💪 Was du jetzt tun kannst</Text>
+                  </View>
+                  <Text style={styles.suggestionsSubtitle}>
+                    Probier eine dieser Strategien aus:
+                  </Text>
+
+                  {actionSuggestions.map((suggestion, index) => (
+                    <View key={index} style={styles.suggestionCard}>
+                      <View style={styles.suggestionNumber}>
+                        <Text style={styles.suggestionNumberText}>{index + 1}</Text>
+                      </View>
+                      <View style={styles.suggestionContent}>
+                        <Text style={styles.suggestionTitle}>{suggestion.title}</Text>
+                        <Text style={styles.suggestionAction}>{suggestion.action}</Text>
+                      </View>
+                    </View>
+                  ))}
                 </View>
               )}
 
@@ -724,5 +785,65 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     marginLeft: 8,
+  },
+  suggestionsSection: {
+    marginTop: 24,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: "#E5E5EA",
+  },
+  suggestionsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  suggestionsTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1C1C1E",
+    marginLeft: 8,
+  },
+  suggestionsSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 16,
+    fontStyle: "italic",
+  },
+  suggestionCard: {
+    flexDirection: "row",
+    backgroundColor: "#F7F9FC",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: "#007AFF",
+  },
+  suggestionNumber: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#007AFF",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  suggestionNumberText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  suggestionContent: {
+    flex: 1,
+  },
+  suggestionTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1C1C1E",
+    marginBottom: 4,
+  },
+  suggestionAction: {
+    fontSize: 14,
+    color: "#3C3C43",
+    lineHeight: 20,
   },
 });

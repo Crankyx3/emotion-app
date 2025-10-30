@@ -41,6 +41,9 @@ export default function DailyEntryScreen() {
   const [checkingLimit, setCheckingLimit] = useState(true);
   const [todayEntry, setTodayEntry] = useState(null);
 
+  // Dankbarkeit (optional)
+  const [gratitude, setGratitude] = useState("");
+
   const emotions = [
     { key: "happy", label: "😊 Glücklich" },
     { key: "sad", label: "😔 Traurig" },
@@ -150,6 +153,7 @@ Beschreibung: ${text}
         feelScore: previewScore,
         theme,
         text,
+        gratitude: gratitude.trim() || null, // Optional
         analysis: aiReply || null,
         createdAt: Timestamp.now(),
       });
@@ -184,6 +188,7 @@ Beschreibung: ${text}
       setSelectedEmotion(null);
       setText("");
       setTheme("");
+      setGratitude("");
       setSleep(5);
       setEnergy(5);
       setSelfWorth(5);
@@ -295,6 +300,25 @@ Beschreibung: ${text}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Kurzbeschreibung</Text>
               <TextInput style={[styles.input, styles.textArea]} placeholder="Was beschäftigt dich heute?" value={text} onChangeText={setText} multiline />
+            </View>
+
+            {/* Dankbarkeits-Feld (optional, positive Psychologie) */}
+            <View style={styles.section}>
+              <View style={styles.gratitudeHeader}>
+                <Text style={styles.sectionTitle}>💚 Dankbarkeit</Text>
+                <Text style={styles.optionalBadge}>Optional</Text>
+              </View>
+              <Text style={styles.gratitudeSubtitle}>
+                Wofür bist du heute dankbar? (Hilft dir, Positives zu sehen)
+              </Text>
+              <TextInput
+                style={[styles.input, styles.gratitudeInput]}
+                placeholder="z.B. Sonnenschein, nettes Gespräch, guter Kaffee..."
+                value={gratitude}
+                onChangeText={setGratitude}
+                multiline
+                numberOfLines={2}
+              />
             </View>
 
             <View style={styles.footer}>
@@ -472,5 +496,33 @@ const styles = StyleSheet.create({
     color: "#388E3C",
     fontWeight: "600",
     marginTop: 4,
+  },
+  gratitudeHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
+  optionalBadge: {
+    fontSize: 12,
+    color: "#888",
+    backgroundColor: "#F0F0F0",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    fontWeight: "600",
+  },
+  gratitudeSubtitle: {
+    fontSize: 13,
+    color: "#666",
+    marginBottom: 10,
+    fontStyle: "italic",
+  },
+  gratitudeInput: {
+    minHeight: 65,
+    textAlignVertical: "top",
+    backgroundColor: "#F9FFF9",
+    borderColor: "#C8E6C9",
+    borderWidth: 1,
   },
 });
