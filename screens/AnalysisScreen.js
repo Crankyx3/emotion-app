@@ -329,6 +329,12 @@ Beende mit einem einzelnen Wort, das die Stimmung beschreibt: POSITIV, NEUTRAL o
 
   return (
     <LinearGradient colors={["#EAF4FF", "#FFFFFF"]} style={styles.gradient}>
+      <TouchableOpacity
+        style={styles.settingsButton}
+        onPress={() => navigation.navigate("Settings")}
+      >
+        <Ionicons name="settings-outline" size={28} color="#007AFF" />
+      </TouchableOpacity>
       <ScrollView ref={scrollViewRef} contentContainerStyle={styles.container}>
         <ScreenHeader
           title="🧭 KI-Wochenanalyse"
@@ -568,6 +574,22 @@ Beende mit einem einzelnen Wort, das die Stimmung beschreibt: POSITIV, NEUTRAL o
 
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
+  settingsButton: {
+    position: "absolute",
+    top: 60,
+    right: 20,
+    zIndex: 10,
+    width: 50,
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+    borderRadius: 25,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   container: {
     alignItems: "center",
     paddingBottom: 100,

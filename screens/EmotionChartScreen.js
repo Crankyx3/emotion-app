@@ -20,7 +20,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 const screenWidth = Dimensions.get("window").width;
 
-export default function EmotionChartScreen() {
+export default function EmotionChartScreen({ navigation }) {
   const [entries, setEntries] = useState([]);
   const [allEntries, setAllEntries] = useState([]); // Für Trend & Insights
   const [loading, setLoading] = useState(true);
@@ -211,6 +211,12 @@ Gib eine empathische, kurze psychologische Einschätzung mit einem hilfreichen R
 
   return (
     <LinearGradient colors={["#F6FBFF", "#FFFFFF"]} style={styles.background}>
+      <TouchableOpacity
+        style={styles.settingsButton}
+        onPress={() => navigation.navigate("Settings")}
+      >
+        <Ionicons name="settings-outline" size={28} color="#007AFF" />
+      </TouchableOpacity>
       <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
         <ScreenHeader title="📈 Dein Wohlfühlverlauf" subtitle={`Durchschnitt: ${avg.toFixed(1)}/99`} />
 
@@ -379,6 +385,22 @@ Gib eine empathische, kurze psychologische Einschätzung mit einem hilfreichen R
 
 const styles = StyleSheet.create({
   background: { flex: 1 },
+  settingsButton: {
+    position: "absolute",
+    top: 60,
+    right: 20,
+    zIndex: 10,
+    width: 50,
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+    borderRadius: 25,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   scrollContainer: { paddingBottom: 80, backgroundColor: "#F7F9FB", alignItems: "center" },
   center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#F7F9FB" },
   placeholder: { color: "#9aa4b2", fontSize: 16 },

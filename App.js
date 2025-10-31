@@ -82,16 +82,6 @@ function MainTabs() {
           tabBarLabel: "Wochenanalyse"
         }}
       />
-      <Tab.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings-outline" size={size} color={color} />
-          ),
-          tabBarLabel: "Einstellungen"
-        }}
-      />
     </Tab.Navigator>
   );
 }
@@ -113,6 +103,7 @@ function RootNavigator() {
             <Stack.Screen name="Chat" component={ChatScreen} />
             <Stack.Screen name="Meditation" component={MeditationScreen} />
             <Stack.Screen name="PsychoEducation" component={PsychoEducationScreen} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
           </>
         ) : (
           <Stack.Screen name="Auth" component={LoginScreen} />
