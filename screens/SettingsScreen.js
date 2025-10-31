@@ -142,7 +142,7 @@ export default function SettingsScreen({ navigation }) {
   const handleResetData = () => {
     Alert.alert(
       "⚠️ Alle Daten löschen?",
-      "Diese Aktion kann nicht rückgängig gemacht werden!\n\nFolgende Daten werden gelöscht:\n• Alle Tageseinträge\n• Alle Tagesanalysen\n• Alle Wochenanalysen\n• Chart-Verlauf",
+      "Diese Aktion kann nicht rückgängig gemacht werden!\n\nFolgende Daten werden gelöscht:\n• Alle Tageseinträge\n• Alle Tagesanalysen\n• Alle Wochenanalysen\n• Alle Chat-Verläufe\n• Chart-Verlauf",
       [
         { text: "Abbrechen", style: "cancel" },
         {
@@ -173,10 +173,26 @@ export default function SettingsScreen({ navigation }) {
 
       console.log(`Lösche ${weeklyAnalysesSnapshot.size} Wochenanalysen...`);
 
-      // Erstelle Array mit allen Lösch-Promises (Einträge + Wochenanalysen)
+      // Hole alle Chats des Users
+      const chatsSnapshot = await getDocs(
+        query(collection(db, "chats"), where("userId", "==", user.uid))
+      );
+
+      console.log(`Lösche ${chatsSnapshot.size} Chats...`);
+
+      // Hole alle Chat-Nachrichten des Users
+      const chatMessagesSnapshot = await getDocs(
+        query(collection(db, "chatMessages"), where("userId", "==", user.uid))
+      );
+
+      console.log(`Lösche ${chatMessagesSnapshot.size} Chat-Nachrichten...`);
+
+      // Erstelle Array mit allen Lösch-Promises
       const deletePromises = [
         ...userEntriesSnapshot.docs.map((doc) => deleteDoc(doc.ref)),
         ...weeklyAnalysesSnapshot.docs.map((doc) => deleteDoc(doc.ref)),
+        ...chatsSnapshot.docs.map((doc) => deleteDoc(doc.ref)),
+        ...chatMessagesSnapshot.docs.map((doc) => deleteDoc(doc.ref)),
       ];
 
       // Führe alle Löschungen parallel aus
@@ -187,7 +203,7 @@ export default function SettingsScreen({ navigation }) {
 
       Alert.alert(
         "✅ Erfolgreich gelöscht",
-        `${userEntriesSnapshot.size} Einträge und ${weeklyAnalysesSnapshot.size} Wochenanalysen wurden vollständig entfernt.\n\n💡 Hinweis: Bitte starte die App neu, damit alle Änderungen vollständig übernommen werden.`,
+        `${userEntriesSnapshot.size} Einträge, ${weeklyAnalysesSnapshot.size} Wochenanalysen und ${chatsSnapshot.size} Chat-Verläufe wurden vollständig entfernt.\n\n💡 Hinweis: Bitte starte die App neu, damit alle Änderungen vollständig übernommen werden.`,
         [{ text: "OK", style: "default" }]
       );
     } catch (error) {
