@@ -23,8 +23,8 @@ export function AuthProvider({ children }) {
   // WICHTIG: Diese Web Client ID muss aus der Firebase Console kommen!
   // Firebase Console > Authentication > Sign-in method > Google > Web SDK configuration
   const [request, response, promptAsync] = Google.useAuthRequest({
-    webClientId: "857177005519-YOUR_WEB_CLIENT_ID.apps.googleusercontent.com", // TODO: Ersetzen!
-    iosClientId: "857177005519-YOUR_IOS_CLIENT_ID.apps.googleusercontent.com", // Optional
+    webClientId: "857177005519-ildp0badmtte1hmcavqbiue95fu6jqjr.apps.googleusercontent.com", // TODO: Ersetzen!
+    iosClientId: "857177005519-ildp0badmtte1hmcavqbiue95fu6jqjr.apps.googleusercontent.com", // Optional
     androidClientId: "857177005519-YOUR_ANDROID_CLIENT_ID.apps.googleusercontent.com", // Optional
   });
 
