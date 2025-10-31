@@ -14,7 +14,13 @@ import * as AuthSession from "expo-auth-session";
 
 
 WebBrowser.maybeCompleteAuthSession();
-console.log("🔍 Redirect URI:", AuthSession.makeRedirectUri({ useProxy: true }));
+
+// Erstelle Redirect URI mit Expo Proxy für Development
+const redirectUri = AuthSession.makeRedirectUri({
+  useProxy: true,
+  preferLocalhost: false
+});
+console.log("🔍 Redirect URI:", redirectUri);
 
 
 const AuthContext = createContext(null);
@@ -29,6 +35,7 @@ export function AuthProvider({ children }) {
     expoClientId: "857177005519-ildp0badmtte1hmcavqbiue95fu6jqjr.apps.googleusercontent.com",
     iosClientId: "857177005519-ildp0badmtte1hmcavqbiue95fu6jqjr.apps.googleusercontent.com",
     androidClientId: "857177005519-ildp0badmtte1hmcavqbiue95fu6jqjr.apps.googleusercontent.com",
+    redirectUri: redirectUri,
   });
 
 
