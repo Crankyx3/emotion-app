@@ -1,9 +1,11 @@
 import { OPENAI_API_KEY } from "@env";
 console.log("Geladener API-Key:", OPENAI_API_KEY ? "gefunden ✅" : "FEHLT ❌");
 
-// Streaming-Funktion für Chat (zeigt Antwort Wort für Wort)
+// Pseudo-Streaming-Funktion für Chat (React Native kompatibel)
+// Holt die komplette Antwort und zeigt sie dann Wort-für-Wort an
 export async function getAiResponseStreaming(userEmotion, userText, onChunk) {
   try {
+    // Hole komplette Antwort ohne Streaming (React Native unterstützt kein response.body.getReader())
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -25,7 +27,7 @@ export async function getAiResponseStreaming(userEmotion, userText, onChunk) {
         ],
         temperature: 0.7,
         max_tokens: 1200,
-        stream: true, // Aktiviere Streaming
+        stream: false, // Kein echtes Streaming in React Native
       }),
     });
 
@@ -33,34 +35,24 @@ export async function getAiResponseStreaming(userEmotion, userText, onChunk) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let fullText = "";
+    const data = await response.json();
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+    if (!data?.choices || data.choices.length === 0) {
+      throw new Error("Keine Antwort von OpenAI erhalten");
+    }
 
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n').filter(line => line.trim() !== '');
+    const fullText = data.choices[0].message.content.trim();
 
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6);
-          if (data === '[DONE]') break;
+    // Pseudo-Streaming: Zeige Text Wort-für-Wort an
+    const words = fullText.split(' ');
+    let currentText = '';
 
-          try {
-            const parsed = JSON.parse(data);
-            const content = parsed.choices[0]?.delta?.content;
-            if (content) {
-              fullText += content;
-              onChunk(fullText); // Callback mit aktuellem Text
-            }
-          } catch (e) {
-            // Parsing-Fehler ignorieren
-          }
-        }
-      }
+    for (let i = 0; i < words.length; i++) {
+      currentText += (i > 0 ? ' ' : '') + words[i];
+      onChunk(currentText);
+
+      // Kleines Delay für Streaming-Effekt (schneller als Tippen, aber sichtbar)
+      await new Promise(resolve => setTimeout(resolve, 30));
     }
 
     return fullText;

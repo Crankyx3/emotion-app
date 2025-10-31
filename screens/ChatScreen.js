@@ -16,7 +16,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { getAiResponse, getAiResponseStreaming } from "../openaiService";
 import { useNavigation } from "@react-navigation/native";
-import { collection, getDocs, query, where, addDoc, Timestamp, doc, updateDoc, orderBy } from "firebase/firestore";
+import { collection, getDocs, query, where, addDoc, Timestamp, doc, updateDoc } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -79,12 +79,19 @@ export default function ChatScreen({ route }) {
     try {
       const messagesQuery = query(
         collection(db, "chatMessages"),
-        where("chatId", "==", chatId),
-        orderBy("timestamp", "asc")
+        where("chatId", "==", chatId)
       );
 
       const messagesSnap = await getDocs(messagesQuery);
-      const loadedMessages = messagesSnap.docs.map(doc => {
+
+      // Sortiere auf Client-Seite nach Timestamp (vermeidet Index-Anforderung)
+      const sortedDocs = messagesSnap.docs.sort((a, b) => {
+        const timeA = a.data().timestamp?.toMillis() || 0;
+        const timeB = b.data().timestamp?.toMillis() || 0;
+        return timeA - timeB; // Älteste zuerst
+      });
+
+      const loadedMessages = sortedDocs.map(doc => {
         const data = doc.data();
         return [
           { sender: "user", text: data.userMessage },

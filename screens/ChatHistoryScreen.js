@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { collection, getDocs, query, where, addDoc, Timestamp, orderBy } from "firebase/firestore";
+import { collection, getDocs, query, where, addDoc, Timestamp } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
 import { useNavigation } from "@react-navigation/native";
 
@@ -37,15 +37,21 @@ export default function ChatHistoryScreen() {
 
       const chatsQuery = query(
         collection(db, "chats"),
-        where("userId", "==", auth.currentUser.uid),
-        orderBy("lastMessageAt", "desc")
+        where("userId", "==", auth.currentUser.uid)
       );
 
       const chatsSnap = await getDocs(chatsQuery);
-      const chatsList = chatsSnap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      const chatsList = chatsSnap.docs
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
+        // Sortiere auf Client-Seite statt in der Query (vermeidet Index-Anforderung)
+        .sort((a, b) => {
+          const timeA = a.lastMessageAt?.toMillis() || 0;
+          const timeB = b.lastMessageAt?.toMillis() || 0;
+          return timeB - timeA; // Neueste zuerst
+        });
 
       setChats(chatsList);
     } catch (err) {
