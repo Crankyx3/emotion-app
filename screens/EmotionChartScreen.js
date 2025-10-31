@@ -165,11 +165,9 @@ export default function EmotionChartScreen({ navigation }) {
       const {
         emotion = "Unbekannt",
         feelScore = 50,
-        sleep = 5,
-        energy = 5,
-        selfWorth = 5,
         theme = "Allgemein",
         text = "Keine Beschreibung angegeben",
+        gratitude = "",
         id,
       } = entry || {};
 
@@ -181,13 +179,14 @@ export default function EmotionChartScreen({ navigation }) {
       const prompt = `
 Analysiere den psychischen Zustand basierend auf diesen Tagesdaten:
 
-Emotion: ${emotion}
-Wohlfühlscore: ${feelScore}/99
-Schlafqualität: ${sleep}/10
-Energielevel: ${energy}/10
-Selbstwertgefühl: ${selfWorth}/10
-Thema des Tages: ${theme}
-Beschreibung: ${text}
+📊 MESSWERTE:
+• Emotion: ${emotion}
+• Wohlfühlscore: ${feelScore}/99
+
+📝 THEMA & PERSÖNLICHE BESCHREIBUNG:
+${theme ? `Thema: ${theme}` : 'Kein Thema angegeben'}
+${text ? `\n"${text}"\n` : '\nKeine Beschreibung angegeben\n'}
+${gratitude ? `\n💚 Dankbarkeit: ${gratitude}\n` : ''}
 
 Gib eine empathische, kurze psychologische Einschätzung mit einem hilfreichen Ratschlag.
 `;
@@ -351,12 +350,10 @@ Gib eine empathische, kurze psychologische Einschätzung mit einem hilfreichen R
 
               <View style={styles.modalBody}>
                 <Text style={styles.modalLine}>💙 Wohlfühlscore: {selectedEntry?.feelScore}/99</Text>
-                <Text style={styles.modalLine}>🛏 Schlaf: {selectedEntry?.sleep}/10</Text>
-                <Text style={styles.modalLine}>⚡ Energie: {selectedEntry?.energy}/10</Text>
-                <Text style={styles.modalLine}>❤️ Selbstwert: {selectedEntry?.selfWorth}/10</Text>
 
                 {selectedEntry?.theme ? <Text style={[styles.modalLine, { marginTop: 8 }]}>🧩 Thema: {selectedEntry?.theme}</Text> : null}
                 {selectedEntry?.text ? <Text style={[styles.modalText, { marginTop: 8 }]}>💭 {selectedEntry?.text}</Text> : null}
+                {selectedEntry?.gratitude ? <Text style={[styles.modalText, { marginTop: 8 }]}>💚 Dankbarkeit: {selectedEntry?.gratitude}</Text> : null}
 
                 {selectedEntry?.analysis ? (
                   <>
@@ -401,7 +398,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  scrollContainer: { paddingBottom: 80, backgroundColor: "#F7F9FB", alignItems: "center" },
+  scrollContainer: { paddingTop: 40, paddingBottom: 80, backgroundColor: "#F7F9FB", alignItems: "center" },
   center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#F7F9FB" },
   placeholder: { color: "#9aa4b2", fontSize: 16 },
 
