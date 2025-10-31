@@ -279,46 +279,29 @@ export default function DailyAnalysisScreen({ route, navigation }) {
       const prompt = `
 Du bist ein einfühlsamer psychologischer Berater. Analysiere den aktuellen emotionalen Zustand dieser Person.
 
-📊 AKTUELLE MESSWERTE:
-• Emotion: ${emotion}
-• Wohlfühlscore: ${feelScore}/99 (0=sehr schlecht, 99=ausgezeichnet)
+DATEN:
+Emotion: ${emotion}
+Wohlfühlscore: ${feelScore}/99
+${theme ? `Thema: "${theme}"` : 'Kein spezifisches Thema'}
+${text ? `Beschreibung: "${text}"` : 'Keine detaillierte Beschreibung'}
 
-📝 PERSÖNLICHE BESCHREIBUNG DER PERSON:
-${theme ? `Gewähltes Thema: "${theme}"` : 'Kein spezifisches Thema gewählt'}
-${text ? `
-Was die Person heute erlebt/gefühlt hat:
-"${text}"
-` : '\n[Die Person hat keine detaillierte Beschreibung angegeben]\n'}
-
-🎯 DEINE AUFGABE:
-1. **Emotionale Validierung**: Zeige Verständnis für die konkrete Situation, die beschrieben wurde. Nenne spezifische Aspekte aus dem Text.
-
-2. **Psychologische Einordnung**: Nutze psychologische Frameworks (z.B. kognitive Verhaltenstherapie, Akzeptanz-Commitment-Therapie, Achtsamkeit) um die Situation einzuordnen. Erkenne:
-   - Automatische Gedanken oder Glaubenssätze
-   - Emotionsregulationsmuster
-   - Bewältigungsstrategien
-   ${text ? '- Was zwischen den Zeilen steht' : ''}
-
-3. **Individuelle Perspektive**: Was könnte diese spezifische Person in dieser spezifischen Situation gerade brauchen?
-
-Gib eine empathische Analyse (3-5 Sätze) die:
-- KONKRET auf die beschriebenen Gefühle, Gedanken und Situationen eingeht
-- Spezifische Worte/Phrasen der Person aufgreift und validiert
-- Psychologische Zusammenhänge erklärt (warum fühlt sich die Person so?)
+AUFGABE:
+Schreibe eine empathische, psychologisch fundierte Analyse (3-5 gut lesbare Sätze) die:
+- Konkret auf die beschriebenen Gefühle und Situationen eingeht
+- Spezifische Worte oder Themen der Person aufgreift
+- Psychologische Zusammenhänge erklärt (z.B. aus CBT, ACT, Achtsamkeit)
 - Eine hilfreiche neue Perspektive bietet
 
-Dann gib GENAU 3 konkrete, evidenzbasierte Handlungsvorschläge speziell für ${theme ? `das Thema "${theme}"` : 'die beschriebene Situation'}:
+WICHTIG: Schreibe in fließenden, natürlichen Sätzen ohne Markdown, ohne Sternchen, ohne Überschriften. Einfach klarer, empathischer Text mit Absätzen zur besseren Lesbarkeit.
+
+Danach gib GENAU 3 konkrete Handlungsvorschläge im folgenden Format:
 [VORSCHLÄGE]
-1. [Titel]: [Konkrete Anweisung, die zur Person und Situation passt]
-2. [Titel]: [Konkrete Anweisung, die zur Person und Situation passt]
-3. [Titel]: [Konkrete Anweisung, die zur Person und Situation passt]
+1. Kurzer Titel: Konkrete Anweisung, die zur Person und Situation passt
+2. Kurzer Titel: Konkrete Anweisung, die zur Person und Situation passt
+3. Kurzer Titel: Konkrete Anweisung, die zur Person und Situation passt
 [/VORSCHLÄGE]
 
-Die Vorschläge sollen:
-- Sofort umsetzbar sein (5-15 Minuten)
-- Zur aktuellen Emotion passen (${emotion})
-- Wissenschaftlich fundiert sein (CBT, ACT, Mindfulness, etc.)
-- SPEZIFISCH auf die Person zugeschnitten sein
+Die Vorschläge sollen sofort umsetzbar sein (5-15 Minuten) und zur aktuellen Emotion (${emotion}) passen.
 `;
 
       const reply = await getAiResponse("psychologische Tagesanalyse", prompt);

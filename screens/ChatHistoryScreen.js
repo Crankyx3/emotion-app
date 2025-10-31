@@ -13,7 +13,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { collection, getDocs, query, where, addDoc, Timestamp } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 
 export default function ChatHistoryScreen() {
   const navigation = useNavigation();
@@ -30,6 +30,13 @@ export default function ChatHistoryScreen() {
   useEffect(() => {
     loadChatHistory();
   }, []);
+
+  // Aktualisiere Chat-Liste wenn Screen fokussiert wird (z.B. nach Rückkehr vom Chat)
+  useFocusEffect(
+    React.useCallback(() => {
+      loadChatHistory();
+    }, [])
+  );
 
   const loadChatHistory = async () => {
     try {
