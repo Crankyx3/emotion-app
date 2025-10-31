@@ -203,6 +203,12 @@ export default function MeditationScreen({ navigation }) {
   return (
     <LinearGradient colors={["#EAF4FF", "#FFFFFF"]} style={styles.gradient}>
       <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.topRow}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={28} color="#007AFF" />
+          </TouchableOpacity>
+        </View>
+
         <ScreenHeader
           title="🧘‍♀️ Meditation & Achtsamkeit"
           subtitle="Finde innere Ruhe und Gelassenheit"
@@ -371,8 +377,21 @@ const styles = StyleSheet.create({
   },
   container: {
     alignItems: "center",
-    paddingVertical: 40,
+    paddingVertical: 20,
     paddingHorizontal: 20,
+  },
+  topRow: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+    marginTop: 10,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   section: {
     width: "100%",
