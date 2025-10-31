@@ -3,14 +3,12 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-nati
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import ScreenHeader from "../components/ScreenHeader";
-import { useAuth } from "../components/AuthProvider";
 
 export default function HomeScreen({ navigation }) {
-  const { user } = useAuth();
-  const menuItems = [
+  const mainMenuItems = [
     {
       title: "Tagesdaten eintragen",
-      subtitle: "Notiere deine Stimmung, Energie und Schlafqualität",
+      subtitle: "Notiere deine Stimmung und wie du dich fühlst",
       icon: <Ionicons name="create-outline" size={28} color="#007aff" />,
       screen: "DailyEntry",
     },
@@ -19,18 +17,6 @@ export default function HomeScreen({ navigation }) {
       subtitle: "Erhalte deine KI-Analyse des heutigen Tages",
       icon: <Ionicons name="analytics-outline" size={28} color="#34a853" />,
       screen: "DailyAnalysis",
-    },
-    {
-      title: "Meditation & Achtsamkeit",
-      subtitle: "Geführte Meditationen und Atemübungen (2-5 Min.)",
-      icon: <Ionicons name="leaf-outline" size={28} color="#2ecc71" />,
-      screen: "Meditation",
-    },
-    {
-      title: "Psycho-Edukation",
-      subtitle: "Lerne über mentale Gesundheit und Bewältigungsstrategien",
-      icon: <Ionicons name="school-outline" size={28} color="#a142f4" />,
-      screen: "PsychoEducation",
     },
     {
       title: "EmotionChart",
@@ -46,29 +32,50 @@ export default function HomeScreen({ navigation }) {
     },
   ];
 
+  const guideItems = [
+    {
+      title: "Meditation & Achtsamkeit",
+      subtitle: "Geführte Meditationen und Atemübungen (2-5 Min.)",
+      icon: <Ionicons name="leaf-outline" size={28} color="#2ecc71" />,
+      screen: "Meditation",
+    },
+    {
+      title: "Psycho-Edukation",
+      subtitle: "Lerne über mentale Gesundheit und Bewältigungsstrategien",
+      icon: <Ionicons name="school-outline" size={28} color="#a142f4" />,
+      screen: "PsychoEducation",
+    },
+  ];
+
   return (
     <LinearGradient colors={["#EAF4FF", "#FFFFFF"]} style={styles.gradient}>
       <ScrollView contentContainerStyle={styles.container}>
         <ScreenHeader title="KI-Stimmungshelfer" subtitle="Dein persönliches Stimmungs-Dashboard" />
 
-        {/* User Info Card */}
-        {user && (
-          <View style={styles.userCard}>
-            <View style={styles.userIconContainer}>
-              <Ionicons name="person" size={24} color="#007AFF" />
-            </View>
+        {/* Haupt-Menü */}
+        {mainMenuItems.map((item, index) => (
+          <TouchableOpacity
+            key={index}
+            style={styles.card}
+            activeOpacity={0.9}
+            onPress={() => navigation.navigate(item.screen)}
+          >
+            <View style={styles.iconContainer}>{item.icon}</View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.userLabel}>Angemeldet als</Text>
-              <Text style={styles.userEmail}>{user.email}</Text>
+              <Text style={styles.cardTitle}>{item.title}</Text>
+              <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
             </View>
-            <View style={styles.statusBadge}>
-              <View style={styles.statusDot} />
-              <Text style={styles.statusText}>Online</Text>
-            </View>
-          </View>
-        )}
+            <Ionicons name="chevron-forward" size={22} color="#ccc" />
+          </TouchableOpacity>
+        ))}
 
-        {menuItems.map((item, index) => (
+        {/* Guides Sektion */}
+        <View style={styles.sectionHeader}>
+          <Ionicons name="book-outline" size={20} color="#666" />
+          <Text style={styles.sectionTitle}>Guides</Text>
+        </View>
+
+        {guideItems.map((item, index) => (
           <TouchableOpacity
             key={index}
             style={styles.card}
@@ -97,61 +104,21 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
     paddingHorizontal: 20,
   },
-  userCard: {
+  sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 18,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
     width: "100%",
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
-    borderWidth: 1.5,
-    borderColor: "#E3F2FD",
+    marginTop: 30,
+    marginBottom: 10,
+    paddingHorizontal: 5,
   },
-  userIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#E3F2FD",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-  userLabel: {
-    fontSize: 12,
-    color: "#8E8E93",
-    fontWeight: "500",
-    marginBottom: 2,
-  },
-  userEmail: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#1C1C1E",
-  },
-  statusBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#E8F5E9",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#34a853",
-    marginRight: 6,
-  },
-  statusText: {
-    fontSize: 12,
-    color: "#34a853",
-    fontWeight: "600",
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#666",
+    marginLeft: 8,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   card: {
     flexDirection: "row",
