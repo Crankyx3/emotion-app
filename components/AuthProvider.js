@@ -15,11 +15,9 @@ import * as AuthSession from "expo-auth-session";
 
 WebBrowser.maybeCompleteAuthSession();
 
-// Erstelle Redirect URI mit Expo Proxy für Development
-const redirectUri = AuthSession.makeRedirectUri({
-  useProxy: true,
-  preferLocalhost: false
-});
+// Explizite Expo Auth Proxy URI für Development mit Expo Go
+// Format: https://auth.expo.io/@username/slug
+const redirectUri = "https://auth.expo.io/@Crankyx/ki-stimmungshelfer";
 console.log("🔍 Redirect URI:", redirectUri);
 
 
