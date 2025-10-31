@@ -295,7 +295,7 @@ Antworte empathisch und beziehe dich konkret auf die Analyse.
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text numberOfLines={1} style={styles.headerTitle}>
-              Reflexions-Chat
+              KI-Chat
             </Text>
             <Text numberOfLines={1} style={styles.headerSubtitle}>
               {loading ? "Lade Kontext..." : `${chatCount}/${DAILY_CHAT_LIMIT} Nachrichten heute`}

@@ -90,7 +90,7 @@ function MainTabs() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubbles" size={size} color={color} />
           ),
-          tabBarLabel: "Chat"
+          tabBarLabel: "KI-Chat"
         }}
       />
     </Tab.Navigator>

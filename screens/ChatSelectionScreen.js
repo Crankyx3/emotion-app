@@ -83,7 +83,7 @@ export default function ChatSelectionScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={styles.header}>
           <Ionicons name="chatbubbles" size={32} color="#007AFF" />
-          <Text style={styles.headerTitle}>Chat starten</Text>
+          <Text style={styles.headerTitle}>KI-Chat starten</Text>
           <Text style={styles.headerSubtitle}>
             Wähle, worüber du sprechen möchtest
           </Text>

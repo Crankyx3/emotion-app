@@ -156,6 +156,12 @@ export default function HomeScreen({ navigation }) {
       icon: <MaterialCommunityIcons name="brain" size={28} color="#a142f4" />,
       screen: "Analysis",
     },
+    {
+      title: "KI-Chat",
+      subtitle: "Sprich über deine Analysen und stelle Fragen",
+      icon: <Ionicons name="chatbubbles" size={28} color="#FF6B6B" />,
+      screen: "ChatSelection",
+    },
   ];
 
   const guideItems = [
