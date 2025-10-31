@@ -28,11 +28,9 @@ export function AuthProvider({ children }) {
   const [initializing, setInitializing] = useState(true);
 
   // Google OAuth Konfiguration
-  // Für Expo Go brauchen wir iOS, Android UND Expo Client IDs
+  // Für Expo Go mit Auth Proxy verwenden wir nur den expoClientId (Web-Client)
   const [request, response, promptAsync] = Google.useAuthRequest({
     expoClientId: "857177005519-ildp0badmtte1hmcavqbiue95fu6jqjr.apps.googleusercontent.com",
-    iosClientId: "857177005519-ildp0badmtte1hmcavqbiue95fu6jqjr.apps.googleusercontent.com",
-    androidClientId: "857177005519-ildp0badmtte1hmcavqbiue95fu6jqjr.apps.googleusercontent.com",
     redirectUri: redirectUri,
   });
 
