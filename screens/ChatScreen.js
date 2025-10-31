@@ -22,11 +22,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function ChatScreen({ route }) {
   const navigation = useNavigation();
-  const { context } = route.params || {}; // Analyse-Text als Kontext
+  const { context, type, date } = route.params || {};
+  // context = Analyse-Text
+  // type = "daily", "weekly", "all"
+  // date = Datum der Analyse
 
-  const [messages, setMessages] = useState(
-    context ? [{ sender: "ai", text: "Ich habe deine letzte Analyse und die letzten 14 Tage an Einträgen geladen. Wie kann ich dir helfen?" }] : []
-  );
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const scrollRef = useRef(null);
 
@@ -35,6 +36,7 @@ export default function ChatScreen({ route }) {
   const [loading, setLoading] = useState(true);
   const [chatCount, setChatCount] = useState(0);
   const [canChat, setCanChat] = useState(true);
+  const [chatMode, setChatMode] = useState(type || "single"); // "single" oder "all"
 
   // Rate Limiting: 10 Chats pro Tag
   const DAILY_CHAT_LIMIT = 10;
@@ -69,73 +71,118 @@ export default function ChatScreen({ route }) {
     }
   };
 
-  // Lade historischen Kontext (letzte 14 Tage + Analysen)
-  const loadHistoricalContext = async () => {
+  // Initialisiere Chat basierend auf Modus
+  const initializeChat = async () => {
     try {
-      if (!auth.currentUser) return;
+      if (chatMode === "all") {
+        // Modus: Alle Analysen der letzten 14 Tage
+        const contextData = await loadHistoricalContext();
 
-      const fourteenDaysAgo = new Date();
-      fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+        if (contextData && contextData.entriesCount > 0) {
+          // Erstelle Zusammenfassung mit KI
+          const summaryPrompt = `
+Du bist ein psychologischer Therapeut. Erstelle eine prägnante Zusammenfassung der letzten 14 Tage dieser Person.
 
-      // Lade Einträge der letzten 14 Tage
-      const entriesQuery = query(
-        collection(db, "entries"),
-        where("userId", "==", auth.currentUser.uid)
-      );
-      const entriesSnap = await getDocs(entriesQuery);
+📊 VERFÜGBARE DATEN:
+**${contextData.entriesCount} Tageseinträge:**
+${contextData.entriesSummary}
 
-      const recentEntries = entriesSnap.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter(entry => {
-          if (!entry.createdAt) return false;
-          const entryDate = entry.createdAt.toDate();
-          return entryDate >= fourteenDaysAgo;
-        })
-        .sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
+**${contextData.analysesCount} Wochenanalysen:**
+${contextData.analysesSummary}
 
-      // Lade alle Analysen
-      const analysesQuery = query(
-        collection(db, "weeklyAnalyses"),
-        where("userId", "==", auth.currentUser.uid)
-      );
-      const analysesSnap = await getDocs(analysesQuery);
+Erstelle eine kurze Zusammenfassung (3-4 Sätze) die:
+1. Die allgemeine Stimmungslage beschreibt
+2. Wichtige Muster oder Trends nennt
+3. Mit einer Frage endet, um das Gespräch zu öffnen
 
-      const recentAnalyses = analysesSnap.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter(analysis => {
-          if (!analysis.analysisDate) return false;
-          const analysisDate = analysis.analysisDate.toDate();
-          return analysisDate >= fourteenDaysAgo;
-        })
-        .sort((a, b) => b.analysisDate.toMillis() - a.analysisDate.toMillis());
+Sei empathisch und einladend.
+`;
 
-      // Erstelle kompakte Zusammenfassung (Token-Optimierung)
-      const entriesSummary = recentEntries.map(e => {
-        const date = e.createdAt.toDate().toLocaleDateString("de-DE");
-        return `${date}: ${e.emotion} (${e.feelScore}/99)${e.theme ? ` - ${e.theme}` : ''}${e.text ? ` - "${e.text.substring(0, 100)}..."` : ''}`;
-      }).join('\n');
+          const summary = await getAiResponse("Zusammenfassung 14 Tage", summaryPrompt);
+          setMessages([{ sender: "ai", text: summary }]);
+        } else {
+          setMessages([{ sender: "ai", text: "Ich konnte keine Einträge der letzten 14 Tage finden. Erstelle zuerst einige Tageseinträge und Analysen." }]);
+        }
+      } else {
+        // Modus: Einzelne Analyse
+        const analysisTypeText = type === "weekly" ? "Wochenanalyse" : "Tagesanalyse";
+        const introText = `Hier ist deine ${analysisTypeText} vom ${date}:\n\n${context}\n\nWas möchtest du darüber wissen oder besprechen?`;
+        setMessages([{ sender: "ai", text: introText }]);
 
-      const analysesSummary = recentAnalyses.map(a => {
-        const date = a.analysisDate.toDate().toLocaleDateString("de-DE");
-        return `Wochenanalyse vom ${date}: ${a.analysis?.substring(0, 200)}...`;
-      }).join('\n\n');
-
-      setHistoricalContext({
-        entriesCount: recentEntries.length,
-        analysesCount: recentAnalyses.length,
-        entriesSummary,
-        analysesSummary,
-      });
-
+        // Keine historischen Daten laden
+        setHistoricalContext(null);
+      }
     } catch (err) {
-      console.error("Fehler beim Laden des Kontexts:", err);
+      console.error("Fehler beim Initialisieren:", err);
+      setMessages([{ sender: "ai", text: "Entschuldigung, es gab einen Fehler beim Laden. Wie kann ich dir helfen?" }]);
     } finally {
       setLoading(false);
     }
   };
 
+  // Lade historischen Kontext (nur für "all" Modus)
+  const loadHistoricalContext = async () => {
+    if (!auth.currentUser) return null;
+
+    const fourteenDaysAgo = new Date();
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+
+    // Lade Einträge der letzten 14 Tage
+    const entriesQuery = query(
+      collection(db, "entries"),
+      where("userId", "==", auth.currentUser.uid)
+    );
+    const entriesSnap = await getDocs(entriesQuery);
+
+    const recentEntries = entriesSnap.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(entry => {
+        if (!entry.createdAt) return false;
+        const entryDate = entry.createdAt.toDate();
+        return entryDate >= fourteenDaysAgo;
+      })
+      .sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
+
+    // Lade alle Analysen
+    const analysesQuery = query(
+      collection(db, "weeklyAnalyses"),
+      where("userId", "==", auth.currentUser.uid)
+    );
+    const analysesSnap = await getDocs(analysesQuery);
+
+    const recentAnalyses = analysesSnap.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(analysis => {
+        if (!analysis.analysisDate) return false;
+        const analysisDate = analysis.analysisDate.toDate();
+        return analysisDate >= fourteenDaysAgo;
+      })
+      .sort((a, b) => b.analysisDate.toMillis() - a.analysisDate.toMillis());
+
+    // Erstelle kompakte Zusammenfassung (Token-Optimierung)
+    const entriesSummary = recentEntries.map(e => {
+      const date = e.createdAt.toDate().toLocaleDateString("de-DE");
+      return `${date}: ${e.emotion} (${e.feelScore}/99)${e.theme ? ` - ${e.theme}` : ''}${e.text ? ` - "${e.text.substring(0, 100)}..."` : ''}`;
+    }).join('\n');
+
+    const analysesSummary = recentAnalyses.map(a => {
+      const date = a.analysisDate.toDate().toLocaleDateString("de-DE");
+      return `Wochenanalyse vom ${date}: ${a.analysis?.substring(0, 200)}...`;
+    }).join('\n\n');
+
+    const contextData = {
+      entriesCount: recentEntries.length,
+      analysesCount: recentAnalyses.length,
+      entriesSummary,
+      analysesSummary,
+    };
+
+    setHistoricalContext(contextData);
+    return contextData;
+  };
+
   useEffect(() => {
-    loadHistoricalContext();
+    initializeChat();
     checkChatLimit();
   }, []);
 
@@ -158,18 +205,19 @@ export default function ChatScreen({ route }) {
     setInput("");
 
     try {
-      const prompt = `
+      let prompt;
+
+      if (chatMode === "all") {
+        // Modus: Alle 14 Tage
+        prompt = `
 Du bist ein einfühlsamer psychologischer Therapeut im Gespräch mit einem Klienten.
 
-📋 VERFÜGBARER KONTEXT:
+📋 VERFÜGBARER KONTEXT (letzte 14 Tage):
 
-**Aktuelle Analyse:**
-${context || "Keine aktuelle Analyse verfügbar."}
-
-**Letzte 14 Tage - Einträge (${historicalContext?.entriesCount || 0} Tage):**
+**${historicalContext?.entriesCount || 0} Tageseinträge:**
 ${historicalContext?.entriesSummary || "Keine Einträge verfügbar."}
 
-**Frühere Wochenanalysen (${historicalContext?.analysesCount || 0}):**
+**${historicalContext?.analysesCount || 0} Wochenanalysen:**
 ${historicalContext?.analysesSummary || "Keine früheren Analysen verfügbar."}
 
 🎯 GESPRÄCHSFÜHRUNG:
@@ -185,6 +233,32 @@ ${historicalContext?.analysesSummary || "Keine früheren Analysen verfügbar."}
 
 Antworte empathisch, therapeutisch fundiert und auf den gesamten Kontext bezogen.
 `;
+      } else {
+        // Modus: Einzelne Analyse
+        const analysisTypeText = type === "weekly" ? "Wochenanalyse" : "Tagesanalyse";
+        prompt = `
+Du bist ein einfühlsamer psychologischer Therapeut im Gespräch mit einem Klienten.
+
+📋 KONTEXT:
+Der Nutzer hat eine ${analysisTypeText} vom ${date} ausgewählt und spricht darüber.
+
+**Die Analyse:**
+${context || "Keine Analyse verfügbar."}
+
+🎯 GESPRÄCHSFÜHRUNG:
+- Beziehe dich auf diese SPEZIFISCHE Analyse
+- Hilf beim Vertiefen der Erkenntnisse
+- Stelle Reflexionsfragen zu den genannten Themen
+- Gib konkrete Handlungsempfehlungen basierend auf der Analyse
+- Sei empathisch und validierend
+- Halte Antworten kurz (2-4 Sätze) aber tiefgehend
+
+💬 AKTUELLE NACHRICHT DES NUTZERS:
+"${userText}"
+
+Antworte empathisch und beziehe dich konkret auf die Analyse.
+`;
+      }
 
       const reply = await getAiResponse("Therapeutischer Chat", prompt);
       setMessages((prev) => [...prev, { sender: "ai", text: reply }]);
@@ -230,11 +304,14 @@ Antworte empathisch, therapeutisch fundiert und auf den gesamten Kontext bezogen
         </View>
 
         {/* Kontext-Info Card */}
-        {!loading && historicalContext && (
+        {!loading && (
           <View style={styles.contextInfo}>
             <Ionicons name="information-circle" size={18} color="#007AFF" />
             <Text style={styles.contextText}>
-              {historicalContext.entriesCount} Einträge · {historicalContext.analysesCount} Analysen geladen
+              {chatMode === "all" && historicalContext
+                ? `${historicalContext.entriesCount} Einträge · ${historicalContext.analysesCount} Analysen geladen`
+                : `${type === "weekly" ? "Wochenanalyse" : "Tagesanalyse"} vom ${date}`
+              }
             </Text>
           </View>
         )}
