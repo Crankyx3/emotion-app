@@ -117,56 +117,41 @@ export default function AnalysisScreen() {
 
     const correlations = [];
 
-    // Teile Daten in High/Low Schlaf
-    const highSleep = data.filter(e => (e.sleep || 0) >= 7);
-    const lowSleep = data.filter(e => (e.sleep || 0) < 7);
+    // Emotionsverteilung analysieren
+    const emotionCounts = {};
+    data.forEach(e => {
+      const emotion = e.emotion || "Unbekannt";
+      emotionCounts[emotion] = (emotionCounts[emotion] || 0) + 1;
+    });
 
-    if (highSleep.length > 0 && lowSleep.length > 0) {
-      const avgEnergyHighSleep = highSleep.reduce((s, e) => s + (e.energy || 0), 0) / highSleep.length;
-      const avgEnergyLowSleep = lowSleep.reduce((s, e) => s + (e.energy || 0), 0) / lowSleep.length;
-      const energyDiff = ((avgEnergyHighSleep - avgEnergyLowSleep) / avgEnergyLowSleep) * 100;
+    const sortedEmotions = Object.entries(emotionCounts).sort((a, b) => b[1] - a[1]);
+    const mostFrequent = sortedEmotions[0];
 
-      if (Math.abs(energyDiff) > 15) {
-        correlations.push({
-          icon: "🛏️",
-          title: "Schlaf → Energie",
-          text: `Dein Energielevel ist ${Math.abs(energyDiff).toFixed(0)}% ${energyDiff > 0 ? "höher" : "niedriger"} nach gutem Schlaf (≥7/10).`,
-          type: energyDiff > 0 ? "positive" : "negative"
-        });
-      }
+    if (mostFrequent && mostFrequent[1] >= data.length * 0.4) {
+      const percentage = Math.round((mostFrequent[1] / data.length) * 100);
+      correlations.push({
+        icon: "📊",
+        title: "Häufigste Emotion",
+        text: `${mostFrequent[0]} tritt in ${percentage}% der Einträge auf.`,
+        type: mostFrequent[0].includes("Glücklich") || mostFrequent[0].includes("Zufrieden") ? "positive" : "neutral"
+      });
     }
 
-    // Schlaf vs feelScore
-    if (highSleep.length > 0 && lowSleep.length > 0) {
-      const avgFeelHighSleep = highSleep.reduce((s, e) => s + (e.feelScore || 0), 0) / highSleep.length;
-      const avgFeelLowSleep = lowSleep.reduce((s, e) => s + (e.feelScore || 0), 0) / lowSleep.length;
-      const feelDiff = ((avgFeelHighSleep - avgFeelLowSleep) / avgFeelLowSleep) * 100;
+    // Analyse von Stimmungstrends über Zeit
+    if (data.length >= 5) {
+      const first3 = data.slice(0, 3);
+      const last3 = data.slice(-3);
 
-      if (Math.abs(feelDiff) > 15) {
+      const avgFirst = first3.reduce((sum, e) => sum + (e.feelScore || 0), 0) / first3.length;
+      const avgLast = last3.reduce((sum, e) => sum + (e.feelScore || 0), 0) / last3.length;
+      const trend = avgLast - avgFirst;
+
+      if (Math.abs(trend) > 10) {
         correlations.push({
-          icon: "💤",
-          title: "Schlaf → Stimmung",
-          text: `Deine Gesamtstimmung ist ${Math.abs(feelDiff).toFixed(0)}% ${feelDiff > 0 ? "besser" : "schlechter"} nach erholsamem Schlaf.`,
-          type: feelDiff > 0 ? "positive" : "negative"
-        });
-      }
-    }
-
-    // Energie vs selfWorth
-    const highEnergy = data.filter(e => (e.energy || 0) >= 7);
-    const lowEnergy = data.filter(e => (e.energy || 0) < 7);
-
-    if (highEnergy.length > 0 && lowEnergy.length > 0) {
-      const avgSelfWorthHigh = highEnergy.reduce((s, e) => s + (e.selfWorth || 0), 0) / highEnergy.length;
-      const avgSelfWorthLow = lowEnergy.reduce((s, e) => s + (e.selfWorth || 0), 0) / lowEnergy.length;
-      const selfWorthDiff = ((avgSelfWorthHigh - avgSelfWorthLow) / avgSelfWorthLow) * 100;
-
-      if (Math.abs(selfWorthDiff) > 15) {
-        correlations.push({
-          icon: "⚡",
-          title: "Energie → Selbstwert",
-          text: `Dein Selbstwertgefühl ist ${Math.abs(selfWorthDiff).toFixed(0)}% ${selfWorthDiff > 0 ? "höher" : "niedriger"} an Tagen mit viel Energie.`,
-          type: selfWorthDiff > 0 ? "positive" : "negative"
+          icon: trend > 0 ? "📈" : "📉",
+          title: trend > 0 ? "Positive Entwicklung" : "Rückläufige Stimmung",
+          text: `Dein Wohlfühlscore hat sich um ${Math.abs(trend).toFixed(0)} Punkte ${trend > 0 ? "verbessert" : "verschlechtert"}.`,
+          type: trend > 0 ? "positive" : "negative"
         });
       }
     }
@@ -239,9 +224,6 @@ export default function AnalysisScreen() {
 
   // Durchschnittswerte berechnen
   const avg = entries.reduce((sum, e) => sum + (e.feelScore ?? 0), 0) / entries.length;
-  const avgSleep = entries.reduce((s, e) => s + (e.sleep ?? 0), 0) / entries.length;
-  const avgEnergy = entries.reduce((s, e) => s + (e.energy ?? 0), 0) / entries.length;
-  const avgSelfWorth = entries.reduce((s, e) => s + (e.selfWorth ?? 0), 0) / entries.length;
 
   const handleWeeklyAnalysis = async () => {
     if (!canAnalyze) {
@@ -258,7 +240,7 @@ export default function AnalysisScreen() {
       const detailedSummary = entries
         .map((e, index) => {
           const date = new Date(e.createdAt.seconds * 1000).toLocaleDateString("de-DE");
-          const basics = `${e.emotion || "Unbekannt"} | Schlaf=${e.sleep || "?"}/10 | Energie=${e.energy || "?"}/10 | Selbstwert=${e.selfWorth || "?"}/10 | Score=${e.feelScore}/99`;
+          const basics = `${e.emotion || "Unbekannt"} | Wohlfühlscore=${e.feelScore}/99`;
           const themeText = e.theme ? `\n   Thema: ${e.theme}` : '';
           const userText = e.text ? `\n   "${e.text}"` : '';
 
@@ -270,10 +252,7 @@ export default function AnalysisScreen() {
 Analysiere die psychologische Entwicklung dieser Woche basierend auf folgenden Daten:
 
 📊 DURCHSCHNITTSWERTE:
-• Schlafqualität: ${avgSleep.toFixed(1)} / 10
-• Energielevel: ${avgEnergy.toFixed(1)} / 10
-• Selbstwertgefühl: ${avgSelfWorth.toFixed(1)} / 10
-• Wohlfühlscore: ${avg.toFixed(1)} / 99
+• Durchschnittlicher Wohlfühlscore: ${avg.toFixed(1)} / 99
 
 📅 TÄGLICHE EINTRÄGE MIT PERSÖNLICHEN BESCHREIBUNGEN:
 ${detailedSummary}
@@ -283,7 +262,7 @@ WICHTIG: Gehe in deiner Wochenanalyse auf die KONKRETEN THEMEN und BESCHREIBUNGE
 Bitte gib eine strukturierte, empathische Analyse mit:
 1️⃣ Allgemeine Stimmung der Woche (beziehe dich auf konkrete Themen, die erwähnt wurden)
 2️⃣ Entwicklung (positiv, stabil, rückläufig) - erkenne Muster in den Beschreibungen
-3️⃣ Auffällige Trends bei Werten UND in den beschriebenen Situationen
+3️⃣ Auffällige emotionale Trends und wiederkehrende Themen
 4️⃣ Individueller psychologischer Rat für nächste Woche basierend auf den konkreten Themen
 
 Beende mit einem einzelnen Wort, das die Stimmung beschreibt: POSITIV, NEUTRAL oder NEGATIV.
@@ -328,9 +307,6 @@ Beende mit einem einzelnen Wort, das die Stimmung beschreibt: POSITIV, NEUTRAL o
         analysisDate: Timestamp.now(),
         entriesCount: entries.length,
         avgStats: {
-          sleep: avgSleep,
-          energy: avgEnergy,
-          selfWorth: avgSelfWorth,
           feelScore: avg,
         },
       });
@@ -394,9 +370,25 @@ Beende mit einem einzelnen Wort, das die Stimmung beschreibt: POSITIV, NEUTRAL o
         <View style={styles.statsBox}>
           <Text style={styles.stat}>📅 Tage berücksichtigt: {entries.length}</Text>
           <Text style={styles.stat}>💙 Ø Wohlfühlwert: {avg.toFixed(1)} / 99</Text>
-          <Text style={styles.stat}>🛏️ Ø Schlaf: {avgSleep.toFixed(1)} / 10</Text>
-          <Text style={styles.stat}>⚡ Ø Energie: {avgEnergy.toFixed(1)} / 10</Text>
-          <Text style={styles.stat}>❤️ Ø Selbstwert: {avgSelfWorth.toFixed(1)} / 10</Text>
+
+          {/* Emotionsverteilung */}
+          <View style={styles.emotionsSummary}>
+            <Text style={styles.emotionsSummaryTitle}>Emotionen diese Woche:</Text>
+            {(() => {
+              const emotionCounts = {};
+              entries.forEach(e => {
+                const emotion = e.emotion || "Unbekannt";
+                emotionCounts[emotion] = (emotionCounts[emotion] || 0) + 1;
+              });
+              return Object.entries(emotionCounts)
+                .sort((a, b) => b[1] - a[1])
+                .map(([emotion, count]) => (
+                  <Text key={emotion} style={styles.emotionCount}>
+                    {emotion}: {count}x
+                  </Text>
+                ));
+            })()}
+          </View>
         </View>
 
         {/* Muster-Erkennung: Insights */}
@@ -540,8 +532,7 @@ Beende mit einem einzelnen Wort, das die Stimmung beschreibt: POSITIV, NEUTRAL o
                   {item.entriesCount && (
                     <Text style={styles.historyStats}>
                       📅 {item.entriesCount} Tage •
-                      💙 {item.avgStats?.feelScore?.toFixed(1) || "?"}/99 •
-                      🛏️ {item.avgStats?.sleep?.toFixed(1) || "?"}/10
+                      💙 {item.avgStats?.feelScore?.toFixed(1) || "?"}/99
                     </Text>
                   )}
 
@@ -596,6 +587,23 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   stat: { fontSize: 17, color: "#333", marginVertical: 3 },
+  emotionsSummary: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#e0e0e0",
+  },
+  emotionsSummaryTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 8,
+  },
+  emotionCount: {
+    fontSize: 15,
+    color: "#666",
+    marginVertical: 2,
+  },
   button: {
     backgroundColor: "#007aff",
     paddingVertical: 14,
