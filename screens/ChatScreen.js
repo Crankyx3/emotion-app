@@ -16,13 +16,14 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { getAiResponse, getAiResponseStreaming } from "../openaiService";
 import { useNavigation } from "@react-navigation/native";
-import { collection, getDocs, query, where, addDoc, Timestamp } from "firebase/firestore";
+import { collection, getDocs, query, where, addDoc, Timestamp, doc, updateDoc, orderBy } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function ChatScreen({ route }) {
   const navigation = useNavigation();
-  const { context, type, date } = route.params || {};
+  const { chatId, context, type, date } = route.params || {};
+  // chatId = ID des gespeicherten Chats (falls vorhanden)
   // context = Analyse-Text
   // type = "daily", "weekly", "all"
   // date = Datum der Analyse
@@ -71,9 +72,51 @@ export default function ChatScreen({ route }) {
     }
   };
 
+  // Lade vorhandene Chat-Nachrichten aus Firestore
+  const loadChatMessages = async () => {
+    if (!chatId) return [];
+
+    try {
+      const messagesQuery = query(
+        collection(db, "chatMessages"),
+        where("chatId", "==", chatId),
+        orderBy("timestamp", "asc")
+      );
+
+      const messagesSnap = await getDocs(messagesQuery);
+      const loadedMessages = messagesSnap.docs.map(doc => {
+        const data = doc.data();
+        return [
+          { sender: "user", text: data.userMessage },
+          { sender: "ai", text: data.aiResponse }
+        ];
+      }).flat();
+
+      return loadedMessages;
+    } catch (err) {
+      console.error("Fehler beim Laden der Chat-Nachrichten:", err);
+      return [];
+    }
+  };
+
   // Initialisiere Chat basierend auf Modus
   const initializeChat = async () => {
     try {
+      // Wenn chatId vorhanden: Lade existierende Nachrichten
+      if (chatId) {
+        const existingMessages = await loadChatMessages();
+        if (existingMessages.length > 0) {
+          setMessages(existingMessages);
+          // Lade historischen Kontext falls "all" Modus
+          if (chatMode === "all") {
+            await loadHistoricalContext();
+          }
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Neuer Chat: Erstelle Einführungsnachricht
       if (chatMode === "all") {
         // Modus: Alle Analysen der letzten 14 Tage
         const contextData = await loadHistoricalContext();
@@ -285,13 +328,22 @@ Antworte empathisch und duze den Nutzer konsequent.
       // Zähle Chat-Nachricht
       await incrementChatCount();
 
-      // Optional: Speichere Chat-Verlauf in Firestore für spätere Analyse
-      await addDoc(collection(db, "chatMessages"), {
-        userId: auth.currentUser.uid,
-        userMessage: userText,
-        aiResponse: reply,
-        timestamp: Timestamp.now(),
-      });
+      // Speichere Chat-Nachricht in Firestore (falls chatId vorhanden)
+      if (chatId) {
+        await addDoc(collection(db, "chatMessages"), {
+          chatId: chatId,
+          userId: auth.currentUser.uid,
+          userMessage: userText,
+          aiResponse: reply,
+          timestamp: Timestamp.now(),
+        });
+
+        // Update lastMessageAt im Chat-Dokument
+        const chatRef = doc(db, "chats", chatId);
+        await updateDoc(chatRef, {
+          lastMessageAt: Timestamp.now(),
+        });
+      }
 
     } catch (err) {
       console.error("Chat-Fehler:", err);

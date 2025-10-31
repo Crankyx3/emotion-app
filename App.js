@@ -7,7 +7,7 @@ import { createStackNavigator } from "@react-navigation/stack";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
 import ChatScreen from "./screens/ChatScreen";
-import ChatSelectionScreen from "./screens/ChatSelectionScreen";
+import ChatHistoryScreen from "./screens/ChatHistoryScreen";
 import HomeScreen from "./screens/HomeScreen";
 import DailyEntryScreen from "./screens/DailyEntryScreen";
 import DailyAnalysisScreen from "./screens/DailyAnalysisScreen";
@@ -85,7 +85,7 @@ function MainTabs() {
       />
       <Tab.Screen
         name="ChatSelection"
-        component={ChatSelectionScreen}
+        component={ChatHistoryScreen}
         options={{
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubbles" size={size} color={color} />
