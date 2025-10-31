@@ -7,13 +7,15 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Modal,
+  TextInput,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../components/AuthProvider";
 import { db, auth } from "../firebaseconfig";
 import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
-import { deleteUser } from "firebase/auth";
+import { deleteUser, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import ScreenHeader from "../components/ScreenHeader";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system/legacy";
@@ -28,6 +30,9 @@ export default function SettingsScreen({ navigation }) {
   });
   const [currentStreak, setCurrentStreak] = useState(0);
   const [longestStreak, setLongestStreak] = useState(0);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [password, setPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
 
   useEffect(() => {
     loadStats();
@@ -449,20 +454,64 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
       [
         { text: "Abbrechen", style: "cancel" },
         {
-          text: "Account endgültig löschen",
+          text: "Weiter",
           style: "destructive",
-          onPress: confirmDeleteAccount,
+          onPress: () => {
+            // Zeige Passwort-Dialog für Re-Authentication
+            setPassword("");
+            setPasswordError("");
+            setShowPasswordModal(true);
+          },
         },
       ]
     );
   };
 
-  const confirmDeleteAccount = async () => {
+  const handlePasswordSubmit = async () => {
+    if (!password.trim()) {
+      setPasswordError("Bitte gib dein Passwort ein");
+      return;
+    }
+
     setLoading(true);
+    setPasswordError("");
+
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser || !currentUser.email) {
+        throw new Error("Kein Benutzer angemeldet");
+      }
+
+      // Re-Authentication durchführen
+      const credential = EmailAuthProvider.credential(currentUser.email, password);
+      await reauthenticateWithCredential(currentUser, credential);
+
+      // Schließe Modal
+      setShowPasswordModal(false);
+      setPassword("");
+
+      // Jetzt Account löschen
+      await confirmDeleteAccount();
+    } catch (error) {
+      console.error("Re-authentication error:", error);
+
+      if (error.code === "auth/wrong-password" || error.code === "auth/invalid-credential") {
+        setPasswordError("Falsches Passwort. Bitte versuche es erneut.");
+      } else if (error.code === "auth/too-many-requests") {
+        setPasswordError("Zu viele Versuche. Bitte später erneut versuchen.");
+      } else {
+        setPasswordError("Fehler bei der Anmeldung: " + error.message);
+      }
+      setLoading(false);
+    }
+  };
+
+  const confirmDeleteAccount = async () => {
     try {
       const currentUser = auth.currentUser;
       if (!currentUser) {
         Alert.alert("Fehler", "Kein Benutzer angemeldet.");
+        setLoading(false);
         return;
       }
 
@@ -509,20 +558,10 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
       );
     } catch (error) {
       console.error("Error deleting account:", error);
-
-      // Spezielle Fehlerbehandlung für Re-Authentication
-      if (error.code === "auth/requires-recent-login") {
-        Alert.alert(
-          "Erneute Anmeldung erforderlich",
-          "Aus Sicherheitsgründen musst du dich erneut anmelden, um deinen Account zu löschen.\n\nBitte melde dich ab und wieder an, dann versuche es erneut.",
-          [{ text: "OK" }]
-        );
-      } else {
-        Alert.alert(
-          "Fehler",
-          "Account konnte nicht gelöscht werden.\n\n" + error.message
-        );
-      }
+      Alert.alert(
+        "Fehler",
+        "Account konnte nicht gelöscht werden.\n\n" + error.message
+      );
     } finally {
       setLoading(false);
     }
@@ -704,6 +743,75 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
         {/* App Version */}
         <Text style={styles.versionText}>KI-Stimmungshelfer v1.0.0</Text>
       </ScrollView>
+
+      {/* Password Re-Authentication Modal */}
+      <Modal
+        visible={showPasswordModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {
+          if (!loading) {
+            setShowPasswordModal(false);
+            setPassword("");
+            setPasswordError("");
+          }
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>🔐 Passwort bestätigen</Text>
+            <Text style={styles.modalDescription}>
+              Aus Sicherheitsgründen musst du dein Passwort eingeben, um deinen Account zu löschen.
+            </Text>
+
+            <TextInput
+              style={[styles.modalInput, passwordError && styles.modalInputError]}
+              secureTextEntry
+              placeholder="Dein Passwort"
+              placeholderTextColor="#999"
+              value={password}
+              onChangeText={(text) => {
+                setPassword(text);
+                setPasswordError("");
+              }}
+              autoFocus
+              editable={!loading}
+            />
+
+            {passwordError ? (
+              <Text style={styles.modalErrorText}>{passwordError}</Text>
+            ) : null}
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalCancelButton]}
+                onPress={() => {
+                  if (!loading) {
+                    setShowPasswordModal(false);
+                    setPassword("");
+                    setPasswordError("");
+                  }
+                }}
+                disabled={loading}
+              >
+                <Text style={styles.modalCancelButtonText}>Abbrechen</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalConfirmButton, loading && styles.modalButtonDisabled]}
+                onPress={handlePasswordSubmit}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.modalConfirmButtonText}>Bestätigen</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </LinearGradient>
   );
 }
@@ -914,5 +1022,87 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#007AFF",
     opacity: 0.8,
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 24,
+    width: "85%",
+    maxWidth: 400,
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#1C1C1E",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  modalDescription: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 20,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  modalInput: {
+    borderWidth: 1.5,
+    borderColor: "#E5E5EA",
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 16,
+    backgroundColor: "#F9F9F9",
+    marginBottom: 12,
+  },
+  modalInputError: {
+    borderColor: "#ff3b30",
+  },
+  modalErrorText: {
+    color: "#ff3b30",
+    fontSize: 13,
+    marginBottom: 12,
+    fontWeight: "500",
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
+  modalButton: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  modalCancelButton: {
+    backgroundColor: "#F2F2F7",
+    marginRight: 8,
+  },
+  modalCancelButtonText: {
+    color: "#666",
+    fontWeight: "600",
+    fontSize: 15,
+  },
+  modalConfirmButton: {
+    backgroundColor: "#8B0000",
+    marginLeft: 8,
+  },
+  modalConfirmButtonText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 15,
+  },
+  modalButtonDisabled: {
+    opacity: 0.6,
   },
 });
