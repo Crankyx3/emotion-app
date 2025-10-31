@@ -48,13 +48,30 @@ export function AuthProvider({ children }) {
 
   // 🔐 Google Sign-In Erfolgshandler
   useEffect(() => {
+    console.log("🔍 Google Response:", JSON.stringify(response, null, 2));
+
     if (response?.type === "success") {
+      console.log("✅ Google Response erfolgreich!");
       const { id_token } = response.params;
-      if (!id_token) return console.error("⚠️ Kein id_token erhalten!");
+      if (!id_token) {
+        console.error("⚠️ Kein id_token erhalten!");
+        console.log("Response params:", response.params);
+        return;
+      }
+      console.log("🎫 ID Token erhalten, erstelle Credential...");
       const credential = GoogleAuthProvider.credential(id_token);
       signInWithCredential(auth, credential)
         .then((result) => console.log("✅ Google Login erfolgreich:", result.user.email))
-        .catch((error) => console.error("❌ Google Login Fehler:", error));
+        .catch((error) => {
+          console.error("❌ Google Login Fehler:", error);
+          console.error("Error code:", error.code);
+          console.error("Error message:", error.message);
+        });
+    } else if (response?.type === "error") {
+      console.error("❌ Google Auth Fehler:", response.error);
+      console.error("Error params:", response.params);
+    } else if (response?.type === "cancel") {
+      console.log("⚠️ Google Login abgebrochen");
     }
   }, [response]);
 
