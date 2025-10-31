@@ -205,7 +205,7 @@ export default function MeditationScreen({ navigation }) {
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.topRow}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="chevron-back" size={28} color="#007AFF" />
+            <Ionicons name="chevron-back" size={32} color="#007AFF" />
           </TouchableOpacity>
         </View>
 
@@ -384,14 +384,20 @@ const styles = StyleSheet.create({
     width: "100%",
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 10,
-    marginTop: 10,
+    marginBottom: 15,
+    marginTop: 25,
   },
   backButton: {
-    width: 44,
-    height: 44,
+    width: 50,
+    height: 50,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   section: {
     width: "100%",

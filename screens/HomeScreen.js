@@ -1,10 +1,136 @@
-import React from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import ScreenHeader from "../components/ScreenHeader";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { db, auth } from "../firebaseconfig";
 
 export default function HomeScreen({ navigation }) {
+  const [loading, setLoading] = useState(true);
+  const [currentStreak, setCurrentStreak] = useState(0);
+  const [longestStreak, setLongestStreak] = useState(0);
+  const [dailyAnalysisDone, setDailyAnalysisDone] = useState(false);
+  const [weeklyAnalysisDone, setWeeklyAnalysisDone] = useState(false);
+  const [daysUntilWeekly, setDaysUntilWeekly] = useState(0);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    if (!auth.currentUser) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Streak berechnen
+      const entriesQuery = query(
+        collection(db, "entries"),
+        where("userId", "==", auth.currentUser.uid)
+      );
+      const entriesSnapshot = await getDocs(entriesQuery);
+
+      const entryDates = entriesSnapshot.docs
+        .map(doc => {
+          const data = doc.data();
+          if (!data.createdAt) return null;
+          const date = data.createdAt.toDate();
+          const normalized = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+          return normalized.getTime();
+        })
+        .filter(d => d !== null);
+
+      const uniqueDates = [...new Set(entryDates)].sort((a, b) => b - a);
+
+      if (uniqueDates.length > 0) {
+        let current = 0;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayTime = today.getTime();
+
+        for (let i = 0; i < uniqueDates.length; i++) {
+          const expectedDate = todayTime - (i * 24 * 60 * 60 * 1000);
+          if (uniqueDates[i] === expectedDate) {
+            current++;
+          } else {
+            break;
+          }
+        }
+
+        let longest = 1;
+        let tempStreak = 1;
+
+        for (let i = 1; i < uniqueDates.length; i++) {
+          const diff = (uniqueDates[i - 1] - uniqueDates[i]) / (24 * 60 * 60 * 1000);
+          if (diff === 1) {
+            tempStreak++;
+            longest = Math.max(longest, tempStreak);
+          } else {
+            tempStreak = 1;
+          }
+        }
+
+        setCurrentStreak(current);
+        setLongestStreak(Math.max(longest, current));
+      }
+
+      // Tagesanalyse Check
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const todayAnalyses = entriesSnapshot.docs.filter((doc) => {
+        const data = doc.data();
+        if (!data.analysisDate) return false;
+        const analysisDate = data.analysisDate.toDate();
+        return analysisDate >= today && analysisDate < tomorrow;
+      });
+
+      setDailyAnalysisDone(todayAnalyses.length > 0);
+
+      // Wochenanalyse Check
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const weeklyQuery = query(
+        collection(db, "weeklyAnalyses"),
+        where("userId", "==", auth.currentUser.uid)
+      );
+
+      const weeklySnapshot = await getDocs(weeklyQuery);
+
+      const recentWeekly = weeklySnapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(analysis => {
+          if (!analysis.analysisDate) return false;
+          const analysisDate = analysis.analysisDate.toDate();
+          return analysisDate >= sevenDaysAgo;
+        })
+        .sort((a, b) => b.analysisDate.toMillis() - a.analysisDate.toMillis());
+
+      if (recentWeekly.length > 0) {
+        const lastWeekly = recentWeekly[0];
+        const lastDate = lastWeekly.analysisDate.toDate();
+        const now = new Date();
+        const diffTime = Math.abs(now - lastDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const daysLeft = 7 - diffDays;
+
+        setWeeklyAnalysisDone(true);
+        setDaysUntilWeekly(daysLeft > 0 ? daysLeft : 0);
+      } else {
+        setWeeklyAnalysisDone(false);
+      }
+
+    } catch (err) {
+      console.error("Fehler beim Laden der Dashboard-Daten:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
   const mainMenuItems = [
     {
       title: "Tagesdaten eintragen",
@@ -47,10 +173,67 @@ export default function HomeScreen({ navigation }) {
     },
   ];
 
+  const renderAnalysisStatus = (item) => {
+    if (item.title === "Tagesanalyse" && dailyAnalysisDone) {
+      return (
+        <View style={styles.statusBadge}>
+          <Ionicons name="checkmark-circle" size={16} color="#34a853" />
+          <Text style={styles.statusText}>Erledigt</Text>
+        </View>
+      );
+    }
+    if (item.title === "KI-Wochenanalyse" && weeklyAnalysisDone) {
+      return (
+        <View style={styles.statusBadge}>
+          <Ionicons name="time-outline" size={16} color="#fbbc05" />
+          <Text style={[styles.statusText, { color: "#fbbc05" }]}>
+            in {daysUntilWeekly}d
+          </Text>
+        </View>
+      );
+    }
+    return null;
+  };
+
+  if (loading) {
+    return (
+      <LinearGradient colors={["#EAF4FF", "#FFFFFF"]} style={styles.gradient}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+        </View>
+      </LinearGradient>
+    );
+  }
+
   return (
     <LinearGradient colors={["#EAF4FF", "#FFFFFF"]} style={styles.gradient}>
       <ScrollView contentContainerStyle={styles.container}>
         <ScreenHeader title="KI-Stimmungshelfer" subtitle="Dein persönliches Stimmungs-Dashboard" />
+
+        {/* Streak Card */}
+        {currentStreak > 0 && (
+          <View style={styles.streakCard}>
+            <View style={styles.streakContent}>
+              <View style={styles.streakMain}>
+                <Text style={styles.streakEmoji}>🔥</Text>
+                <View style={styles.streakInfo}>
+                  <Text style={styles.streakNumber}>{currentStreak}</Text>
+                  <Text style={styles.streakLabel}>
+                    {currentStreak === 1 ? "Tag" : "Tage"} Streak
+                  </Text>
+                </View>
+              </View>
+              {longestStreak > currentStreak && (
+                <View style={styles.longestBadge}>
+                  <Ionicons name="trophy" size={14} color="#FFB900" />
+                  <Text style={styles.longestText}>
+                    Rekord: {longestStreak}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
 
         {/* Haupt-Menü */}
         {mainMenuItems.map((item, index) => (
@@ -65,7 +248,8 @@ export default function HomeScreen({ navigation }) {
               <Text style={styles.cardTitle}>{item.title}</Text>
               <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={22} color="#ccc" />
+            {renderAnalysisStatus(item)}
+            <Ionicons name="chevron-forward" size={22} color="#ccc" style={{ marginLeft: 8 }} />
           </TouchableOpacity>
         ))}
 
@@ -103,6 +287,82 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 40,
     paddingHorizontal: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  streakCard: {
+    width: "100%",
+    backgroundColor: "#FFF5E5",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: "#FFD280",
+    shadowColor: "#FF9500",
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  streakContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  streakMain: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  streakEmoji: {
+    fontSize: 36,
+    marginRight: 12,
+  },
+  streakInfo: {
+    justifyContent: "center",
+  },
+  streakNumber: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#FF6B35",
+    lineHeight: 28,
+  },
+  streakLabel: {
+    fontSize: 12,
+    color: "#8B5E3C",
+    fontWeight: "600",
+  },
+  longestBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#FFD280",
+  },
+  longestText: {
+    fontSize: 11,
+    color: "#8B5E3C",
+    fontWeight: "700",
+    marginLeft: 4,
+  },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E8F5E9",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginRight: 4,
+  },
+  statusText: {
+    fontSize: 12,
+    color: "#34a853",
+    fontWeight: "600",
+    marginLeft: 4,
   },
   sectionHeader: {
     flexDirection: "row",
