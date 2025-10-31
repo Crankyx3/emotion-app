@@ -224,35 +224,49 @@ export default function HomeScreen({ navigation }) {
       <ScrollView contentContainerStyle={styles.container}>
         <ScreenHeader title="KI-Stimmungshelfer" subtitle="Dein persönliches Stimmungs-Dashboard" />
 
-        {/* Streak Card */}
-        {currentStreak > 0 && (
-          <View style={styles.streakCard}>
-            <View style={styles.streakContent}>
-              <View style={styles.streakMain}>
-                <Text style={styles.streakEmoji}>🔥</Text>
-                <View style={styles.streakInfo}>
-                  <Text style={styles.streakNumber}>{currentStreak}</Text>
-                  <Text style={styles.streakLabel}>
-                    {currentStreak === 1 ? "Tag" : "Tage"} Streak
+        {/* Streak/Welcome Card */}
+        <View style={styles.streakCard}>
+          <View style={styles.streakContent}>
+            {currentStreak > 0 ? (
+              <>
+                <View style={styles.streakMain}>
+                  <Text style={styles.streakEmoji}>🔥</Text>
+                  <View style={styles.streakInfo}>
+                    <Text style={styles.streakNumber}>{currentStreak}</Text>
+                    <Text style={styles.streakLabel}>
+                      {currentStreak === 1 ? "Tag" : "Tage"} Streak
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.streakRight}>
+                  {userName && (
+                    <Text style={styles.greetingText}>Hey {userName}! 👋</Text>
+                  )}
+                  {longestStreak > currentStreak && (
+                    <View style={styles.longestBadge}>
+                      <Ionicons name="trophy" size={14} color="#FFB900" />
+                      <Text style={styles.longestText}>
+                        Rekord: {longestStreak}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </>
+            ) : (
+              <View style={styles.welcomeContent}>
+                <Text style={styles.welcomeEmoji}>👋</Text>
+                <View style={styles.welcomeInfo}>
+                  <Text style={styles.welcomeTitle}>
+                    {userName ? `Hey ${userName}!` : "Willkommen!"}
+                  </Text>
+                  <Text style={styles.welcomeSubtitle}>
+                    Erstelle deinen ersten Eintrag um eine Streak zu starten
                   </Text>
                 </View>
               </View>
-              <View style={styles.streakRight}>
-                {userName && (
-                  <Text style={styles.greetingText}>Hey {userName}! 👋</Text>
-                )}
-                {longestStreak > currentStreak && (
-                  <View style={styles.longestBadge}>
-                    <Ionicons name="trophy" size={14} color="#FFB900" />
-                    <Text style={styles.longestText}>
-                      Rekord: {longestStreak}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </View>
+            )}
           </View>
-        )}
+        </View>
 
         {/* Haupt-Menü */}
         {mainMenuItems.map((item, index) => (
@@ -393,6 +407,31 @@ const styles = StyleSheet.create({
     color: "#8B5E3C",
     fontWeight: "700",
     marginLeft: 4,
+  },
+  // Welcome Card Styles (wenn keine Streak vorhanden)
+  welcomeContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  welcomeEmoji: {
+    fontSize: 40,
+    marginRight: 16,
+  },
+  welcomeInfo: {
+    flex: 1,
+  },
+  welcomeTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#FF6B35",
+    marginBottom: 4,
+  },
+  welcomeSubtitle: {
+    fontSize: 13,
+    color: "#8B5E3C",
+    fontWeight: "500",
+    lineHeight: 18,
   },
   statusBadge: {
     flexDirection: "row",
