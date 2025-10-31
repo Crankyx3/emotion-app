@@ -23,13 +23,10 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [initializing, setInitializing] = useState(true);
 
-const [request, response, promptAsync] = Google.useAuthRequest({
-  webClientId: "857177005519-ildp0badmtte1hmcavqbiue95fu6jqjr.apps.googleusercontent.com",
-  iosClientId: "857177005519-ildp0badmtte1hmcavqbiue95fu6jqjr.apps.googleusercontent.com",
-  androidClientId: "857177005519-ildp0badmtte1hmcavqbiue95fu6jqjr.apps.googleusercontent.com",
-  redirectUri: AuthSession.makeRedirectUri({ useProxy: true }),
-  responseType: "id_token",
-});
+  // Google OAuth Konfiguration
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    expoClientId: "857177005519-ildp0badmtte1hmcavqbiue95fu6jqjr.apps.googleusercontent.com",
+  });
 
 
   // 🧠 Firebase Auth-State Listener
