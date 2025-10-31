@@ -17,7 +17,7 @@ import ScreenHeader from "../components/ScreenHeader";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system/legacy";
 
-export default function SettingsScreen() {
+export default function SettingsScreen({ navigation }) {
   const { user, signOut } = useAuth();
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({
@@ -438,6 +438,12 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
   return (
     <LinearGradient colors={["#EAF4FF", "#FFFFFF"]} style={styles.gradient}>
       <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.topRow}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={32} color="#007AFF" />
+          </TouchableOpacity>
+        </View>
+
         <ScreenHeader
           title="Einstellungen"
           subtitle="Account & Datenverwaltung"
@@ -590,6 +596,25 @@ const styles = StyleSheet.create({
   container: {
     paddingVertical: 40,
     paddingHorizontal: 20,
+  },
+  topRow: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 15,
+    marginTop: 25,
+  },
+  backButton: {
+    width: 50,
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   section: {
     marginBottom: 24,
