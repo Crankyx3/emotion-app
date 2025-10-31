@@ -79,7 +79,18 @@ export function AuthProvider({ children }) {
   const signIn = (email, password) => signInWithEmailAndPassword(auth, email, password);
   const signUp = (email, password) => createUserWithEmailAndPassword(auth, email, password);
   const handleSignOut = () => signOut(auth);
-  const signInWithGoogle = () => promptAsync();
+  const signInWithGoogle = async () => {
+    console.log("🚀 Google Login Button gedrückt");
+    console.log("📋 Request verfügbar:", !!request);
+    try {
+      const result = await promptAsync();
+      console.log("📥 PromptAsync Ergebnis:", JSON.stringify(result, null, 2));
+      return result;
+    } catch (error) {
+      console.error("❌ PromptAsync Fehler:", error);
+      throw error;
+    }
+  };
 
   // 🧩 Kontext-Provider
   return (
