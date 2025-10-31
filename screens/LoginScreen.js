@@ -19,7 +19,7 @@ import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "../firebaseconfig";
 
 export default function LoginScreen() {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, signInWithGoogle, googleLoading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -263,6 +263,29 @@ export default function LoginScreen() {
                 )}
               </TouchableOpacity>
 
+              {/* Divider */}
+              <View style={styles.dividerContainer}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>oder</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              {/* Google Sign-In Button */}
+              <TouchableOpacity
+                style={[
+                  styles.googleButton,
+                  googleLoading && styles.buttonDisabled,
+                ]}
+                onPress={signInWithGoogle}
+                disabled={googleLoading || loading}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="logo-google" size={20} color="#DB4437" />
+                <Text style={styles.googleButtonText}>
+                  Mit Google anmelden
+                </Text>
+              </TouchableOpacity>
+
               {/* Mode Switch */}
               <View style={styles.switchContainer}>
                 <Text style={styles.switchLabel}>
@@ -431,5 +454,41 @@ const styles = StyleSheet.create({
     color: "#007AFF",
     fontWeight: "600",
     fontSize: 14,
+  },
+  dividerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#E5E5EA",
+  },
+  dividerText: {
+    marginHorizontal: 12,
+    color: "#8E8E93",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  googleButton: {
+    backgroundColor: "#fff",
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "#E5E5EA",
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  googleButtonText: {
+    color: "#1C1C1E",
+    fontWeight: "600",
+    fontSize: 16,
+    marginLeft: 10,
   },
 });
