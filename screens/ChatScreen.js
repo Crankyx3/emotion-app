@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { getAiResponse } from "../openaiService";
+import { getAiResponse, getAiResponseStreaming } from "../openaiService";
 import { useNavigation } from "@react-navigation/native";
 import { collection, getDocs, query, where, addDoc, Timestamp } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
@@ -81,9 +81,9 @@ export default function ChatScreen({ route }) {
         if (contextData && contextData.entriesCount > 0) {
           // Erstelle Zusammenfassung mit KI
           const summaryPrompt = `
-Du bist ein psychologischer Therapeut. Erstelle eine prägnante Zusammenfassung der letzten 14 Tage dieser Person.
+Du bist der "Stimmungshelfer", ein einfühlsamer psychologischer Begleiter. Sprich den Nutzer mit "Du" an.
 
-📊 VERFÜGBARE DATEN:
+📊 VERFÜGBARE DATEN (letzte 14 Tage):
 **${contextData.entriesCount} Tageseinträge:**
 ${contextData.entriesSummary}
 
@@ -93,9 +93,9 @@ ${contextData.analysesSummary}
 Erstelle eine kurze Zusammenfassung (3-4 Sätze) die:
 1. Die allgemeine Stimmungslage beschreibt
 2. Wichtige Muster oder Trends nennt
-3. Mit einer Frage endet, um das Gespräch zu öffnen
+3. Mit einer persönlichen Frage endet, um das Gespräch zu öffnen
 
-Sei empathisch und einladend.
+Sei empathisch, einladend und duze den Nutzer durchgehend.
 `;
 
           const summary = await getAiResponse("Zusammenfassung 14 Tage", summaryPrompt);
@@ -210,7 +210,7 @@ Sei empathisch und einladend.
       if (chatMode === "all") {
         // Modus: Alle 14 Tage
         prompt = `
-Du bist ein einfühlsamer psychologischer Therapeut im Gespräch mit einem Klienten.
+Du bist der "Stimmungshelfer", ein einfühlsamer psychologischer Begleiter. Sprich den Nutzer IMMER mit "Du" an (niemals "Sie").
 
 📋 VERFÜGBARER KONTEXT (letzte 14 Tage):
 
@@ -221,6 +221,7 @@ ${historicalContext?.entriesSummary || "Keine Einträge verfügbar."}
 ${historicalContext?.analysesSummary || "Keine früheren Analysen verfügbar."}
 
 🎯 GESPRÄCHSFÜHRUNG:
+- Duze den Nutzer durchgehend und persönlich
 - Beziehe dich auf Muster aus den vergangenen 14 Tagen
 - Erkenne Zusammenhänge zwischen verschiedenen Einträgen
 - Stelle hilfreiche Reflexionsfragen
@@ -231,13 +232,13 @@ ${historicalContext?.analysesSummary || "Keine früheren Analysen verfügbar."}
 💬 AKTUELLE NACHRICHT DES NUTZERS:
 "${userText}"
 
-Antworte empathisch, therapeutisch fundiert und auf den gesamten Kontext bezogen.
+Antworte empathisch, therapeutisch fundiert und duze den Nutzer konsequent.
 `;
       } else {
         // Modus: Einzelne Analyse
         const analysisTypeText = type === "weekly" ? "Wochenanalyse" : "Tagesanalyse";
         prompt = `
-Du bist ein einfühlsamer psychologischer Therapeut im Gespräch mit einem Klienten.
+Du bist der "Stimmungshelfer", ein einfühlsamer psychologischer Begleiter. Sprich den Nutzer IMMER mit "Du" an (niemals "Sie").
 
 📋 KONTEXT:
 Der Nutzer hat eine ${analysisTypeText} vom ${date} ausgewählt und spricht darüber.
@@ -246,6 +247,7 @@ Der Nutzer hat eine ${analysisTypeText} vom ${date} ausgewählt und spricht dar�
 ${context || "Keine Analyse verfügbar."}
 
 🎯 GESPRÄCHSFÜHRUNG:
+- Duze den Nutzer durchgehend und persönlich
 - Beziehe dich auf diese SPEZIFISCHE Analyse
 - Hilf beim Vertiefen der Erkenntnisse
 - Stelle Reflexionsfragen zu den genannten Themen
@@ -256,12 +258,29 @@ ${context || "Keine Analyse verfügbar."}
 💬 AKTUELLE NACHRICHT DES NUTZERS:
 "${userText}"
 
-Antworte empathisch und beziehe dich konkret auf die Analyse.
+Antworte empathisch und duze den Nutzer konsequent.
 `;
       }
 
-      const reply = await getAiResponse("Therapeutischer Chat", prompt);
-      setMessages((prev) => [...prev, { sender: "ai", text: reply }]);
+      // Füge leere AI-Nachricht hinzu für Streaming
+      const aiMessageIndex = messages.length + 1;
+      setMessages((prev) => [...prev, { sender: "ai", text: "", streaming: true }]);
+
+      // Streaming mit Live-Update
+      const reply = await getAiResponseStreaming("Therapeutischer Chat", prompt, (currentText) => {
+        setMessages((prev) => {
+          const newMessages = [...prev];
+          newMessages[aiMessageIndex] = { sender: "ai", text: currentText, streaming: true };
+          return newMessages;
+        });
+      });
+
+      // Markiere als fertig (entferne streaming Flag)
+      setMessages((prev) => {
+        const newMessages = [...prev];
+        newMessages[aiMessageIndex] = { sender: "ai", text: reply, streaming: false };
+        return newMessages;
+      });
 
       // Zähle Chat-Nachricht
       await incrementChatCount();
@@ -355,6 +374,7 @@ Antworte empathisch und beziehe dich konkret auf die Analyse.
                     ]}
                   >
                     {msg.text}
+                    {msg.streaming && <Text style={styles.cursor}>▊</Text>}
                   </Text>
                 </View>
               </View>
@@ -478,6 +498,11 @@ const styles = StyleSheet.create({
   msgText: { fontSize: 15, lineHeight: 20 },
   userText: { color: "#fff" },
   aiText: { color: "#222" },
+  cursor: {
+    color: "#007AFF",
+    fontWeight: "700",
+    fontSize: 16,
+  },
   inputContainer: {
     flexDirection: "row",
     alignItems: "flex-end",
