@@ -209,13 +209,9 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
 `;
       const aiReply = await getAiResponse(selectedEmotion, fullInput);
 
-      // Setze Default-Werte für Kompatibilität mit bestehendem System
       const docRef = await addDoc(collection(db, "entries"), {
         userId: auth.currentUser?.uid,
         emotion: selectedEmotion,
-        sleep: 7, // Default-Werte für Kompatibilität
-        energy: 7,
-        selfWorth: 7,
         feelScore: feelScore,
         theme: text.substring(0, 50), // Erste 50 Zeichen als "Thema"
         text,
@@ -240,9 +236,6 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
             emotion: selectedEmotion,
             text,
             theme: text.substring(0, 50),
-            sleep: 7,
-            energy: 7,
-            selfWorth: 7,
             feelScore: feelScore,
           });
         }, 220);

@@ -36,9 +36,6 @@ export default function DailyAnalysisScreen({ route, navigation }) {
 
   // Lokale States für alle Werte (aus route.params oder Firestore)
   const [feelScore, setFeelScore] = useState(paramsData.feelScore || 0);
-  const [sleep, setSleep] = useState(paramsData.sleep || 0);
-  const [energy, setEnergy] = useState(paramsData.energy || 0);
-  const [selfWorth, setSelfWorth] = useState(paramsData.selfWorth || 0);
   const [emotion, setEmotion] = useState(paramsData.emotion || null);
   const [text, setText] = useState(paramsData.text || "");
   const [theme, setTheme] = useState(paramsData.theme || "");
@@ -73,9 +70,6 @@ export default function DailyAnalysisScreen({ route, navigation }) {
   useEffect(() => {
     if (paramsData.feelScore != null) {
       setFeelScore(paramsData.feelScore);
-      setSleep(paramsData.sleep);
-      setEnergy(paramsData.energy);
-      setSelfWorth(paramsData.selfWorth);
       setEmotion(paramsData.emotion);
       setText(paramsData.text);
       setTheme(paramsData.theme);
@@ -84,9 +78,6 @@ export default function DailyAnalysisScreen({ route, navigation }) {
       setTodayEntry({
         feelScore: paramsData.feelScore,
         emotion: paramsData.emotion,
-        sleep: paramsData.sleep,
-        energy: paramsData.energy,
-        selfWorth: paramsData.selfWorth,
         text: paramsData.text,
         theme: paramsData.theme,
       });
@@ -160,9 +151,6 @@ export default function DailyAnalysisScreen({ route, navigation }) {
 
         // Lade alle Werte aus Firestore
         if (data.feelScore != null) setFeelScore(data.feelScore);
-        if (data.sleep != null) setSleep(data.sleep);
-        if (data.energy != null) setEnergy(data.energy);
-        if (data.selfWorth != null) setSelfWorth(data.selfWorth);
         if (data.emotion) setEmotion(data.emotion);
         if (data.text) setText(data.text);
         if (data.theme) setTheme(data.theme);
@@ -176,9 +164,6 @@ export default function DailyAnalysisScreen({ route, navigation }) {
 
         // Lade Werte aus Eintrag
         if (data.feelScore != null) setFeelScore(data.feelScore);
-        if (data.sleep != null) setSleep(data.sleep);
-        if (data.energy != null) setEnergy(data.energy);
-        if (data.selfWorth != null) setSelfWorth(data.selfWorth);
         if (data.emotion) setEmotion(data.emotion);
         if (data.text) setText(data.text);
         if (data.theme) setTheme(data.theme);
@@ -297,15 +282,12 @@ Analysiere den psychischen Zustand dieser Person basierend auf diesen Tagesdaten
 📊 MESSWERTE:
 • Emotion: ${emotion}
 • Wohlfühlscore: ${feelScore}/99
-• Schlafqualität: ${sleep}/10
-• Energielevel: ${energy}/10
-• Selbstwertgefühl: ${selfWorth}/10
 
 📝 THEMA & PERSÖNLICHE BESCHREIBUNG:
 ${theme ? `Thema: ${theme}` : 'Kein Thema angegeben'}
 ${text ? `\n"${text}"\n` : '\nKeine Beschreibung angegeben\n'}
 
-WICHTIG: Gehe in deiner Analyse DIREKT auf die persönliche Beschreibung ein. Beziehe dich auf konkrete Situationen, Gefühle oder Gedanken, die erwähnt wurden. Falls keine Beschreibung vorhanden ist, konzentriere dich auf die Messwerte.
+WICHTIG: Gehe in deiner Analyse DIREKT auf die persönliche Beschreibung ein. Beziehe dich auf konkrete Situationen, Gefühle oder Gedanken, die erwähnt wurden. Falls keine Beschreibung vorhanden ist, konzentriere dich auf die Emotion und den Wohlfühlscore.
 
 Gib eine empathische, individuelle psychologische Einschätzung (2-4 Sätze), die konkret auf ${text ? 'die beschriebene Situation' : 'die aktuellen Messwerte'} eingeht.
 
@@ -375,9 +357,6 @@ Beispiele für gute Vorschläge:
           userId: auth.currentUser?.uid,
           emotion,
           feelScore,
-          sleep,
-          energy,
-          selfWorth,
           theme,
           text,
           analysis: reply,
@@ -392,9 +371,6 @@ Beispiele für gute Vorschläge:
       setTodayAnalysis({
         emotion,
         feelScore,
-        sleep,
-        energy,
-        selfWorth,
         theme,
         text,
         analysis: reply,
