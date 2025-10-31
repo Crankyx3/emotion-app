@@ -7,6 +7,7 @@ import { createStackNavigator } from "@react-navigation/stack";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
 import ChatScreen from "./screens/ChatScreen";
+import ChatSelectionScreen from "./screens/ChatSelectionScreen";
 import HomeScreen from "./screens/HomeScreen";
 import DailyEntryScreen from "./screens/DailyEntryScreen";
 import DailyAnalysisScreen from "./screens/DailyAnalysisScreen";
@@ -80,6 +81,16 @@ function MainTabs() {
             <MaterialCommunityIcons name="brain" size={size} color={color} />
           ),
           tabBarLabel: "Wochenanalyse"
+        }}
+      />
+      <Tab.Screen
+        name="ChatSelection"
+        component={ChatSelectionScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="chatbubbles" size={size} color={color} />
+          ),
+          tabBarLabel: "Chat"
         }}
       />
     </Tab.Navigator>

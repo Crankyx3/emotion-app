@@ -703,15 +703,6 @@ Die Vorschläge sollen:
                   ))}
                 </View>
               )}
-
-              {/* Chat-Button: öffnet den Reflexions-Chat mit der Analyse als Kontext */}
-              <TouchableOpacity
-                style={styles.chatButton}
-                onPress={() => navigation.navigate("Chat", { context: aiText })}
-              >
-                <Ionicons name="chatbubble-ellipses-outline" size={20} color="#fff" />
-                <Text style={styles.chatButtonText}>Reflexions-Chat starten</Text>
-              </TouchableOpacity>
             </View>
           )}
         </ScrollView>
@@ -1020,26 +1011,6 @@ const styles = StyleSheet.create({
     color: "#34a853",
     marginLeft: 6,
     fontWeight: "600",
-  },
-  chatButton: {
-    backgroundColor: "#007AFF",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    marginTop: 16,
-    shadowColor: "#007AFF",
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  chatButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-    marginLeft: 8,
   },
   suggestionsSection: {
     marginTop: 24,

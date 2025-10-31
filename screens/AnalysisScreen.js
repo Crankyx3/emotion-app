@@ -514,17 +514,6 @@ STRUKTUR DEINER ANTWORT:
                 {expanded ? "Weniger anzeigen ↑" : "Mehr anzeigen ↓"}
               </Text>
             </TouchableOpacity>
-
-            {/* Chat-Button: öffnet den Reflexions-Chat mit der KI-Analyse als Kontext */}
-            <TouchableOpacity
-              style={[styles.button, { marginTop: 14 }]}
-              onPress={() => navigation.navigate("Chat", { context: aiText })}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
-                <Ionicons name="chatbubble-ellipses-outline" size={18} color="#fff" />
-                <Text style={[styles.buttonText, { marginLeft: 10 }]}>Reflexions-Chat starten</Text>
-              </View>
-            </TouchableOpacity>
           </View>
         )}
 
