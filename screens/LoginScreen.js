@@ -22,6 +22,7 @@ export default function LoginScreen() {
   const { signIn, signUp, signInWithGoogle, googleLoading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState("login"); // 'login' | 'signup'
   const [showPassword, setShowPassword] = useState(false);
@@ -63,6 +64,12 @@ export default function LoginScreen() {
       return;
     }
 
+    // Name validation für Registrierung
+    if (mode === "signup" && !name.trim()) {
+      setError("Bitte gib deinen Namen ein.");
+      return;
+    }
+
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
@@ -81,10 +88,10 @@ export default function LoginScreen() {
       if (mode === "login") {
         await signIn(email.trim(), password);
       } else {
-        await signUp(email.trim(), password);
+        await signUp(email.trim(), password, name.trim());
         Alert.alert(
           "Erfolg! 🎉",
-          "Dein Account wurde erstellt. Du bist jetzt angemeldet!"
+          `Willkommen ${name.trim()}! Dein Account wurde erstellt.`
         );
       }
     } catch (err) {
@@ -177,8 +184,34 @@ export default function LoginScreen() {
                 </View>
               ) : null}
 
+              {/* Name Input (nur bei Registrierung) */}
+              {mode === "signup" && (
+                <>
+                  <Text style={styles.label}>Dein Name</Text>
+                  <View style={styles.inputContainer}>
+                    <Ionicons
+                      name="person-outline"
+                      size={20}
+                      color="#8E8E93"
+                      style={styles.inputIcon}
+                    />
+                    <TextInput
+                      style={styles.input}
+                      autoCapitalize="words"
+                      value={name}
+                      onChangeText={(text) => {
+                        setName(text);
+                        setError("");
+                      }}
+                      placeholder="z.B. Finn"
+                      placeholderTextColor="#C7C7CC"
+                    />
+                  </View>
+                </>
+              )}
+
               {/* Email Input */}
-              <Text style={styles.label}>E-Mail</Text>
+              <Text style={[styles.label, mode === "signup" && { marginTop: 16 }]}>E-Mail</Text>
               <View style={styles.inputContainer}>
                 <Ionicons
                   name="mail-outline"

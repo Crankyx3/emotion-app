@@ -7,7 +7,8 @@ import {
   GoogleAuthProvider,
   signInWithCredential,
 } from "firebase/auth";
-import { auth } from "../firebaseconfig";
+import { auth, db } from "../firebaseconfig";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 import * as AuthSession from "expo-auth-session";
@@ -25,6 +26,7 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [userName, setUserName] = useState(null);
   const [initializing, setInitializing] = useState(true);
 
   // Google OAuth Konfiguration
@@ -39,8 +41,23 @@ export function AuthProvider({ children }) {
 
   // 🧠 Firebase Auth-State Listener
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
+    const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
+
+      // Lade den Namen des Users aus Firestore
+      if (u) {
+        try {
+          const userDoc = await getDoc(doc(db, "users", u.uid));
+          if (userDoc.exists()) {
+            setUserName(userDoc.data().name);
+          }
+        } catch (error) {
+          console.error("Fehler beim Laden des Namens:", error);
+        }
+      } else {
+        setUserName(null);
+      }
+
       setInitializing(false);
     });
     return unsub;
@@ -77,7 +94,21 @@ export function AuthProvider({ children }) {
 
   // 📦 Auth-Funktionen
   const signIn = (email, password) => signInWithEmailAndPassword(auth, email, password);
-  const signUp = (email, password) => createUserWithEmailAndPassword(auth, email, password);
+
+  const signUp = async (email, password, name) => {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+
+    // Speichere den Namen in Firestore
+    await setDoc(doc(db, "users", userCredential.user.uid), {
+      name: name,
+      email: email,
+      createdAt: new Date().toISOString(),
+    });
+
+    setUserName(name);
+    return userCredential;
+  };
+
   const handleSignOut = () => signOut(auth);
   const signInWithGoogle = async () => {
     console.log("🚀 Google Login Button gedrückt");
@@ -97,6 +128,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider
       value={{
         user,
+        userName,
         initializing,
         signIn,
         signUp,

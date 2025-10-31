@@ -5,8 +5,10 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import ScreenHeader from "../components/ScreenHeader";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
+import { useAuth } from "../components/AuthProvider";
 
 export default function HomeScreen({ navigation }) {
+  const { userName } = useAuth();
   const [loading, setLoading] = useState(true);
   const [currentStreak, setCurrentStreak] = useState(0);
   const [longestStreak, setLongestStreak] = useState(0);
@@ -235,14 +237,19 @@ export default function HomeScreen({ navigation }) {
                   </Text>
                 </View>
               </View>
-              {longestStreak > currentStreak && (
-                <View style={styles.longestBadge}>
-                  <Ionicons name="trophy" size={14} color="#FFB900" />
-                  <Text style={styles.longestText}>
-                    Rekord: {longestStreak}
-                  </Text>
-                </View>
-              )}
+              <View style={styles.streakRight}>
+                {userName && (
+                  <Text style={styles.greetingText}>Hey {userName}! 👋</Text>
+                )}
+                {longestStreak > currentStreak && (
+                  <View style={styles.longestBadge}>
+                    <Ionicons name="trophy" size={14} color="#FFB900" />
+                    <Text style={styles.longestText}>
+                      Rekord: {longestStreak}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </View>
           </View>
         )}
@@ -360,6 +367,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#8B5E3C",
     fontWeight: "600",
+  },
+  streakRight: {
+    alignItems: "flex-end",
+    gap: 8,
+  },
+  greetingText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#FF6B35",
+    marginBottom: 4,
   },
   longestBadge: {
     flexDirection: "row",

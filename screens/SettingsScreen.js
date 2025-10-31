@@ -11,8 +11,9 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../components/AuthProvider";
-import { db } from "../firebaseconfig";
-import { collection, query, where, getDocs, deleteDoc } from "firebase/firestore";
+import { db, auth } from "../firebaseconfig";
+import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { deleteUser } from "firebase/auth";
 import ScreenHeader from "../components/ScreenHeader";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system/legacy";
@@ -441,6 +442,92 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
     ]);
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "🚨 Account unwiderruflich löschen?",
+      "Diese Aktion kann NICHT rückgängig gemacht werden!\n\nFolgende Daten werden PERMANENT gelöscht:\n• Dein gesamter Account\n• Alle Tageseinträge\n• Alle Analysen\n• Alle Chat-Verläufe\n• Alle persönlichen Daten\n\nDu kannst dich danach NICHT mehr mit dieser E-Mail anmelden!",
+      [
+        { text: "Abbrechen", style: "cancel" },
+        {
+          text: "Account endgültig löschen",
+          style: "destructive",
+          onPress: confirmDeleteAccount,
+        },
+      ]
+    );
+  };
+
+  const confirmDeleteAccount = async () => {
+    setLoading(true);
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        Alert.alert("Fehler", "Kein Benutzer angemeldet.");
+        return;
+      }
+
+      // 1. Lösche alle Firestore-Daten
+      const deletePromises = [];
+
+      // Entries
+      const entriesSnap = await getDocs(
+        query(collection(db, "entries"), where("userId", "==", currentUser.uid))
+      );
+      deletePromises.push(...entriesSnap.docs.map(d => deleteDoc(d.ref)));
+
+      // Weekly Analyses
+      const weeklySnap = await getDocs(
+        query(collection(db, "weeklyAnalyses"), where("userId", "==", currentUser.uid))
+      );
+      deletePromises.push(...weeklySnap.docs.map(d => deleteDoc(d.ref)));
+
+      // Chats
+      const chatsSnap = await getDocs(
+        query(collection(db, "chats"), where("userId", "==", currentUser.uid))
+      );
+      deletePromises.push(...chatsSnap.docs.map(d => deleteDoc(d.ref)));
+
+      // Chat Messages
+      const messagesSnap = await getDocs(
+        query(collection(db, "chatMessages"), where("userId", "==", currentUser.uid))
+      );
+      deletePromises.push(...messagesSnap.docs.map(d => deleteDoc(d.ref)));
+
+      // User Profile
+      deletePromises.push(deleteDoc(doc(db, "users", currentUser.uid)));
+
+      // Lösche alle Firestore-Daten parallel
+      await Promise.all(deletePromises);
+
+      // 2. Lösche Firebase Auth Account
+      await deleteUser(currentUser);
+
+      Alert.alert(
+        "✅ Account gelöscht",
+        "Dein Account und alle Daten wurden vollständig entfernt. Auf Wiedersehen!",
+        [{ text: "OK" }]
+      );
+    } catch (error) {
+      console.error("Error deleting account:", error);
+
+      // Spezielle Fehlerbehandlung für Re-Authentication
+      if (error.code === "auth/requires-recent-login") {
+        Alert.alert(
+          "Erneute Anmeldung erforderlich",
+          "Aus Sicherheitsgründen musst du dich erneut anmelden, um deinen Account zu löschen.\n\nBitte melde dich ab und wieder an, dann versuche es erneut.",
+          [{ text: "OK" }]
+        );
+      } else {
+        Alert.alert(
+          "Fehler",
+          "Account konnte nicht gelöscht werden.\n\n" + error.message
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const formatDate = (timestamp) => {
     if (!timestamp) return "Unbekannt";
     const date = new Date(timestamp);
@@ -598,6 +685,22 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
           <Text style={styles.logoutButtonText}>Abmelden</Text>
         </TouchableOpacity>
 
+        {/* Account Löschen */}
+        <TouchableOpacity
+          style={styles.deleteAccountButton}
+          onPress={handleDeleteAccount}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <Ionicons name="trash-bin-outline" size={24} color="#fff" />
+              <Text style={styles.deleteAccountButtonText}>Account unwiderruflich löschen</Text>
+            </>
+          )}
+        </TouchableOpacity>
+
         {/* App Version */}
         <Text style={styles.versionText}>KI-Stimmungshelfer v1.0.0</Text>
       </ScrollView>
@@ -747,6 +850,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: "#007AFF",
+    marginLeft: 8,
+  },
+  deleteAccountButton: {
+    backgroundColor: "#8B0000",
+    borderRadius: 16,
+    padding: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 12,
+    shadowColor: "#8B0000",
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  deleteAccountButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#fff",
     marginLeft: 8,
   },
   versionText: {
