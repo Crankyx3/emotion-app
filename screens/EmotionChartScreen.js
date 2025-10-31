@@ -177,18 +177,24 @@ export default function EmotionChartScreen({ navigation }) {
       }
 
       const prompt = `
-Analysiere den psychischen Zustand basierend auf diesen Tagesdaten:
+Du bist ein einfühlsamer psychologischer Berater. Gib eine kurze, aber tiefgehende Analyse dieses Tageseintrags.
 
 📊 MESSWERTE:
 • Emotion: ${emotion}
 • Wohlfühlscore: ${feelScore}/99
 
-📝 THEMA & PERSÖNLICHE BESCHREIBUNG:
-${theme ? `Thema: ${theme}` : 'Kein Thema angegeben'}
-${text ? `\n"${text}"\n` : '\nKeine Beschreibung angegeben\n'}
-${gratitude ? `\n💚 Dankbarkeit: ${gratitude}\n` : ''}
+📝 WAS DIE PERSON BESCHRIEBEN HAT:
+${theme ? `Thema: "${theme}"` : 'Kein Thema'}
+${text ? `Beschreibung: "${text}"` : 'Keine Beschreibung'}
+${gratitude ? `Dankbarkeit: "${gratitude}"` : ''}
 
-Gib eine empathische, kurze psychologische Einschätzung mit einem hilfreichen Ratschlag.
+🎯 AUFGABE:
+Gib eine präzise psychologische Einschätzung (2-3 Sätze), die:
+1. DIREKT auf konkrete Worte/Situationen aus dem Text eingeht
+2. Ein psychologisches Muster oder Zusammenhang erklärt
+3. Eine hilfreiche Perspektive oder einen konkreten Ratschlag bietet
+
+Sei empathisch, validierend und spezifisch. Nutze psychologische Konzepte (CBT, ACT, Achtsamkeit).
 `;
 
       const reply = await getAiResponse("psychologische Tagesanalyse", prompt);

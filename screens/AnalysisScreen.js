@@ -249,23 +249,55 @@ export default function AnalysisScreen() {
         .join("\n\n");
 
       const prompt = `
-Analysiere die psychologische Entwicklung dieser Woche basierend auf folgenden Daten:
+Du bist ein psychologischer Therapeut, der eine wöchentliche Verlaufsanalyse durchführt.
 
-📊 DURCHSCHNITTSWERTE:
+📊 WOCHENDATEN:
 • Durchschnittlicher Wohlfühlscore: ${avg.toFixed(1)} / 99
+• Anzahl Einträge: ${entries.length} Tage
 
-📅 TÄGLICHE EINTRÄGE MIT PERSÖNLICHEN BESCHREIBUNGEN:
+📅 DETAILLIERTE EINTRÄGE DIESER WOCHE:
 ${detailedSummary}
 
-WICHTIG: Gehe in deiner Wochenanalyse auf die KONKRETEN THEMEN und BESCHREIBUNGEN der Person ein. Erkenne Muster in den beschriebenen Situationen und Gedanken. Beziehe dich auf wiederkehrende Themen oder Veränderungen im Wochenverlauf.
+🔍 DEINE AUFGABE - TIEFENANALYSE:
 
-Bitte gib eine strukturierte, empathische Analyse mit:
-1️⃣ Allgemeine Stimmung der Woche (beziehe dich auf konkrete Themen, die erwähnt wurden)
-2️⃣ Entwicklung (positiv, stabil, rückläufig) - erkenne Muster in den Beschreibungen
-3️⃣ Auffällige emotionale Trends und wiederkehrende Themen
-4️⃣ Individueller psychologischer Rat für nächste Woche basierend auf den konkreten Themen
+1. **Muster-Erkennung** (Was wiederholt sich?):
+   - Welche Themen, Situationen oder Gedanken tauchen mehrfach auf?
+   - Gibt es wiederkehrende Trigger für positive/negative Emotionen?
+   - Welche Bewältigungsstrategien nutzt die Person?
+   - Erkenne Zusammenhänge zwischen Ereignissen und Gefühlen
 
-Beende mit einem einzelnen Wort, das die Stimmung beschreibt: POSITIV, NEUTRAL oder NEGATIV.
+2. **Psychologische Dynamiken** (Was passiert unter der Oberfläche?):
+   - Welche kognitiven Muster zeigen sich? (z.B. Katastrophisieren, Schwarz-Weiß-Denken, Übergeneralisierung)
+   - Wie reguliert die Person ihre Emotionen?
+   - Gibt es Hinweise auf Vermeidungsverhalten oder Prokrastination?
+   - Was sind die zugrundeliegenden Bedürfnisse und Werte?
+
+3. **Entwicklung im Wochenverlauf**:
+   - Wie hat sich die Stimmung von Anfang bis Ende der Woche entwickelt?
+   - Gab es Wendepunkte? Was könnte diese ausgelöst haben?
+   - Welche Fortschritte oder Rückschritte sind erkennbar?
+
+4. **Individuelle, konkrete Empfehlungen**:
+   Basierend auf den erkannten Mustern: Was sollte die Person nächste Woche KONKRET tun?
+   - Spezifische Verhaltensänderungen
+   - Kognitive Umstrukturierung (bei negativen Denkmustern)
+   - Ressourcen-Aktivierung (Stärken nutzen)
+   - Experimentier-Vorschläge ("Probiere diese Woche...")
+
+STRUKTUR DEINER ANTWORT:
+**🌊 Wochenüberblick**
+[2-3 Sätze: Gesamteindruck der Woche mit Bezug auf konkrete Themen/Ereignisse]
+
+**🔄 Erkannte Muster**
+[3-4 Sätze: Wiederkehrende Themen, kognitive Muster, emotionale Dynamiken]
+
+**📈 Entwicklung & Fortschritte**
+[2-3 Sätze: Was hat sich verändert? Positive Tendenzen? Herausforderungen?]
+
+**💡 Empfehlungen für nächste Woche**
+[3-4 konkrete, umsetzbare Vorschläge basierend auf den erkannten Mustern]
+
+**Abschluss:** Beende mit einem einzelnen Wort: POSITIV, NEUTRAL oder NEGATIV.
 `;
 
       const reply = await getAiResponse("psychologische Wochenanalyse", prompt);

@@ -277,31 +277,48 @@ export default function DailyAnalysisScreen({ route, navigation }) {
 
     try {
       const prompt = `
-Analysiere den psychischen Zustand dieser Person basierend auf diesen Tagesdaten:
+Du bist ein einfühlsamer psychologischer Berater. Analysiere den aktuellen emotionalen Zustand dieser Person.
 
-📊 MESSWERTE:
+📊 AKTUELLE MESSWERTE:
 • Emotion: ${emotion}
-• Wohlfühlscore: ${feelScore}/99
+• Wohlfühlscore: ${feelScore}/99 (0=sehr schlecht, 99=ausgezeichnet)
 
-📝 THEMA & PERSÖNLICHE BESCHREIBUNG:
-${theme ? `Thema: ${theme}` : 'Kein Thema angegeben'}
-${text ? `\n"${text}"\n` : '\nKeine Beschreibung angegeben\n'}
+📝 PERSÖNLICHE BESCHREIBUNG DER PERSON:
+${theme ? `Gewähltes Thema: "${theme}"` : 'Kein spezifisches Thema gewählt'}
+${text ? `
+Was die Person heute erlebt/gefühlt hat:
+"${text}"
+` : '\n[Die Person hat keine detaillierte Beschreibung angegeben]\n'}
 
-WICHTIG: Gehe in deiner Analyse DIREKT auf die persönliche Beschreibung ein. Beziehe dich auf konkrete Situationen, Gefühle oder Gedanken, die erwähnt wurden. Falls keine Beschreibung vorhanden ist, konzentriere dich auf die Emotion und den Wohlfühlscore.
+🎯 DEINE AUFGABE:
+1. **Emotionale Validierung**: Zeige Verständnis für die konkrete Situation, die beschrieben wurde. Nenne spezifische Aspekte aus dem Text.
 
-Gib eine empathische, individuelle psychologische Einschätzung (2-4 Sätze), die konkret auf ${text ? 'die beschriebene Situation' : 'die aktuellen Messwerte'} eingeht.
+2. **Psychologische Einordnung**: Nutze psychologische Frameworks (z.B. kognitive Verhaltenstherapie, Akzeptanz-Commitment-Therapie, Achtsamkeit) um die Situation einzuordnen. Erkenne:
+   - Automatische Gedanken oder Glaubenssätze
+   - Emotionsregulationsmuster
+   - Bewältigungsstrategien
+   ${text ? '- Was zwischen den Zeilen steht' : ''}
 
-Dann gib GENAU 3 konkrete, sofort umsetzbare Handlungsvorschläge, die ${theme ? `zum Thema "${theme}"` : 'zur aktuellen Situation'} passen:
+3. **Individuelle Perspektive**: Was könnte diese spezifische Person in dieser spezifischen Situation gerade brauchen?
+
+Gib eine empathische Analyse (3-5 Sätze) die:
+- KONKRET auf die beschriebenen Gefühle, Gedanken und Situationen eingeht
+- Spezifische Worte/Phrasen der Person aufgreift und validiert
+- Psychologische Zusammenhänge erklärt (warum fühlt sich die Person so?)
+- Eine hilfreiche neue Perspektive bietet
+
+Dann gib GENAU 3 konkrete, evidenzbasierte Handlungsvorschläge speziell für ${theme ? `das Thema "${theme}"` : 'die beschriebene Situation'}:
 [VORSCHLÄGE]
-1. [Kurzer Titel]: [Konkrete Anweisung in 1-2 Sätzen]
-2. [Kurzer Titel]: [Konkrete Anweisung in 1-2 Sätzen]
-3. [Kurzer Titel]: [Konkrete Anweisung in 1-2 Sätzen]
+1. [Titel]: [Konkrete Anweisung, die zur Person und Situation passt]
+2. [Titel]: [Konkrete Anweisung, die zur Person und Situation passt]
+3. [Titel]: [Konkrete Anweisung, die zur Person und Situation passt]
 [/VORSCHLÄGE]
 
-Beispiele für gute Vorschläge:
-- "5-Minuten-Pause: Steh auf, öffne das Fenster und atme 5x tief ein und aus."
-- "Soziale Verbindung: Ruf eine Person an, mit der du gerne sprichst."
-- "Bewegung: Mach einen 10-minütigen Spaziergang um den Block."
+Die Vorschläge sollen:
+- Sofort umsetzbar sein (5-15 Minuten)
+- Zur aktuellen Emotion passen (${emotion})
+- Wissenschaftlich fundiert sein (CBT, ACT, Mindfulness, etc.)
+- SPEZIFISCH auf die Person zugeschnitten sein
 `;
 
       const reply = await getAiResponse("psychologische Tagesanalyse", prompt);
