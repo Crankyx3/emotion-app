@@ -885,6 +885,15 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
           </View>
         </View>
 
+        {/* Logout */}
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={handleLogout}
+        >
+          <Ionicons name="log-out-outline" size={24} color="#007AFF" />
+          <Text style={styles.logoutButtonText}>Abmelden</Text>
+        </TouchableOpacity>
+
         {/* Datenverwaltung */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>🗂️ Datenverwaltung</Text>
@@ -944,15 +953,6 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
             <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
           </TouchableOpacity>
         </View>
-
-        {/* Logout */}
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={handleLogout}
-        >
-          <Ionicons name="log-out-outline" size={24} color="#007AFF" />
-          <Text style={styles.logoutButtonText}>Abmelden</Text>
-        </TouchableOpacity>
 
         {/* Account Löschen */}
         <TouchableOpacity
