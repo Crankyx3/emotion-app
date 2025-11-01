@@ -17,6 +17,7 @@ import MeditationScreen from "./screens/MeditationScreen";
 import PsychoEducationScreen from "./screens/PsychoEducationScreen";
 import LoginScreen from "./screens/LoginScreen";
 import SettingsScreen from "./screens/SettingsScreen";
+import PrivacyPolicyScreen from "./screens/PrivacyPolicyScreen";
 
 import { AuthProvider, useAuth } from "./components/AuthProvider";
 
@@ -115,9 +116,13 @@ function RootNavigator() {
             <Stack.Screen name="Meditation" component={MeditationScreen} />
             <Stack.Screen name="PsychoEducation" component={PsychoEducationScreen} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
           </>
         ) : (
-          <Stack.Screen name="Auth" component={LoginScreen} />
+          <>
+            <Stack.Screen name="Auth" component={LoginScreen} />
+            <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>

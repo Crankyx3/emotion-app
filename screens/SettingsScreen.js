@@ -19,6 +19,7 @@ import { deleteUser, EmailAuthProvider, reauthenticateWithCredential } from "fir
 import ScreenHeader from "../components/ScreenHeader";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system/legacy";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function SettingsScreen({ navigation }) {
   const { user, signOut } = useAuth();
@@ -34,10 +35,61 @@ export default function SettingsScreen({ navigation }) {
   const [password, setPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
+  // Privacy Settings
+  const [aiAnalysisEnabled, setAiAnalysisEnabled] = useState(true);
+  const [chatHistoryEnabled, setChatHistoryEnabled] = useState(true);
+
   useEffect(() => {
     loadStats();
     calculateStreak();
+    loadPrivacySettings();
   }, []);
+
+  const loadPrivacySettings = async () => {
+    try {
+      const aiSetting = await AsyncStorage.getItem(`aiAnalysisEnabled_${user.uid}`);
+      const chatSetting = await AsyncStorage.getItem(`chatHistoryEnabled_${user.uid}`);
+
+      if (aiSetting !== null) setAiAnalysisEnabled(aiSetting === 'true');
+      if (chatSetting !== null) setChatHistoryEnabled(chatSetting === 'true');
+    } catch (error) {
+      console.error("Error loading privacy settings:", error);
+    }
+  };
+
+  const toggleAiAnalysis = async (value) => {
+    try {
+      await AsyncStorage.setItem(`aiAnalysisEnabled_${user.uid}`, value.toString());
+      setAiAnalysisEnabled(value);
+
+      Alert.alert(
+        value ? "KI-Analysen aktiviert" : "KI-Analysen deaktiviert",
+        value
+          ? "Du erhältst wieder KI-gestützte Analysen deiner Einträge."
+          : "Deine Einträge werden nicht mehr an OpenAI gesendet. Bestehende Analysen bleiben erhalten.",
+        [{ text: "OK" }]
+      );
+    } catch (error) {
+      console.error("Error saving AI analysis setting:", error);
+    }
+  };
+
+  const toggleChatHistory = async (value) => {
+    try {
+      await AsyncStorage.setItem(`chatHistoryEnabled_${user.uid}`, value.toString());
+      setChatHistoryEnabled(value);
+
+      Alert.alert(
+        value ? "Chat-Historie aktiviert" : "Chat-Historie deaktiviert",
+        value
+          ? "Deine Chat-Verläufe werden wieder gespeichert."
+          : "Neue Chat-Nachrichten werden nicht mehr gespeichert. Bestehende Chats bleiben erhalten.",
+        [{ text: "OK" }]
+      );
+    } catch (error) {
+      console.error("Error saving chat history setting:", error);
+    }
+  };
 
   const loadStats = async () => {
     if (!user) return;
@@ -670,6 +722,70 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
           )}
         </View>
 
+        {/* Privacy & Datenschutz */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🔒 Datenschutz & Privatsphäre</Text>
+
+          {/* KI-Analysen Toggle */}
+          <View style={styles.privacyOption}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.privacyOptionTitle}>KI-Analysen nutzen</Text>
+              <Text style={styles.privacyOptionDescription}>
+                Sendet deine Texte an OpenAI für psychologische Analysen
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.toggle, aiAnalysisEnabled && styles.toggleActive]}
+              onPress={() => toggleAiAnalysis(!aiAnalysisEnabled)}
+              activeOpacity={0.8}
+            >
+              <View
+                style={[
+                  styles.toggleThumb,
+                  aiAnalysisEnabled && styles.toggleThumbActive,
+                ]}
+              />
+            </TouchableOpacity>
+          </View>
+
+          {/* Chat-Historie Toggle */}
+          <View style={styles.privacyOption}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.privacyOptionTitle}>Chat-Historie speichern</Text>
+              <Text style={styles.privacyOptionDescription}>
+                Speichert deine Gespräche mit dem KI-Assistenten
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.toggle, chatHistoryEnabled && styles.toggleActive]}
+              onPress={() => toggleChatHistory(!chatHistoryEnabled)}
+              activeOpacity={0.8}
+            >
+              <View
+                style={[
+                  styles.toggleThumb,
+                  chatHistoryEnabled && styles.toggleThumbActive,
+                ]}
+              />
+            </TouchableOpacity>
+          </View>
+
+          {/* Link zur Datenschutzerklärung */}
+          <TouchableOpacity
+            style={styles.privacyLink}
+            onPress={() => navigation.navigate("PrivacyPolicy")}
+          >
+            <Ionicons name="shield-checkmark-outline" size={24} color="#007AFF" />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.privacyLinkTitle}>Datenschutzerklärung</Text>
+              <Text style={styles.privacyLinkSubtitle}>
+                Lies unsere vollständige Datenschutzerklärung
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+          </TouchableOpacity>
+        </View>
+
         {/* Datenverwaltung */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>🗂️ Datenverwaltung</Text>
@@ -1104,5 +1220,77 @@ const styles = StyleSheet.create({
   },
   modalButtonDisabled: {
     opacity: 0.6,
+  },
+  // Privacy Settings Styles
+  privacyOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#E5E5EA",
+  },
+  privacyOptionTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1C1C1E",
+    marginBottom: 4,
+  },
+  privacyOptionDescription: {
+    fontSize: 12,
+    color: "#8E8E93",
+    lineHeight: 16,
+  },
+  toggle: {
+    width: 50,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "#E5E5EA",
+    padding: 2,
+    justifyContent: "center",
+    marginLeft: 12,
+  },
+  toggleActive: {
+    backgroundColor: "#34C759",
+  },
+  toggleThumb: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  toggleThumbActive: {
+    alignSelf: "flex-end",
+  },
+  privacyLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: "#007AFF",
+    shadowColor: "#007AFF",
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  privacyLinkTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#007AFF",
+    marginBottom: 2,
+  },
+  privacyLinkSubtitle: {
+    fontSize: 12,
+    color: "#007AFF",
+    opacity: 0.8,
   },
 });

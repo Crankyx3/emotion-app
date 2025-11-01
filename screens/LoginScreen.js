@@ -27,6 +27,7 @@ export default function LoginScreen() {
   const [mode, setMode] = useState("login"); // 'login' | 'signup'
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
 
   // Übersetze Firebase-Fehler ins Deutsche
   const getErrorMessage = (errorCode) => {
@@ -67,6 +68,12 @@ export default function LoginScreen() {
     // Name validation für Registrierung
     if (mode === "signup" && !name.trim()) {
       setError("Bitte gib deinen Namen ein.");
+      return;
+    }
+
+    // Privacy Policy validation für Registrierung
+    if (mode === "signup" && !acceptedPrivacy) {
+      setError("Bitte akzeptiere die Datenschutzerklärung.");
       return;
     }
 
@@ -277,6 +284,35 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               )}
 
+              {/* Privacy Policy Checkbox (nur im Signup-Modus) */}
+              {mode === "signup" && (
+                <View style={styles.privacyContainer}>
+                  <TouchableOpacity
+                    style={styles.checkbox}
+                    onPress={() => {
+                      setAcceptedPrivacy(!acceptedPrivacy);
+                      setError("");
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.checkboxBox, acceptedPrivacy && styles.checkboxChecked]}>
+                      {acceptedPrivacy && (
+                        <Ionicons name="checkmark" size={16} color="#fff" />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                  <Text style={styles.privacyText}>
+                    Ich akzeptiere die{" "}
+                    <Text
+                      style={styles.privacyLink}
+                      onPress={() => navigation.navigate("PrivacyPolicy", { fromRegistration: true })}
+                    >
+                      Datenschutzerklärung
+                    </Text>
+                  </Text>
+                </View>
+              )}
+
               {/* Submit Button */}
               <TouchableOpacity
                 style={[
@@ -330,6 +366,7 @@ export default function LoginScreen() {
                   onPress={() => {
                     setMode(mode === "login" ? "signup" : "login");
                     setError("");
+                    setAcceptedPrivacy(false);
                   }}
                 >
                   <Text style={styles.switchText}>
@@ -452,6 +489,40 @@ const styles = StyleSheet.create({
     color: "#007AFF",
     fontSize: 14,
     fontWeight: "500",
+  },
+  privacyContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  checkbox: {
+    marginRight: 10,
+  },
+  checkboxBox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: "#E5E5EA",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+  },
+  checkboxChecked: {
+    backgroundColor: "#007AFF",
+    borderColor: "#007AFF",
+  },
+  privacyText: {
+    fontSize: 13,
+    color: "#1C1C1E",
+    flex: 1,
+    lineHeight: 18,
+  },
+  privacyLink: {
+    color: "#007AFF",
+    fontWeight: "600",
+    textDecorationLine: "underline",
   },
   button: {
     backgroundColor: "#007AFF",
