@@ -252,7 +252,13 @@ export default function AdminScreen({ navigation }) {
 
   return (
     <LinearGradient colors={["#EAF4FF", "#FFFFFF"]} style={styles.gradient}>
-      <ScreenHeader title="Admin-Panel" onBack={() => navigation.goBack()} />
+      <View style={styles.topRow}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Ionicons name="chevron-back" size={32} color="#007AFF" />
+        </TouchableOpacity>
+      </View>
+
+      <ScreenHeader title="Admin-Panel" subtitle="User-Verwaltung" />
 
       <ScrollView
         contentContainerStyle={styles.container}
@@ -313,6 +319,26 @@ export default function AdminScreen({ navigation }) {
 const styles = StyleSheet.create({
   gradient: {
     flex: 1,
+  },
+  topRow: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    marginBottom: 10,
+    marginTop: 50,
+  },
+  backButton: {
+    width: 50,
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   container: {
     padding: 16,
