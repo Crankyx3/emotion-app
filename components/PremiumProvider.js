@@ -19,8 +19,20 @@ export const PremiumProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkPremiumStatus();
-  }, [auth.currentUser]);
+    // Warte auf Firebase Auth State
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        checkPremiumStatus();
+      } else {
+        setLoading(false);
+        setIsPremium(false);
+        setIsTrialActive(false);
+        setTrialDaysLeft(0);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const checkPremiumStatus = async () => {
     if (!auth.currentUser) {
@@ -30,11 +42,13 @@ export const PremiumProvider = ({ children }) => {
 
     try {
       const userId = auth.currentUser.uid;
+      console.log('🔍 Checking premium status for user:', userId);
 
       // Prüfe Premium-Status (später aus Firestore oder RevenueCat)
       const premiumStatus = await AsyncStorage.getItem(`isPremium_${userId}`);
 
       if (premiumStatus === 'true') {
+        console.log('✅ User has Premium');
         setIsPremium(true);
         setIsTrialActive(false);
         setTrialDaysLeft(0);
@@ -46,9 +60,11 @@ export const PremiumProvider = ({ children }) => {
       const trialStartDate = await AsyncStorage.getItem(`trialStartDate_${userId}`);
 
       if (!trialStartDate) {
-        // Neuer User - starte 5-Tage Trial
+        // Neuer User - starte 5-Tage Trial SOFORT
         const now = new Date().toISOString();
         await AsyncStorage.setItem(`trialStartDate_${userId}`, now);
+        console.log('🎉 Trial gestartet für neuen User! 5 Tage verfügbar');
+
         setIsTrialActive(true);
         setTrialDaysLeft(5);
         setIsPremium(false);
@@ -63,11 +79,14 @@ export const PremiumProvider = ({ children }) => {
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
       const daysLeft = Math.max(0, 5 - diffDays);
 
+      console.log(`⏰ Trial Status: ${diffDays} Tage vergangen, ${daysLeft} Tage übrig`);
+
       if (daysLeft > 0) {
         setIsTrialActive(true);
         setTrialDaysLeft(daysLeft);
         setIsPremium(false);
       } else {
+        console.log('❌ Trial abgelaufen');
         setIsTrialActive(false);
         setTrialDaysLeft(0);
         setIsPremium(false);
@@ -135,6 +154,38 @@ export const PremiumProvider = ({ children }) => {
     return 'Trial abgelaufen';
   };
 
+  // Berechne verbleibende Zeit mit Stunden/Minuten
+  const getTrialTimeRemaining = async () => {
+    if (!auth.currentUser || isPremium) return null;
+
+    try {
+      const userId = auth.currentUser.uid;
+      const trialStartDate = await AsyncStorage.getItem(`trialStartDate_${userId}`);
+
+      if (!trialStartDate) return null;
+
+      const startDate = new Date(trialStartDate);
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 5); // 5 Tage Trial
+
+      const now = new Date();
+      const timeRemaining = endDate - now;
+
+      if (timeRemaining <= 0) {
+        return { expired: true };
+      }
+
+      const days = Math.floor(timeRemaining / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+
+      return { expired: false, days, hours, minutes, totalMs: timeRemaining };
+    } catch (error) {
+      console.error('Error calculating trial time:', error);
+      return null;
+    }
+  };
+
   const value = {
     isPremium,
     isTrialActive,
@@ -144,6 +195,7 @@ export const PremiumProvider = ({ children }) => {
     purchasePremium,
     restorePurchases,
     getTrialText,
+    getTrialTimeRemaining,
     refreshStatus: checkPremiumStatus,
   };
 

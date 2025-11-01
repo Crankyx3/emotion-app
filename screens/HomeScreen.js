@@ -15,7 +15,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function HomeScreen({ navigation }) {
   const { userName } = useAuth();
-  const { isPremium, isTrialActive, trialDaysLeft } = usePremium();
+  const { isPremium, isTrialActive, trialDaysLeft, getTrialTimeRemaining } = usePremium();
   const [loading, setLoading] = useState(true);
   const [currentStreak, setCurrentStreak] = useState(0);
   const [longestStreak, setLongestStreak] = useState(0);
@@ -25,10 +25,31 @@ export default function HomeScreen({ navigation }) {
   const [daysUntilWeekly, setDaysUntilWeekly] = useState(0);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
+  // Trial Countdown Timer
+  const [trialTimeRemaining, setTrialTimeRemaining] = useState(null);
+
   // Prüfe ob neuer Nutzer und zeige Welcome Modal
   useEffect(() => {
     checkFirstTimeUser();
   }, []);
+
+  // Trial Timer: Aktualisiere jede Minute
+  useEffect(() => {
+    if (!isTrialActive || isPremium) return;
+
+    const updateTrialTimer = async () => {
+      const timeData = await getTrialTimeRemaining();
+      setTrialTimeRemaining(timeData);
+    };
+
+    // Sofort aktualisieren
+    updateTrialTimer();
+
+    // Dann jede Minute aktualisieren
+    const interval = setInterval(updateTrialTimer, 60000);
+
+    return () => clearInterval(interval);
+  }, [isTrialActive, isPremium]);
 
   const checkFirstTimeUser = async () => {
     try {
@@ -383,23 +404,50 @@ export default function HomeScreen({ navigation }) {
         </View>
 
         {/* Premium/Trial Status Card */}
-        {isTrialActive ? (
-          <InfoCard
-            type="warning"
-            icon="time"
-            title={`${trialDaysLeft} Tag${trialDaysLeft !== 1 ? 'e' : ''} Trial verbleibend`}
-            message="Teste alle Premium-Features kostenlos. Danach kannst du Premium für unbegrenzten Zugang freischalten."
-          >
-            <Button
-              variant="primary"
-              size="small"
-              icon="diamond"
-              onPress={() => navigation.navigate('Paywall')}
-              style={{ marginTop: Spacing.sm }}
+        {isTrialActive && trialTimeRemaining && !trialTimeRemaining.expired ? (
+          <View style={styles.trialCountdownCard}>
+            <LinearGradient
+              colors={['#FFE066', '#FFF9E6']}
+              style={styles.trialCountdownGradient}
             >
-              Premium anzeigen
-            </Button>
-          </InfoCard>
+              <View style={styles.trialCountdownHeader}>
+                <Ionicons name="rocket" size={32} color="#996A13" />
+                <View style={styles.trialCountdownHeaderText}>
+                  <Text style={styles.trialCountdownTitle}>Premium Trial aktiv 🎉</Text>
+                  <Text style={styles.trialCountdownSubtitle}>Teste alle Features kostenlos</Text>
+                </View>
+              </View>
+
+              {/* Countdown Timer */}
+              <View style={styles.trialTimerContainer}>
+                <View style={styles.timerSegment}>
+                  <Text style={styles.timerNumber}>{trialTimeRemaining.days}</Text>
+                  <Text style={styles.timerLabel}>Tag{trialTimeRemaining.days !== 1 ? 'e' : ''}</Text>
+                </View>
+                <Text style={styles.timerSeparator}>:</Text>
+                <View style={styles.timerSegment}>
+                  <Text style={styles.timerNumber}>{String(trialTimeRemaining.hours).padStart(2, '0')}</Text>
+                  <Text style={styles.timerLabel}>Std</Text>
+                </View>
+                <Text style={styles.timerSeparator}>:</Text>
+                <View style={styles.timerSegment}>
+                  <Text style={styles.timerNumber}>{String(trialTimeRemaining.minutes).padStart(2, '0')}</Text>
+                  <Text style={styles.timerLabel}>Min</Text>
+                </View>
+              </View>
+
+              {/* CTA Button */}
+              <TouchableOpacity
+                style={styles.trialUpgradeButton}
+                onPress={() => navigation.navigate('Paywall')}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="diamond" size={18} color="#007AFF" />
+                <Text style={styles.trialUpgradeText}>Jetzt Premium sichern</Text>
+                <Ionicons name="arrow-forward" size={18} color="#007AFF" />
+              </TouchableOpacity>
+            </LinearGradient>
+          </View>
         ) : !isPremium ? (
           <InfoCard
             type="info"
@@ -711,6 +759,89 @@ const styles = StyleSheet.create({
     color: Colors.warning,
     fontWeight: "700",
     marginLeft: 4,
+  },
+  // Trial Countdown Timer Styles
+  trialCountdownCard: {
+    width: "100%",
+    marginBottom: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    overflow: "hidden",
+    ...Shadows.medium,
+  },
+  trialCountdownGradient: {
+    padding: Spacing.lg,
+    borderWidth: 2,
+    borderColor: "#FFE066",
+    borderRadius: BorderRadius.lg,
+  },
+  trialCountdownHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: Spacing.md,
+  },
+  trialCountdownHeaderText: {
+    marginLeft: Spacing.sm,
+    flex: 1,
+  },
+  trialCountdownTitle: {
+    ...Typography.h4,
+    color: "#996A13",
+    marginBottom: 2,
+  },
+  trialCountdownSubtitle: {
+    ...Typography.caption,
+    color: "#8B5E3C",
+  },
+  trialTimerContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginVertical: Spacing.md,
+    borderWidth: 1,
+    borderColor: "rgba(153, 106, 19, 0.2)",
+  },
+  timerSegment: {
+    alignItems: "center",
+    paddingHorizontal: Spacing.sm,
+  },
+  timerNumber: {
+    fontSize: 32,
+    fontWeight: "800",
+    color: "#996A13",
+    lineHeight: 36,
+  },
+  timerLabel: {
+    ...Typography.small,
+    color: "#8B5E3C",
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  timerSeparator: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#996A13",
+    marginHorizontal: 4,
+  },
+  trialUpgradeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.surface,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 2,
+    borderColor: "#007AFF",
+    marginTop: Spacing.sm,
+  },
+  trialUpgradeText: {
+    ...Typography.bodyMedium,
+    color: "#007AFF",
+    fontWeight: "700",
+    marginHorizontal: Spacing.xs,
   },
   sectionHeader: {
     flexDirection: "row",
