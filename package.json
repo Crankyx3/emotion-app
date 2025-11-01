@@ -17,6 +17,7 @@
     "@react-navigation/native": "^6.1.18",
     "@react-navigation/stack": "^6.4.1",
     "expo": "~54.0.0",
+    "expo-application": "^7.0.7",
     "expo-auth-session": "^7.0.8",
     "expo-crypto": "^15.0.7",
     "expo-file-system": "~19.0.17",

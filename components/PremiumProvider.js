@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { auth } from '../firebaseconfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Application from 'expo-application';
+import { Platform } from 'react-native';
 
 const PremiumContext = createContext();
 
@@ -12,6 +14,27 @@ export const usePremium = () => {
   return context;
 };
 
+// Hole eindeutige Device ID
+const getDeviceId = async () => {
+  try {
+    if (Platform.OS === 'ios') {
+      // iOS: IDFV (Identifier for Vendor)
+      const idfv = await Application.getIosIdForVendorAsync();
+      return idfv || 'unknown-ios-device';
+    } else if (Platform.OS === 'android') {
+      // Android: Android ID
+      const androidId = Application.androidId;
+      return androidId || 'unknown-android-device';
+    } else {
+      // Web/andere Plattformen: Fallback
+      return 'unknown-device';
+    }
+  } catch (error) {
+    console.error('Error getting device ID:', error);
+    return 'fallback-device-id';
+  }
+};
+
 export const PremiumProvider = ({ children }) => {
   const [isPremium, setIsPremium] = useState(false);
   const [isTrialActive, setIsTrialActive] = useState(false);
@@ -19,20 +42,64 @@ export const PremiumProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Warte auf Firebase Auth State
+    // Check trial beim App-Start (auch ohne Login)
+    checkTrialStatus();
+
+    // Warte auf Firebase Auth State für Premium-Status
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
         checkPremiumStatus();
       } else {
         setLoading(false);
         setIsPremium(false);
-        setIsTrialActive(false);
-        setTrialDaysLeft(0);
+        // Trial bleibt aktiv auch ohne Login
       }
     });
 
     return () => unsubscribe();
   }, []);
+
+  // Prüfe Trial-Status (Device-gebunden)
+  const checkTrialStatus = async () => {
+    try {
+      const deviceId = await getDeviceId();
+      console.log('📱 Device ID:', deviceId);
+
+      // Prüfe Trial-Status für dieses GERÄT
+      const trialStartDate = await AsyncStorage.getItem(`trialStartDate_${deviceId}`);
+
+      if (!trialStartDate) {
+        // Neues Gerät - starte 5-Tage Trial SOFORT
+        const now = new Date().toISOString();
+        await AsyncStorage.setItem(`trialStartDate_${deviceId}`, now);
+        console.log('🎉 Trial gestartet für neues Gerät! 5 Tage verfügbar');
+
+        setIsTrialActive(true);
+        setTrialDaysLeft(5);
+        return;
+      }
+
+      // Berechne verbleibende Trial-Tage
+      const startDate = new Date(trialStartDate);
+      const now = new Date();
+      const diffTime = now - startDate;
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      const daysLeft = Math.max(0, 5 - diffDays);
+
+      console.log(`⏰ Trial Status (Device): ${diffDays} Tage vergangen, ${daysLeft} Tage übrig`);
+
+      if (daysLeft > 0) {
+        setIsTrialActive(true);
+        setTrialDaysLeft(daysLeft);
+      } else {
+        console.log('❌ Trial abgelaufen (Device)');
+        setIsTrialActive(false);
+        setTrialDaysLeft(0);
+      }
+    } catch (error) {
+      console.error('Error checking trial status:', error);
+    }
+  };
 
   const checkPremiumStatus = async () => {
     if (!auth.currentUser) {
@@ -44,7 +111,7 @@ export const PremiumProvider = ({ children }) => {
       const userId = auth.currentUser.uid;
       console.log('🔍 Checking premium status for user:', userId);
 
-      // Prüfe Premium-Status (später aus Firestore oder RevenueCat)
+      // Prüfe Premium-Status (Account-gebunden)
       const premiumStatus = await AsyncStorage.getItem(`isPremium_${userId}`);
 
       if (premiumStatus === 'true') {
@@ -54,42 +121,6 @@ export const PremiumProvider = ({ children }) => {
         setTrialDaysLeft(0);
         setLoading(false);
         return;
-      }
-
-      // Prüfe Trial-Status
-      const trialStartDate = await AsyncStorage.getItem(`trialStartDate_${userId}`);
-
-      if (!trialStartDate) {
-        // Neuer User - starte 5-Tage Trial SOFORT
-        const now = new Date().toISOString();
-        await AsyncStorage.setItem(`trialStartDate_${userId}`, now);
-        console.log('🎉 Trial gestartet für neuen User! 5 Tage verfügbar');
-
-        setIsTrialActive(true);
-        setTrialDaysLeft(5);
-        setIsPremium(false);
-        setLoading(false);
-        return;
-      }
-
-      // Berechne verbleibende Trial-Tage
-      const startDate = new Date(trialStartDate);
-      const now = new Date();
-      const diffTime = now - startDate;
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-      const daysLeft = Math.max(0, 5 - diffDays);
-
-      console.log(`⏰ Trial Status: ${diffDays} Tage vergangen, ${daysLeft} Tage übrig`);
-
-      if (daysLeft > 0) {
-        setIsTrialActive(true);
-        setTrialDaysLeft(daysLeft);
-        setIsPremium(false);
-      } else {
-        console.log('❌ Trial abgelaufen');
-        setIsTrialActive(false);
-        setTrialDaysLeft(0);
-        setIsPremium(false);
       }
     } catch (error) {
       console.error('Error checking premium status:', error);
@@ -154,13 +185,13 @@ export const PremiumProvider = ({ children }) => {
     return 'Trial abgelaufen';
   };
 
-  // Berechne verbleibende Zeit mit Stunden/Minuten
+  // Berechne verbleibende Zeit mit Stunden/Minuten (Device-gebunden)
   const getTrialTimeRemaining = async () => {
-    if (!auth.currentUser || isPremium) return null;
+    if (isPremium) return null;
 
     try {
-      const userId = auth.currentUser.uid;
-      const trialStartDate = await AsyncStorage.getItem(`trialStartDate_${userId}`);
+      const deviceId = await getDeviceId();
+      const trialStartDate = await AsyncStorage.getItem(`trialStartDate_${deviceId}`);
 
       if (!trialStartDate) return null;
 
