@@ -23,7 +23,7 @@ import { usePremium } from "../components/PremiumProvider";
 
 export default function ChatScreen({ route }) {
   const navigation = useNavigation();
-  const { canUseFeature, getTrialText } = usePremium();
+  const { canUseFeature, getTrialText, isPremium, isTrialActive } = usePremium();
   const { chatId, context, type, date } = route.params || {};
   // chatId = ID des gespeicherten Chats (falls vorhanden)
   // context = Analyse-Text
@@ -41,8 +41,9 @@ export default function ChatScreen({ route }) {
   const [canChat, setCanChat] = useState(true);
   const [chatMode, setChatMode] = useState(type || "single"); // "single" oder "all"
 
-  // Rate Limiting: 10 Chats pro Tag
-  const DAILY_CHAT_LIMIT = 10;
+  // Rate Limiting: Dynamisches Limit basierend auf Premium-Status
+  // Premium: 100 Nachrichten/Tag, Trial: 10 Nachrichten/Tag
+  const DAILY_CHAT_LIMIT = isPremium ? 100 : 10;
 
   const checkChatLimit = async () => {
     try {
@@ -260,10 +261,22 @@ Sei empathisch, einladend und duze den Nutzer durchgehend.
 
     // Prüfe Chat-Limit
     if (!canChat) {
+      const limitMessage = isPremium
+        ? `Du hast heute bereits ${chatCount} von ${DAILY_CHAT_LIMIT} möglichen Premium-Chat-Nachrichten genutzt. Das Limit wird um Mitternacht zurückgesetzt.`
+        : `Du hast heute bereits ${chatCount} von ${DAILY_CHAT_LIMIT} möglichen Chat-Nachrichten genutzt.\n\n💎 Mit Premium erhältst du 100 Nachrichten pro Tag!\n\nDas Limit wird um Mitternacht zurückgesetzt.`;
+
       Alert.alert(
         "Chat-Limit erreicht",
-        `Du hast heute bereits ${chatCount} von ${DAILY_CHAT_LIMIT} möglichen Chat-Nachrichten genutzt. Das Limit wird um Mitternacht zurückgesetzt.`,
-        [{ text: "OK" }]
+        limitMessage,
+        isPremium
+          ? [{ text: "OK" }]
+          : [
+              { text: "Abbrechen", style: "cancel" },
+              {
+                text: "Premium holen",
+                onPress: () => navigation.navigate('Paywall')
+              }
+            ]
       );
       return;
     }
@@ -398,7 +411,14 @@ Antworte empathisch und duze den Nutzer konsequent.
               KI-Chat
             </Text>
             <Text numberOfLines={1} style={styles.headerSubtitle}>
-              {loading ? "Lade Kontext..." : `${chatCount}/${DAILY_CHAT_LIMIT} Nachrichten heute`}
+              {loading
+                ? "Lade Kontext..."
+                : isPremium
+                  ? `💎 Premium: ${chatCount}/${DAILY_CHAT_LIMIT} Nachrichten heute`
+                  : isTrialActive
+                    ? `⏱️ Trial: ${chatCount}/${DAILY_CHAT_LIMIT} Nachrichten heute`
+                    : `${chatCount}/${DAILY_CHAT_LIMIT} Nachrichten heute`
+              }
             </Text>
           </View>
         </View>
