@@ -970,6 +970,19 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
           )}
         </TouchableOpacity>
 
+        {/* Admin Panel (nur für Admin sichtbar) */}
+        {user?.email === "finn_bauermeister@web.de" && (
+          <TouchableOpacity
+            style={styles.adminButton}
+            onPress={() => navigation.navigate("Admin")}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="shield-checkmark" size={24} color="#FFB900" />
+            <Text style={styles.adminButtonText}>Admin-Panel</Text>
+            <Ionicons name="chevron-forward" size={20} color="#FFB900" />
+          </TouchableOpacity>
+        )}
+
         {/* App Version */}
         <Text style={styles.versionText}>KI-Stimmungshelfer v1.0.0</Text>
       </ScrollView>
@@ -1557,5 +1570,29 @@ const styles = StyleSheet.create({
   },
   upgradeButtonPrimary: {
     backgroundColor: "#FF3B30",
+  },
+  adminButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFF9E6",
+    borderRadius: 16,
+    padding: 18,
+    marginTop: 16,
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: "#FFE066",
+    shadowColor: "#FFB900",
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  adminButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#996A13",
+    marginLeft: 10,
+    marginRight: 10,
+    flex: 1,
   },
 });

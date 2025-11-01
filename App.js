@@ -20,6 +20,7 @@ import PaywallScreen from "./screens/PaywallScreen";
 import LoginScreen from "./screens/LoginScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 import PrivacyPolicyScreen from "./screens/PrivacyPolicyScreen";
+import AdminScreen from "./screens/AdminScreen";
 
 import { AuthProvider, useAuth } from "./components/AuthProvider";
 import { PremiumProvider } from "./components/PremiumProvider";
@@ -125,6 +126,7 @@ function RootNavigator() {
             <Stack.Screen name="Paywall" component={PaywallScreen} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+            <Stack.Screen name="Admin" component={AdminScreen} />
           </>
         ) : (
           <>
