@@ -33,7 +33,7 @@ export default function PaywallScreen({ navigation }) {
   const features = [
     { icon: 'infinite', text: 'Unbegrenzte Tageseinträge', color: Colors.primary },
     { icon: 'analytics', text: 'Unbegrenzte KI-Analysen', color: Colors.success },
-    { icon: 'chatbubbles', text: 'Unbegrenzter KI-Chat', color: Colors.info },
+    { icon: 'chatbubbles', text: 'KI-Chat (100 Nachrichten/Tag)', color: Colors.info },
     { icon: 'calendar', text: 'Wochenanalysen', color: Colors.warning },
     { icon: 'leaf', text: 'Alle Meditationen & Übungen', color: '#2ecc71' },
     { icon: 'bar-chart', text: 'Erweiterte Statistiken', color: Colors.primary },
