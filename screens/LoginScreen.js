@@ -19,7 +19,7 @@ import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "../firebaseconfig";
 
 export default function LoginScreen() {
-  const { signIn, signUp, signInWithGoogle, googleLoading } = useAuth();
+  const { signIn, signUp, signInWithGoogle, googleLoading, enterGuestMode } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -374,6 +374,26 @@ export default function LoginScreen() {
                   </Text>
                 </TouchableOpacity>
               </View>
+
+              {/* Guest Mode Button */}
+              <View style={styles.guestDivider}>
+                <View style={styles.dividerLine} />
+              </View>
+
+              <TouchableOpacity
+                style={styles.guestButton}
+                onPress={enterGuestMode}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="eye-outline" size={22} color="#666" />
+                <Text style={styles.guestButtonText}>
+                  App ohne Registrierung anschauen
+                </Text>
+              </TouchableOpacity>
+
+              <Text style={styles.guestDisclaimer}>
+                Im Gastmodus kannst du die App erkunden, aber keine Funktionen nutzen.
+              </Text>
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -594,5 +614,33 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 16,
     marginLeft: 10,
+  },
+  guestDivider: {
+    marginTop: 24,
+    marginBottom: 16,
+  },
+  guestButton: {
+    backgroundColor: "#F2F2F7",
+    padding: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "#E5E5EA",
+  },
+  guestButtonText: {
+    color: "#666",
+    fontWeight: "600",
+    fontSize: 15,
+    marginLeft: 8,
+  },
+  guestDisclaimer: {
+    textAlign: "center",
+    color: "#8E8E93",
+    fontSize: 12,
+    marginTop: 12,
+    lineHeight: 16,
+    paddingHorizontal: 20,
   },
 });

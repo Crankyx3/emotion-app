@@ -28,6 +28,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [userName, setUserName] = useState(null);
   const [initializing, setInitializing] = useState(true);
+  const [isGuestMode, setIsGuestMode] = useState(false);
 
   // Google OAuth Konfiguration
   // Für Expo Go mit Auth Proxy verwenden wir die Web-Client-ID für alle Plattformen
@@ -109,7 +110,11 @@ export function AuthProvider({ children }) {
     return userCredential;
   };
 
-  const handleSignOut = () => signOut(auth);
+  const handleSignOut = () => {
+    setIsGuestMode(false);
+    return signOut(auth);
+  };
+
   const signInWithGoogle = async () => {
     console.log("🚀 Google Login Button gedrückt");
     console.log("📋 Request verfügbar:", !!request);
@@ -123,6 +128,18 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // 👤 Guest Mode Funktionen
+  const enterGuestMode = () => {
+    console.log("👤 Entering Guest Mode");
+    setIsGuestMode(true);
+    setInitializing(false);
+  };
+
+  const exitGuestMode = () => {
+    console.log("🚪 Exiting Guest Mode");
+    setIsGuestMode(false);
+  };
+
   // 🧩 Kontext-Provider
   return (
     <AuthContext.Provider
@@ -130,10 +147,13 @@ export function AuthProvider({ children }) {
         user,
         userName,
         initializing,
+        isGuestMode,
         signIn,
         signUp,
         signOut: handleSignOut,
         signInWithGoogle,
+        enterGuestMode,
+        exitGuestMode,
         googleLoading: !request,
       }}
     >

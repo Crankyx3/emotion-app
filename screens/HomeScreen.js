@@ -14,7 +14,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function HomeScreen({ navigation }) {
-  const { userName } = useAuth();
+  const { userName, isGuestMode, exitGuestMode } = useAuth();
   const { isPremium, isTrialActive, trialDaysLeft, getTrialTimeRemaining } = usePremium();
   const [loading, setLoading] = useState(true);
   const [currentStreak, setCurrentStreak] = useState(0);
@@ -403,8 +403,36 @@ export default function HomeScreen({ navigation }) {
           </View>
         </View>
 
+        {/* Guest Mode Banner */}
+        {isGuestMode && (
+          <View style={styles.guestBanner}>
+            <LinearGradient
+              colors={['#FF6B6B', '#FF8E8E']}
+              style={styles.guestBannerGradient}
+            >
+              <View style={styles.guestBannerContent}>
+                <Ionicons name="eye-off" size={28} color="#FFF" />
+                <View style={styles.guestBannerText}>
+                  <Text style={styles.guestBannerTitle}>Gastmodus aktiv</Text>
+                  <Text style={styles.guestBannerSubtitle}>
+                    Registriere dich, um alle Funktionen freizuschalten
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={styles.guestRegisterButton}
+                onPress={exitGuestMode}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.guestRegisterButtonText}>Jetzt registrieren</Text>
+                <Ionicons name="arrow-forward" size={18} color="#FF6B6B" />
+              </TouchableOpacity>
+            </LinearGradient>
+          </View>
+        )}
+
         {/* Premium/Trial Status Card */}
-        {isTrialActive && trialTimeRemaining && !trialTimeRemaining.expired ? (
+        {!isGuestMode && isTrialActive && trialTimeRemaining && !trialTimeRemaining.expired ? (
           <View style={styles.trialCountdownCard}>
             <LinearGradient
               colors={['#FFE066', '#FFF9E6']}
@@ -448,7 +476,7 @@ export default function HomeScreen({ navigation }) {
               </TouchableOpacity>
             </LinearGradient>
           </View>
-        ) : !isPremium ? (
+        ) : !isGuestMode && !isPremium ? (
           <InfoCard
             type="info"
             icon="diamond"
@@ -465,14 +493,14 @@ export default function HomeScreen({ navigation }) {
               Jetzt upgraden
             </Button>
           </InfoCard>
-        ) : (
+        ) : !isGuestMode && isPremium ? (
           <InfoCard
             type="success"
             icon="checkmark-circle"
             title="Premium aktiv"
             message="Du hast Zugriff auf alle Features. Vielen Dank für deine Unterstützung!"
           />
-        )}
+        ) : null}
 
         {/* Haupt-Menü */}
         {mainMenuItems.map((item, index) => (
@@ -842,6 +870,56 @@ const styles = StyleSheet.create({
     color: "#007AFF",
     fontWeight: "700",
     marginHorizontal: Spacing.xs,
+  },
+  // Guest Mode Banner Styles
+  guestBanner: {
+    width: "100%",
+    marginBottom: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    overflow: "hidden",
+    ...Shadows.medium,
+  },
+  guestBannerGradient: {
+    padding: Spacing.lg,
+    borderWidth: 2,
+    borderColor: "#FF8E8E",
+    borderRadius: BorderRadius.lg,
+  },
+  guestBannerContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: Spacing.md,
+  },
+  guestBannerText: {
+    marginLeft: Spacing.sm,
+    flex: 1,
+  },
+  guestBannerTitle: {
+    ...Typography.h4,
+    color: "#FFF",
+    marginBottom: 2,
+  },
+  guestBannerSubtitle: {
+    ...Typography.caption,
+    color: "rgba(255, 255, 255, 0.9)",
+  },
+  guestRegisterButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.surface,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 2,
+    borderColor: "#FF6B6B",
+    marginTop: Spacing.sm,
+  },
+  guestRegisterButtonText: {
+    ...Typography.bodyMedium,
+    color: "#FF6B6B",
+    fontWeight: "700",
+    marginRight: Spacing.xs,
   },
   sectionHeader: {
     flexDirection: "row",

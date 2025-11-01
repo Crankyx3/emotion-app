@@ -102,17 +102,20 @@ function MainTabs() {
 }
 
 function RootNavigator() {
-  const { user, initializing } = useAuth();
+  const { user, initializing, isGuestMode } = useAuth();
 
   if (initializing) {
     // minimal placeholder while auth initializes
     return null;
   }
 
+  // Zeige Main App wenn eingeloggt ODER im Guest Mode
+  const showMainApp = user || isGuestMode;
+
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {user ? (
+        {showMainApp ? (
           <>
             <Stack.Screen name="Main" component={MainTabs} />
             <Stack.Screen name="Chat" component={ChatScreen} />

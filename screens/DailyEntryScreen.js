@@ -20,9 +20,12 @@ import { getAiResponse } from "../openaiService";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "../components/AuthProvider";
+import GuestBlockModal from "../components/GuestBlockModal";
 
 export default function DailyEntryScreen() {
   const navigation = useNavigation();
+  const { isGuestMode, exitGuestMode } = useAuth();
 
   const [selectedEmotion, setSelectedEmotion] = useState(null);
   const [text, setText] = useState("");
@@ -40,6 +43,9 @@ export default function DailyEntryScreen() {
   // Streak Tracker
   const [currentStreak, setCurrentStreak] = useState(0);
   const [longestStreak, setLongestStreak] = useState(0);
+
+  // Guest Mode
+  const [showGuestModal, setShowGuestModal] = useState(false);
 
   const emotions = [
     { key: "happy", emoji: "😊", label: "Glücklich", value: 85 },
@@ -174,6 +180,12 @@ export default function DailyEntryScreen() {
   const feelScore = useMemo(computeFeelScore, [selectedEmotion, text, gratitude]);
 
   const handleSave = async () => {
+    // Guest Mode Check
+    if (isGuestMode) {
+      setShowGuestModal(true);
+      return;
+    }
+
     if (!canCreateEntry) {
       Alert.alert(
         "Eintrag bereits vorhanden",
@@ -425,6 +437,17 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
+
+      {/* Guest Mode Block Modal */}
+      <GuestBlockModal
+        visible={showGuestModal}
+        onClose={() => setShowGuestModal(false)}
+        onRegister={() => {
+          setShowGuestModal(false);
+          exitGuestMode();
+        }}
+        featureName="Tageseintrag erstellen"
+      />
     </LinearGradient>
   );
 }
