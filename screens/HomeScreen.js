@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import ScreenHeader from "../components/ScreenHeader";
+import { MenuCard, InfoCard } from "../components/Card";
+import { Colors, Spacing, Typography, BorderRadius, Shadows } from "../theme";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
 import { useAuth } from "../components/AuthProvider";
@@ -152,31 +154,37 @@ export default function HomeScreen({ navigation }) {
     {
       title: "Tagesdaten eintragen",
       subtitle: "Notiere deine Stimmung und wie du dich fühlst",
-      icon: <Ionicons name="create-outline" size={28} color="#007aff" />,
+      icon: "create-outline",
+      iconColor: Colors.primary,
       screen: "DailyEntry",
     },
     {
       title: "Tagesanalyse",
       subtitle: "Erhalte deine KI-Analyse des heutigen Tages",
-      icon: <Ionicons name="analytics-outline" size={28} color="#34a853" />,
+      icon: "analytics-outline",
+      iconColor: Colors.success,
       screen: "DailyAnalysis",
     },
     {
       title: "EmotionChart",
       subtitle: "Verfolge deinen emotionalen Verlauf über Zeit",
-      icon: <Ionicons name="bar-chart-outline" size={28} color="#fbbc05" />,
+      icon: "bar-chart-outline",
+      iconColor: Colors.warning,
       screen: "EmotionChart",
     },
     {
       title: "KI-Wochenanalyse",
       subtitle: "Lass deine Woche psychologisch reflektieren",
-      icon: <MaterialCommunityIcons name="brain" size={28} color="#a142f4" />,
+      icon: "brain",
+      iconColor: Colors.info,
       screen: "Analysis",
+      isMaterialIcon: true,
     },
     {
       title: "KI-Chat",
       subtitle: "Sprich über deine Analysen und stelle Fragen",
-      icon: <Ionicons name="chatbubbles" size={28} color="#FF6B6B" />,
+      icon: "chatbubbles",
+      iconColor: "#FF6B6B",
       screen: "ChatSelection",
     },
   ];
@@ -185,13 +193,15 @@ export default function HomeScreen({ navigation }) {
     {
       title: "Meditation & Achtsamkeit",
       subtitle: "Geführte Meditationen und Atemübungen (2-5 Min.)",
-      icon: <Ionicons name="leaf-outline" size={28} color="#2ecc71" />,
+      icon: "leaf-outline",
+      iconColor: "#2ecc71",
       screen: "Meditation",
     },
     {
       title: "Psycho-Edukation",
       subtitle: "Lerne über mentale Gesundheit und Bewältigungsstrategien",
-      icon: <Ionicons name="school-outline" size={28} color="#a142f4" />,
+      icon: "school-outline",
+      iconColor: Colors.info,
       screen: "PsychoEducation",
     },
   ];
@@ -200,7 +210,7 @@ export default function HomeScreen({ navigation }) {
     if (item.title === "Tagesdaten eintragen" && dailyEntryDone) {
       return (
         <View style={styles.statusBadge}>
-          <Ionicons name="checkmark-circle" size={16} color="#34a853" />
+          <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
           <Text style={styles.statusText}>Erledigt</Text>
         </View>
       );
@@ -208,16 +218,16 @@ export default function HomeScreen({ navigation }) {
     if (item.title === "Tagesanalyse" && dailyAnalysisDone) {
       return (
         <View style={styles.statusBadge}>
-          <Ionicons name="checkmark-circle" size={16} color="#34a853" />
+          <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
           <Text style={styles.statusText}>Erledigt</Text>
         </View>
       );
     }
     if (item.title === "KI-Wochenanalyse" && weeklyAnalysisDone) {
       return (
-        <View style={styles.statusBadge}>
-          <Ionicons name="time-outline" size={16} color="#fbbc05" />
-          <Text style={[styles.statusText, { color: "#fbbc05" }]}>
+        <View style={[styles.statusBadge, styles.statusBadgeWarning]}>
+          <Ionicons name="time-outline" size={16} color={Colors.warning} />
+          <Text style={[styles.statusText, { color: Colors.warning }]}>
             in {daysUntilWeekly}d
           </Text>
         </View>
@@ -293,42 +303,54 @@ export default function HomeScreen({ navigation }) {
 
         {/* Haupt-Menü */}
         {mainMenuItems.map((item, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.card}
-            activeOpacity={0.9}
-            onPress={() => navigation.navigate(item.screen)}
-          >
-            <View style={styles.iconContainer}>{item.icon}</View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>{item.title}</Text>
-              <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
-            </View>
-            {renderAnalysisStatus(item)}
-            <Ionicons name="chevron-forward" size={22} color="#ccc" style={{ marginLeft: 8 }} />
-          </TouchableOpacity>
+          item.isMaterialIcon ? (
+            // Spezialbehandlung für Material Icons
+            <TouchableOpacity
+              key={index}
+              style={styles.menuCardContainer}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate(item.screen)}
+            >
+              <View style={styles.menuCardContent}>
+                <View style={[styles.menuIconContainer, { backgroundColor: item.iconColor + '20' }]}>
+                  <MaterialCommunityIcons name={item.icon} size={28} color={item.iconColor} />
+                </View>
+                <View style={styles.menuTextContainer}>
+                  <Text style={styles.menuTitle}>{item.title}</Text>
+                  <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
+                </View>
+                {renderAnalysisStatus(item)}
+                <Ionicons name="chevron-forward" size={22} color={Colors.textMuted} />
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <MenuCard
+              key={index}
+              icon={item.icon}
+              iconColor={item.iconColor}
+              title={item.title}
+              subtitle={item.subtitle}
+              badge={renderAnalysisStatus(item)}
+              onPress={() => navigation.navigate(item.screen)}
+            />
+          )
         ))}
 
         {/* Guides Sektion */}
         <View style={styles.sectionHeader}>
-          <Ionicons name="book-outline" size={20} color="#666" />
+          <Ionicons name="book-outline" size={20} color={Colors.textSecondary} />
           <Text style={styles.sectionTitle}>Guides</Text>
         </View>
 
         {guideItems.map((item, index) => (
-          <TouchableOpacity
+          <MenuCard
             key={index}
-            style={styles.card}
-            activeOpacity={0.9}
+            icon={item.icon}
+            iconColor={item.iconColor}
+            title={item.title}
+            subtitle={item.subtitle}
             onPress={() => navigation.navigate(item.screen)}
-          >
-            <View style={styles.iconContainer}>{item.icon}</View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>{item.title}</Text>
-              <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={22} color="#ccc" />
-          </TouchableOpacity>
+          />
         ))}
       </ScrollView>
     </LinearGradient>
@@ -348,17 +370,14 @@ const styles = StyleSheet.create({
     height: 50,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#fff",
-    borderRadius: 25,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.round,
+    ...Shadows.medium,
   },
   container: {
     alignItems: "center",
-    paddingVertical: 40,
-    paddingHorizontal: 20,
+    paddingVertical: Spacing.xxxl,
+    paddingHorizontal: Spacing.lg,
   },
   loadingContainer: {
     flex: 1,
@@ -367,16 +386,13 @@ const styles = StyleSheet.create({
   },
   streakCard: {
     width: "100%",
-    backgroundColor: "#FFF5E5",
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 20,
+    backgroundColor: Colors.streakLight,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.lg,
     borderWidth: 2,
-    borderColor: "#FFD280",
-    shadowColor: "#FF9500",
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    borderColor: Colors.streakBorder,
+    ...Shadows.small,
   },
   streakContent: {
     flexDirection: "row",
@@ -410,28 +426,27 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   greetingText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#FF6B35",
+    ...Typography.bodyMedium,
+    color: Colors.streak,
     marginBottom: 4,
   },
   longestBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFF",
-    paddingHorizontal: 10,
+    backgroundColor: Colors.surface,
+    paddingHorizontal: Spacing.sm,
     paddingVertical: 6,
-    borderRadius: 12,
+    borderRadius: BorderRadius.md,
     borderWidth: 1,
-    borderColor: "#FFD280",
+    borderColor: Colors.streakBorder,
   },
   longestText: {
-    fontSize: 11,
+    ...Typography.small,
     color: "#8B5E3C",
     fontWeight: "700",
     marginLeft: 4,
   },
-  // Welcome Card Styles (wenn keine Streak vorhanden)
+  // Welcome Card Styles
   welcomeContent: {
     flexDirection: "row",
     alignItems: "center",
@@ -439,35 +454,36 @@ const styles = StyleSheet.create({
   },
   welcomeEmoji: {
     fontSize: 40,
-    marginRight: 16,
+    marginRight: Spacing.md,
   },
   welcomeInfo: {
     flex: 1,
   },
   welcomeTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#FF6B35",
+    ...Typography.h4,
+    color: Colors.streak,
     marginBottom: 4,
   },
   welcomeSubtitle: {
-    fontSize: 13,
+    ...Typography.caption,
     color: "#8B5E3C",
-    fontWeight: "500",
     lineHeight: 18,
   },
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#E8F5E9",
-    paddingHorizontal: 10,
+    backgroundColor: Colors.successLight,
+    paddingHorizontal: Spacing.sm,
     paddingVertical: 6,
-    borderRadius: 12,
+    borderRadius: BorderRadius.md,
     marginRight: 4,
   },
+  statusBadgeWarning: {
+    backgroundColor: Colors.warningLight,
+  },
   statusText: {
-    fontSize: 12,
-    color: "#34a853",
+    ...Typography.small,
+    color: Colors.success,
     fontWeight: "600",
     marginLeft: 4,
   },
@@ -475,49 +491,47 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     width: "100%",
-    marginTop: 30,
-    marginBottom: 10,
+    marginTop: Spacing.xxxl,
+    marginBottom: Spacing.sm,
     paddingHorizontal: 5,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#666",
-    marginLeft: 8,
+    ...Typography.bodyBold,
+    color: Colors.textSecondary,
+    marginLeft: Spacing.sm,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
-  card: {
+  // MenuCard Styles (für MaterialIcon special case)
+  menuCardContainer: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginVertical: Spacing.sm,
+    width: "100%",
+    ...Shadows.small,
+  },
+  menuCardContent: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 18,
-    paddingVertical: 18,
-    paddingHorizontal: 20,
-    width: "100%",
-    marginVertical: 10,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
   },
-  iconContainer: {
+  menuIconContainer: {
     width: 42,
     height: 42,
-    borderRadius: 12,
-    backgroundColor: "#f1f3f5",
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.surfaceLight,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 15,
+    marginRight: Spacing.md,
   },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#222",
+  menuTextContainer: {
+    flex: 1,
   },
-  cardSubtitle: {
-    fontSize: 14,
-    color: "#666",
+  menuTitle: {
+    ...Typography.bodyMedium,
+  },
+  menuSubtitle: {
+    ...Typography.caption,
     marginTop: 4,
   },
 });
