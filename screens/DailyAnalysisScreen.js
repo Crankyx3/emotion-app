@@ -31,8 +31,10 @@ import {
 } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { usePremium } from "../components/PremiumProvider";
 
 export default function DailyAnalysisScreen({ route, navigation }) {
+  const { canUseFeature, getTrialText, isTrialActive, trialDaysLeft } = usePremium();
   const paramsData = route.params || {};
 
   // Lokale States für alle Werte (aus route.params oder Firestore)
@@ -233,6 +235,23 @@ export default function DailyAnalysisScreen({ route, navigation }) {
           {
             text: "Zu Einstellungen",
             onPress: () => navigation.navigate("Settings")
+          }
+        ]
+      );
+      return;
+    }
+
+    // Prüfe Premium-Status
+    if (!canUseFeature('aiAnalysis')) {
+      const trialInfo = getTrialText();
+      Alert.alert(
+        "Premium Feature",
+        `KI-Tagesanalysen sind ein Premium-Feature.\n\n${trialInfo || 'Upgrade auf Premium für unbegrenzte Analysen.'}`,
+        [
+          { text: "Abbrechen", style: "cancel" },
+          {
+            text: "Mehr erfahren",
+            onPress: () => navigation.navigate('Paywall')
           }
         ]
       );

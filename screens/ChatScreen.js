@@ -19,9 +19,11 @@ import { useNavigation } from "@react-navigation/native";
 import { collection, getDocs, query, where, addDoc, Timestamp, doc, updateDoc } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { usePremium } from "../components/PremiumProvider";
 
 export default function ChatScreen({ route }) {
   const navigation = useNavigation();
+  const { canUseFeature, getTrialText } = usePremium();
   const { chatId, context, type, date } = route.params || {};
   // chatId = ID des gespeicherten Chats (falls vorhanden)
   // context = Analyse-Text
@@ -238,6 +240,23 @@ Sei empathisch, einladend und duze den Nutzer durchgehend.
 
   const sendMessage = async () => {
     if (!input.trim()) return;
+
+    // Prüfe Premium-Status
+    if (!canUseFeature('aiChat')) {
+      const trialInfo = getTrialText();
+      Alert.alert(
+        "Premium Feature",
+        `Unbegrenzter KI-Chat ist ein Premium-Feature.\n\n${trialInfo || 'Upgrade auf Premium für unbegrenzten Chat-Zugang.'}`,
+        [
+          { text: "Abbrechen", style: "cancel" },
+          {
+            text: "Mehr erfahren",
+            onPress: () => navigation.navigate('Paywall')
+          }
+        ]
+      );
+      return;
+    }
 
     // Prüfe Chat-Limit
     if (!canChat) {

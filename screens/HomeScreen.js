@@ -9,11 +9,13 @@ import { Colors, Spacing, Typography, BorderRadius, Shadows } from "../theme";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
 import { useAuth } from "../components/AuthProvider";
+import { usePremium } from "../components/PremiumProvider";
 import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function HomeScreen({ navigation }) {
   const { userName } = useAuth();
+  const { isPremium, isTrialActive, trialDaysLeft } = usePremium();
   const [loading, setLoading] = useState(true);
   const [currentStreak, setCurrentStreak] = useState(0);
   const [longestStreak, setLongestStreak] = useState(0);
@@ -256,25 +258,54 @@ export default function HomeScreen({ navigation }) {
   ];
 
   const renderAnalysisStatus = (item) => {
+    const badges = [];
+
+    // Premium Badge (wenn nicht Premium und nicht Trial)
+    if (!isPremium && !isTrialActive) {
+      const premiumFeatures = ["Tagesanalyse", "KI-Wochenanalyse", "KI-Chat", "Meditation & Achtsamkeit"];
+      if (premiumFeatures.includes(item.title)) {
+        badges.push(
+          <View key="premium" style={styles.premiumBadge}>
+            <Ionicons name="diamond" size={14} color="#FFB900" />
+            <Text style={styles.premiumText}>Premium</Text>
+          </View>
+        );
+      }
+    }
+
+    // Trial Badge (wenn Trial aktiv)
+    if (isTrialActive) {
+      const premiumFeatures = ["Tagesanalyse", "KI-Wochenanalyse", "KI-Chat", "Meditation & Achtsamkeit"];
+      if (premiumFeatures.includes(item.title)) {
+        badges.push(
+          <View key="trial" style={styles.trialBadge}>
+            <Ionicons name="time" size={14} color={Colors.warning} />
+            <Text style={styles.trialText}>{trialDaysLeft}d Trial</Text>
+          </View>
+        );
+      }
+    }
+
+    // Status Badges
     if (item.title === "Tagesdaten eintragen" && dailyEntryDone) {
-      return (
-        <View style={styles.statusBadge}>
+      badges.push(
+        <View key="done" style={styles.statusBadge}>
           <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
           <Text style={styles.statusText}>Erledigt</Text>
         </View>
       );
     }
     if (item.title === "Tagesanalyse" && dailyAnalysisDone) {
-      return (
-        <View style={styles.statusBadge}>
+      badges.push(
+        <View key="done" style={styles.statusBadge}>
           <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
           <Text style={styles.statusText}>Erledigt</Text>
         </View>
       );
     }
     if (item.title === "KI-Wochenanalyse" && weeklyAnalysisDone) {
-      return (
-        <View style={[styles.statusBadge, styles.statusBadgeWarning]}>
+      badges.push(
+        <View key="weekly" style={[styles.statusBadge, styles.statusBadgeWarning]}>
           <Ionicons name="time-outline" size={16} color={Colors.warning} />
           <Text style={[styles.statusText, { color: Colors.warning }]}>
             in {daysUntilWeekly}d
@@ -282,7 +313,8 @@ export default function HomeScreen({ navigation }) {
         </View>
       );
     }
-    return null;
+
+    return badges.length > 0 ? <View style={styles.badgeContainer}>{badges}</View> : null;
   };
 
   if (loading) {
@@ -349,6 +381,50 @@ export default function HomeScreen({ navigation }) {
             )}
           </View>
         </View>
+
+        {/* Premium/Trial Status Card */}
+        {isTrialActive ? (
+          <InfoCard
+            type="warning"
+            icon="time"
+            title={`${trialDaysLeft} Tag${trialDaysLeft !== 1 ? 'e' : ''} Trial verbleibend`}
+            message="Teste alle Premium-Features kostenlos. Danach kannst du Premium für unbegrenzten Zugang freischalten."
+          >
+            <Button
+              variant="primary"
+              size="small"
+              icon="diamond"
+              onPress={() => navigation.navigate('Paywall')}
+              style={{ marginTop: Spacing.sm }}
+            >
+              Premium anzeigen
+            </Button>
+          </InfoCard>
+        ) : !isPremium ? (
+          <InfoCard
+            type="info"
+            icon="diamond"
+            title="Teste Premium kostenlos"
+            message="Schalte alle Features frei: Unbegrenzte Analysen, KI-Chat, Meditationen & mehr."
+          >
+            <Button
+              variant="primary"
+              size="small"
+              icon="diamond"
+              onPress={() => navigation.navigate('Paywall')}
+              style={{ marginTop: Spacing.sm }}
+            >
+              Jetzt upgraden
+            </Button>
+          </InfoCard>
+        ) : (
+          <InfoCard
+            type="success"
+            icon="checkmark-circle"
+            title="Premium aktiv"
+            message="Du hast Zugriff auf alle Features. Vielen Dank für deine Unterstützung!"
+          />
+        )}
 
         {/* Haupt-Menü */}
         {mainMenuItems.map((item, index) => (
@@ -597,6 +673,43 @@ const styles = StyleSheet.create({
     ...Typography.small,
     color: Colors.success,
     fontWeight: "600",
+    marginLeft: 4,
+  },
+  badgeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  premiumBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF9E6",
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: "#FFE066",
+  },
+  premiumText: {
+    ...Typography.small,
+    color: "#996A13",
+    fontWeight: "700",
+    marginLeft: 4,
+  },
+  trialBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.warningLight,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: "#FFE066",
+  },
+  trialText: {
+    ...Typography.small,
+    color: Colors.warning,
+    fontWeight: "700",
     marginLeft: 4,
   },
   sectionHeader: {

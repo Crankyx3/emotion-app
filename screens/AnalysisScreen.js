@@ -16,9 +16,11 @@ import { collection, getDocs, query, where, orderBy, addDoc, Timestamp, limit } 
 import { db, auth } from "../firebaseconfig";
 import { getAiResponse } from "../openaiService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { usePremium } from "../components/PremiumProvider";
 
 export default function AnalysisScreen() {
   const navigation = useNavigation();
+  const { canUseFeature, getTrialText } = usePremium();
   const scrollViewRef = useRef(null);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -238,6 +240,23 @@ export default function AnalysisScreen() {
           {
             text: "Zu Einstellungen",
             onPress: () => navigation.navigate("Settings")
+          }
+        ]
+      );
+      return;
+    }
+
+    // Prüfe Premium-Status
+    if (!canUseFeature('weeklyAnalysis')) {
+      const trialInfo = getTrialText();
+      Alert.alert(
+        "Premium Feature",
+        `KI-Wochenanalysen sind ein Premium-Feature.\n\n${trialInfo || 'Upgrade auf Premium für unbegrenzte Analysen.'}`,
+        [
+          { text: "Abbrechen", style: "cancel" },
+          {
+            text: "Mehr erfahren",
+            onPress: () => navigation.navigate('Paywall')
           }
         ]
       );

@@ -16,11 +16,13 @@ import AnalysisScreen from "./screens/AnalysisScreen";
 import MeditationScreen from "./screens/MeditationScreen";
 import PsychoEducationScreen from "./screens/PsychoEducationScreen";
 import AppGuideScreen from "./screens/AppGuideScreen";
+import PaywallScreen from "./screens/PaywallScreen";
 import LoginScreen from "./screens/LoginScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 import PrivacyPolicyScreen from "./screens/PrivacyPolicyScreen";
 
 import { AuthProvider, useAuth } from "./components/AuthProvider";
+import { PremiumProvider } from "./components/PremiumProvider";
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -117,6 +119,7 @@ function RootNavigator() {
             <Stack.Screen name="Meditation" component={MeditationScreen} />
             <Stack.Screen name="PsychoEducation" component={PsychoEducationScreen} />
             <Stack.Screen name="AppGuide" component={AppGuideScreen} />
+            <Stack.Screen name="Paywall" component={PaywallScreen} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
           </>
@@ -134,7 +137,9 @@ function RootNavigator() {
 export default function App() {
   return (
     <AuthProvider>
-      <RootNavigator />
+      <PremiumProvider>
+        <RootNavigator />
+      </PremiumProvider>
     </AuthProvider>
   );
 }

@@ -7,15 +7,18 @@ import {
   TouchableOpacity,
   Modal,
   Dimensions,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { MotiView } from "moti";
 import ScreenHeader from "../components/ScreenHeader";
+import { usePremium } from "../components/PremiumProvider";
 
 const { width } = Dimensions.get("window");
 
 export default function MeditationScreen({ navigation }) {
+  const { canUseFeature, getTrialText } = usePremium();
   const [selectedMeditation, setSelectedMeditation] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(0);
@@ -146,12 +149,46 @@ export default function MeditationScreen({ navigation }) {
   }, [isPlaying, timeRemaining]);
 
   const startMeditation = (meditation) => {
+    // Prüfe Premium-Status
+    if (!canUseFeature('meditation')) {
+      const trialInfo = getTrialText();
+      Alert.alert(
+        "Premium Feature",
+        `Alle Meditationen & Übungen sind ein Premium-Feature.\n\n${trialInfo || 'Upgrade auf Premium für unbegrenzte Meditationen.'}`,
+        [
+          { text: "Abbrechen", style: "cancel" },
+          {
+            text: "Mehr erfahren",
+            onPress: () => navigation.navigate('Paywall')
+          }
+        ]
+      );
+      return;
+    }
+
     setSelectedMeditation(meditation);
     setTimeRemaining(meditation.duration * 60);
     setIsPlaying(true);
   };
 
   const startBreathingExercise = (exercise) => {
+    // Prüfe Premium-Status
+    if (!canUseFeature('meditation')) {
+      const trialInfo = getTrialText();
+      Alert.alert(
+        "Premium Feature",
+        `Alle Meditationen & Übungen sind ein Premium-Feature.\n\n${trialInfo || 'Upgrade auf Premium für unbegrenzte Meditationen.'}`,
+        [
+          { text: "Abbrechen", style: "cancel" },
+          {
+            text: "Mehr erfahren",
+            onPress: () => navigation.navigate('Paywall')
+          }
+        ]
+      );
+      return;
+    }
+
     // Simple breathing exercise implementation
     setSelectedMeditation(exercise);
     setIsPlaying(true);
