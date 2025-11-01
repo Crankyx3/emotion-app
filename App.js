@@ -15,6 +15,7 @@ import EmotionChartScreen from "./screens/EmotionChartScreen";
 import AnalysisScreen from "./screens/AnalysisScreen";
 import MeditationScreen from "./screens/MeditationScreen";
 import PsychoEducationScreen from "./screens/PsychoEducationScreen";
+import AppGuideScreen from "./screens/AppGuideScreen";
 import LoginScreen from "./screens/LoginScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 import PrivacyPolicyScreen from "./screens/PrivacyPolicyScreen";
@@ -115,6 +116,7 @@ function RootNavigator() {
             <Stack.Screen name="Chat" component={ChatScreen} />
             <Stack.Screen name="Meditation" component={MeditationScreen} />
             <Stack.Screen name="PsychoEducation" component={PsychoEducationScreen} />
+            <Stack.Screen name="AppGuide" component={AppGuideScreen} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
           </>

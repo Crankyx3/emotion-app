@@ -191,6 +191,13 @@ export default function HomeScreen({ navigation }) {
 
   const guideItems = [
     {
+      title: "App-Anleitung",
+      subtitle: "Lerne wie du die App optimal nutzt",
+      icon: "help-circle-outline",
+      iconColor: Colors.primary,
+      screen: "AppGuide",
+    },
+    {
       title: "Meditation & Achtsamkeit",
       subtitle: "Geführte Meditationen und Atemübungen (2-5 Min.)",
       icon: "leaf-outline",
