@@ -304,13 +304,16 @@ ${theme ? `Thema: "${theme}"` : 'Kein spezifisches Thema'}
 ${text ? `Beschreibung: "${text}"` : 'Keine detaillierte Beschreibung'}
 
 AUFGABE:
-Schreibe eine empathische, psychologisch fundierte Analyse (3-5 gut lesbare Sätze) die:
-- Konkret auf die beschriebenen Gefühle und Situationen eingeht
-- Spezifische Worte oder Themen der Person aufgreift
-- Psychologische Zusammenhänge erklärt (z.B. aus CBT, ACT, Achtsamkeit)
-- Eine hilfreiche neue Perspektive bietet
+Erstelle eine strukturierte Tagesanalyse mit klaren Überschriften.
 
-WICHTIG: Schreibe in fließenden, natürlichen Sätzen ohne Markdown, ohne Sternchen, ohne Überschriften. Einfach klarer, empathischer Text mit Absätzen zur besseren Lesbarkeit.
+WICHTIG: Schreibe in fließendem, gut lesbarem Text OHNE Markdown, OHNE Sternchen, OHNE ### Überschriften.
+
+STRUKTUR:
+Beginne mit "Emotionale Lage:" gefolgt von 2-3 Sätzen die konkret auf die beschriebenen Gefühle eingehen.
+
+Dann "Psychologische Einordnung:" mit 2-3 Sätzen die psychologische Zusammenhänge erklären (z.B. aus CBT, ACT, Achtsamkeit).
+
+Dann "Perspektive:" mit 1-2 Sätzen die eine hilfreiche neue Sichtweise bieten.
 
 Danach gib GENAU 3 konkrete Handlungsvorschläge im folgenden Format:
 [VORSCHLÄGE]
@@ -634,12 +637,31 @@ Die Vorschläge sollen sofort umsetzbar sein (5-15 Minuten) und zur aktuellen Em
                 <Text style={styles.resultTitle}>Deine persönliche Analyse</Text>
               </View>
 
-              {/* Absätze mit Whitespace */}
-              {aiText.split('\n\n').filter(para => para.trim()).map((paragraph, index) => (
-                <View key={index} style={styles.paragraphContainer}>
-                  <Text style={styles.resultText}>{paragraph.trim()}</Text>
-                </View>
-              ))}
+              {/* Absätze mit Whitespace und fetten Überschriften */}
+              {aiText.split('\n\n').filter(para => para.trim()).map((paragraph, index) => {
+                const trimmedPara = paragraph.trim();
+                // Prüfe ob der Absatz mit "Überschrift:" beginnt
+                const headingMatch = trimmedPara.match(/^([^:]+):\s*(.*)$/s);
+
+                if (headingMatch) {
+                  const heading = headingMatch[1];
+                  const content = headingMatch[2];
+                  return (
+                    <View key={index} style={styles.paragraphContainer}>
+                      <Text style={styles.resultText}>
+                        <Text style={styles.headingText}>{heading}:</Text>
+                        {' ' + content}
+                      </Text>
+                    </View>
+                  );
+                }
+
+                return (
+                  <View key={index} style={styles.paragraphContainer}>
+                    <Text style={styles.resultText}>{trimmedPara}</Text>
+                  </View>
+                );
+              })}
 
               {analysisValid && (
                 <View style={styles.successBadge}>
@@ -1019,6 +1041,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 26,
     color: "#1C1C1E",
+  },
+  headingText: {
+    fontWeight: "700",
+    color: "#007AFF",
   },
   successBadge: {
     flexDirection: "row",

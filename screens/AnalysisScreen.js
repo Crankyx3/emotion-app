@@ -502,17 +502,39 @@ Abschluss: Beende mit genau einem Wort in einer neuen Zeile: POSITIV, NEUTRAL od
           <View style={styles.analysisBox}>
             <Text style={styles.analysisHeader}>🧠 KI-Analyse</Text>
 
-            {/* Absätze mit Whitespace */}
-            {aiText.split('\n\n').filter(para => para.trim()).map((paragraph, index) => (
-              <View key={index} style={styles.paragraphContainer}>
-                <Text
-                  style={styles.analysisText}
-                  numberOfLines={!expanded && index > 0 ? 3 : undefined}
-                >
-                  {paragraph.trim()}
-                </Text>
-              </View>
-            ))}
+            {/* Absätze mit Whitespace und fetten Überschriften */}
+            {aiText.split('\n\n').filter(para => para.trim()).map((paragraph, index) => {
+              const trimmedPara = paragraph.trim();
+              // Prüfe ob der Absatz mit "Überschrift:" beginnt
+              const headingMatch = trimmedPara.match(/^([^:]+):\s*(.*)$/s);
+
+              if (headingMatch) {
+                const heading = headingMatch[1];
+                const content = headingMatch[2];
+                return (
+                  <View key={index} style={styles.paragraphContainer}>
+                    <Text
+                      style={styles.analysisText}
+                      numberOfLines={!expanded && index > 0 ? 3 : undefined}
+                    >
+                      <Text style={styles.headingText}>{heading}:</Text>
+                      {' ' + content}
+                    </Text>
+                  </View>
+                );
+              }
+
+              return (
+                <View key={index} style={styles.paragraphContainer}>
+                  <Text
+                    style={styles.analysisText}
+                    numberOfLines={!expanded && index > 0 ? 3 : undefined}
+                  >
+                    {trimmedPara}
+                  </Text>
+                </View>
+              );
+            })}
 
             {/* Mehr/Weniger Button */}
             <TouchableOpacity
@@ -709,6 +731,10 @@ const styles = StyleSheet.create({
     color: "#1C1C1E",
     lineHeight: 26,
     textAlign: "left",
+  },
+  headingText: {
+    fontWeight: "700",
+    color: "#007AFF",
   },
   moreButton: {
     marginTop: 10,
