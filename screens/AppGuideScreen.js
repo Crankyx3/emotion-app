@@ -116,6 +116,14 @@ export default function AppGuideScreen({ navigation }) {
 
   return (
     <LinearGradient colors={[Colors.background, Colors.surface]} style={styles.gradient}>
+      {/* Back Button */}
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => navigation.goBack()}
+      >
+        <Ionicons name="chevron-back" size={28} color={Colors.primary} />
+      </TouchableOpacity>
+
       <ScrollView contentContainerStyle={styles.container}>
         <ScreenHeader
           title="App-Anleitung"
@@ -233,6 +241,19 @@ export default function AppGuideScreen({ navigation }) {
 const styles = StyleSheet.create({
   gradient: {
     flex: 1,
+  },
+  backButton: {
+    position: 'absolute',
+    top: 60,
+    left: 20,
+    zIndex: 10,
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.round,
+    ...Shadows.medium,
   },
   container: {
     paddingVertical: Spacing.xxxl,
