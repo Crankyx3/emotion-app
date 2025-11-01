@@ -6,6 +6,7 @@ import ScreenHeader from "../components/ScreenHeader";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
 import { useAuth } from "../components/AuthProvider";
+import { useFocusEffect } from "@react-navigation/native";
 
 export default function HomeScreen({ navigation }) {
   const { userName } = useAuth();
@@ -16,9 +17,12 @@ export default function HomeScreen({ navigation }) {
   const [weeklyAnalysisDone, setWeeklyAnalysisDone] = useState(false);
   const [daysUntilWeekly, setDaysUntilWeekly] = useState(0);
 
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
+  // Aktualisiere Dashboard-Daten wenn Screen fokussiert wird
+  useFocusEffect(
+    React.useCallback(() => {
+      loadDashboardData();
+    }, [])
+  );
 
   const loadDashboardData = async () => {
     if (!auth.currentUser) {
