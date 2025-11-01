@@ -59,6 +59,13 @@ export default function DailyEntryScreen() {
   // Prüfen, ob heute bereits ein Eintrag erstellt wurde
   useEffect(() => {
     const checkTodayEntry = async () => {
+      // Skip im Gastmodus oder wenn nicht eingeloggt
+      if (isGuestMode || !auth.currentUser) {
+        setCheckingLimit(false);
+        setCanCreateEntry(false);
+        return;
+      }
+
       try {
         const today = new Date();
         today.setHours(0, 0, 0, 0);

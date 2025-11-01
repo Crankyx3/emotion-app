@@ -53,7 +53,7 @@ export default function HomeScreen({ navigation }) {
 
   const checkFirstTimeUser = async () => {
     try {
-      if (!auth.currentUser) return;
+      if (isGuestMode || !auth.currentUser) return;
 
       const hasSeenWelcome = await AsyncStorage.getItem(`hasSeenWelcome_${auth.currentUser.uid}`);
 
@@ -93,7 +93,7 @@ export default function HomeScreen({ navigation }) {
   );
 
   const loadDashboardData = async () => {
-    if (!auth.currentUser) {
+    if (isGuestMode || !auth.currentUser) {
       setLoading(false);
       return;
     }

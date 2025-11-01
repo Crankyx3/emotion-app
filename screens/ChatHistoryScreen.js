@@ -16,9 +16,12 @@ import { collection, getDocs, query, where, addDoc, Timestamp } from "firebase/f
 import { db, auth } from "../firebaseconfig";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from "../components/AuthProvider";
+import GuestBlockModal from "../components/GuestBlockModal";
 
 export default function ChatHistoryScreen() {
   const navigation = useNavigation();
+  const { isGuestMode, exitGuestMode } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [chats, setChats] = useState([]);
@@ -28,6 +31,9 @@ export default function ChatHistoryScreen() {
   const [dailyAnalyses, setDailyAnalyses] = useState([]);
   const [weeklyAnalyses, setWeeklyAnalyses] = useState([]);
   const [loadingAnalyses, setLoadingAnalyses] = useState(false);
+
+  // Guest Mode
+  const [showGuestModal, setShowGuestModal] = useState(false);
 
   useEffect(() => {
     loadChatHistory();
@@ -42,7 +48,11 @@ export default function ChatHistoryScreen() {
 
   const loadChatHistory = async () => {
     try {
-      if (!auth.currentUser) return;
+      if (isGuestMode || !auth.currentUser) {
+        setLoading(false);
+        setChats([]);
+        return;
+      }
 
       const chatsQuery = query(
         collection(db, "chats"),
@@ -121,12 +131,18 @@ export default function ChatHistoryScreen() {
   };
 
   const openNewChatModal = () => {
+    if (isGuestMode) {
+      setShowGuestModal(true);
+      return;
+    }
     setShowNewChatModal(true);
     loadAnalysesForModal();
   };
 
   const createNewChat = async (type, context, date, analysisId) => {
     try {
+      if (!auth.currentUser) return;
+
       // Prüfe ob Chat-Historie gespeichert werden soll
       const chatHistoryEnabled = await AsyncStorage.getItem(`chatHistoryEnabled_${auth.currentUser.uid}`);
 
@@ -375,6 +391,17 @@ export default function ChatHistoryScreen() {
             </View>
           </View>
         </Modal>
+
+        {/* Guest Mode Block Modal */}
+        <GuestBlockModal
+          visible={showGuestModal}
+          onClose={() => setShowGuestModal(false)}
+          onRegister={() => {
+            setShowGuestModal(false);
+            exitGuestMode();
+          }}
+          featureName="KI-Chat"
+        />
       </SafeAreaView>
     </LinearGradient>
   );
