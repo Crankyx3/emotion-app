@@ -883,21 +883,6 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
               />
             </TouchableOpacity>
           </View>
-
-          {/* Link zur Datenschutzerklärung */}
-          <TouchableOpacity
-            style={styles.privacyLink}
-            onPress={() => navigation.navigate("PrivacyPolicy")}
-          >
-            <Ionicons name="shield-checkmark-outline" size={24} color="#007AFF" />
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.privacyLinkTitle}>Datenschutzerklärung</Text>
-              <Text style={styles.privacyLinkSubtitle}>
-                Lies unsere vollständige Datenschutzerklärung
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
-          </TouchableOpacity>
         </View>
 
         {/* Datenverwaltung */}
@@ -942,6 +927,21 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
                 </View>
               </>
             )}
+          </TouchableOpacity>
+
+          {/* Link zur Datenschutzerklärung */}
+          <TouchableOpacity
+            style={styles.privacyLink}
+            onPress={() => navigation.navigate("PrivacyPolicy")}
+          >
+            <Ionicons name="shield-checkmark-outline" size={24} color="#007AFF" />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.privacyLinkTitle}>Datenschutzerklärung</Text>
+              <Text style={styles.privacyLinkSubtitle}>
+                Lies unsere vollständige Datenschutzerklärung
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
           </TouchableOpacity>
         </View>
 
