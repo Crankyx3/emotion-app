@@ -326,6 +326,8 @@ Die Vorschläge sollen sofort umsetzbar sein (5-15 Minuten) und zur aktuellen Em
 
       // Parse Vorschläge aus der Antwort (unterstützt [VORSCHLÄGE] und [VORSCHLAG])
       const suggestionsMatch = reply.match(/\[VORSCHL[ÄA]GE?\](.*?)\[\/VORSCHL[ÄA]GE?\]/is);
+      let cleanedText = reply;
+
       if (suggestionsMatch) {
         const suggestionsText = suggestionsMatch[1];
         const suggestions = suggestionsText
@@ -341,12 +343,16 @@ Die Vorschläge sollen sofort umsetzbar sein (5-15 Minuten) und zur aktuellen Em
           .slice(0, 3);
         setActionSuggestions(suggestions);
 
-        // Entferne die Vorschläge aus dem Haupttext (unterstützt beide Varianten)
-        setAiText(reply.replace(/\[VORSCHL[ÄA]GE?\].*?\[\/VORSCHL[ÄA]GE?\]/gis, '').trim());
+        // Entferne die Vorschläge aus dem Haupttext (robuster mit mehreren Varianten)
+        cleanedText = reply
+          .replace(/\[VORSCHL[ÄA]GE?\][\s\S]*?\[\/VORSCHL[ÄA]GE?\]/gi, '')
+          .replace(/\[VORSCHLAG\][\s\S]*?\[\/VORSCHLAG\]/gi, '')
+          .trim();
       } else {
-        setAiText(reply);
         setActionSuggestions([]);
       }
+
+      setAiText(cleanedText);
       // Prüfung, ob die Antwort plausibel ist (kein Fehler-Text)
       const ok = typeof reply === "string" && reply.trim().length > 20 && !/fehler/i.test(reply);
       setAnalysisValid(ok);

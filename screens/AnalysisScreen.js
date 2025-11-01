@@ -306,6 +306,12 @@ Abschluss: Beende mit genau einem Wort in einer neuen Zeile: POSITIV, NEUTRAL od
         ? "negativ"
         : "neutral";
 
+      // Entferne die Stimmungs-Markierung aus dem Text
+      const cleanedText = reply
+        .replace(/\n\s*(POSITIV|NEGATIV|NEUTRAL)\s*$/i, '')
+        .replace(/(POSITIV|NEGATIV|NEUTRAL)\s*$/i, '')
+        .trim();
+
       const colorMap = {
         positiv: ["#b2f2bb", "#d3f9d8"],
         neutral: ["#fff3bf", "#fff9db"],
@@ -325,7 +331,7 @@ Abschluss: Beende mit genau einem Wort in einer neuen Zeile: POSITIV, NEUTRAL od
       };
 
       setHighlight(highlightData);
-      setAiText(reply);
+      setAiText(cleanedText);
       setExpanded(false);
 
       // In Firestore speichern
