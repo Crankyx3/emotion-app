@@ -32,9 +32,11 @@ import {
 import { db, auth } from "../firebaseconfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { usePremium } from "../components/PremiumProvider";
+import { useAuth } from "../components/AuthProvider";
 
 export default function DailyAnalysisScreen({ route, navigation }) {
   const { canUseFeature, getTrialText, isTrialActive, trialDaysLeft } = usePremium();
+  const { isGuestMode } = useAuth();
   const paramsData = route.params || {};
 
   // Lokale States für alle Werte (aus route.params oder Firestore)
@@ -90,12 +92,13 @@ export default function DailyAnalysisScreen({ route, navigation }) {
   }, [route.params]);
 
   const checkTodayAnalysis = async () => {
-    if (!auth.currentUser) {
+    if (isGuestMode || !auth.currentUser) {
       setCheckingLimit(false);
+      setAnalysisValid(false);
       return;
     }
 
-    try {
+    try{
       // Hole heutiges Datum (Start des Tages)
       const today = new Date();
       today.setHours(0, 0, 0, 0);

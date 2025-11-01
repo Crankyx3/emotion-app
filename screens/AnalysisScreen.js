@@ -17,10 +17,12 @@ import { db, auth } from "../firebaseconfig";
 import { getAiResponse } from "../openaiService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { usePremium } from "../components/PremiumProvider";
+import { useAuth } from "../components/AuthProvider";
 
 export default function AnalysisScreen() {
   const navigation = useNavigation();
   const { canUseFeature, getTrialText } = usePremium();
+  const { isGuestMode } = useAuth();
   const scrollViewRef = useRef(null);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +42,12 @@ export default function AnalysisScreen() {
   // Prüfen, ob Analyse in den letzten 7 Tagen erstellt wurde
   const checkRecentAnalysis = async () => {
     try {
+      if (isGuestMode || !auth.currentUser) {
+        setCheckingLimit(false);
+        setCanAnalyze(false);
+        return;
+      }
+
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -87,6 +95,11 @@ export default function AnalysisScreen() {
   // Alle bisherigen Analysen laden (für Verlauf)
   const loadAnalysisHistory = async () => {
     try {
+      if (isGuestMode || !auth.currentUser) {
+        setAllAnalyses([]);
+        return;
+      }
+
       const q = query(
         collection(db, "weeklyAnalyses"),
         where("userId", "==", auth.currentUser.uid)
@@ -165,8 +178,9 @@ export default function AnalysisScreen() {
   useEffect(() => {
     const fetchWeekData = async () => {
       try {
-        if (!auth.currentUser) {
+        if (isGuestMode || !auth.currentUser) {
           setLoading(false);
+          setEntries([]);
           return;
         }
 

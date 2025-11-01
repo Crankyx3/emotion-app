@@ -18,10 +18,12 @@ import { getAiResponse } from "../openaiService";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from "../components/AuthProvider";
 
 const screenWidth = Dimensions.get("window").width;
 
 export default function EmotionChartScreen({ navigation }) {
+  const { isGuestMode } = useAuth();
   const [entries, setEntries] = useState([]);
   const [allEntries, setAllEntries] = useState([]); // Für Trend & Insights
   const [loading, setLoading] = useState(true);
@@ -32,8 +34,10 @@ export default function EmotionChartScreen({ navigation }) {
   useEffect(() => {
     (async () => {
       try {
-        if (!auth.currentUser) {
+        if (isGuestMode || !auth.currentUser) {
           setLoading(false);
+          setEntries([]);
+          setAllEntries([]);
           return;
         }
 
