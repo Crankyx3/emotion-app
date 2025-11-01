@@ -33,7 +33,7 @@ export default function HomeScreen({ navigation }) {
     checkFirstTimeUser();
   }, []);
 
-  // Trial Timer: Aktualisiere jede Minute
+  // Trial Timer: Aktualisiere jede Sekunde
   useEffect(() => {
     if (!isTrialActive || isPremium) return;
 
@@ -45,8 +45,8 @@ export default function HomeScreen({ navigation }) {
     // Sofort aktualisieren
     updateTrialTimer();
 
-    // Dann jede Minute aktualisieren
-    const interval = setInterval(updateTrialTimer, 60000);
+    // Dann jede Sekunde aktualisieren
+    const interval = setInterval(updateTrialTimer, 1000);
 
     return () => clearInterval(interval);
   }, [isTrialActive, isPremium]);
@@ -289,19 +289,6 @@ export default function HomeScreen({ navigation }) {
           <View key="premium" style={styles.premiumBadge}>
             <Ionicons name="diamond" size={14} color="#FFB900" />
             <Text style={styles.premiumText}>Premium</Text>
-          </View>
-        );
-      }
-    }
-
-    // Trial Badge (wenn Trial aktiv)
-    if (isTrialActive) {
-      const premiumFeatures = ["Tagesanalyse", "KI-Wochenanalyse", "KI-Chat", "Meditation & Achtsamkeit"];
-      if (premiumFeatures.includes(item.title)) {
-        badges.push(
-          <View key="trial" style={styles.trialBadge}>
-            <Ionicons name="time" size={14} color={Colors.warning} />
-            <Text style={styles.trialText}>{trialDaysLeft}d Trial</Text>
           </View>
         );
       }
