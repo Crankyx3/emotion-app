@@ -13,6 +13,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../components/AuthProvider";
+import { usePremium } from "../components/PremiumProvider";
 import { db, auth } from "../firebaseconfig";
 import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { deleteUser, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
@@ -23,7 +24,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function SettingsScreen({ navigation }) {
   const { user, signOut } = useAuth();
+  const { isPremium, isTrialActive, trialDaysLeft, getTrialTimeRemaining } = usePremium();
   const [loading, setLoading] = useState(false);
+  const [trialTimeRemaining, setTrialTimeRemaining] = useState(null);
   const [stats, setStats] = useState({
     totalEntries: 0,
     dailyAnalyses: 0,
@@ -43,7 +46,15 @@ export default function SettingsScreen({ navigation }) {
     loadStats();
     calculateStreak();
     loadPrivacySettings();
+    loadTrialTime();
   }, []);
+
+  const loadTrialTime = async () => {
+    if (isTrialActive) {
+      const timeData = await getTrialTimeRemaining();
+      setTrialTimeRemaining(timeData);
+    }
+  };
 
   const loadPrivacySettings = async () => {
     try {
@@ -642,6 +653,109 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
           title="Einstellungen"
           subtitle="Account & Datenverwaltung"
         />
+
+        {/* Premium/Trial Status */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>💎 Premium-Status</Text>
+
+          {isPremium ? (
+            <View style={[styles.card, styles.premiumCard]}>
+              <View style={styles.premiumHeader}>
+                <Ionicons name="checkmark-circle" size={48} color="#34C759" />
+                <View style={styles.premiumInfo}>
+                  <Text style={styles.premiumTitle}>Premium aktiv</Text>
+                  <Text style={styles.premiumSubtitle}>
+                    Du hast vollen Zugriff auf alle Features
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.featureList}>
+                <View style={styles.featureItem}>
+                  <Ionicons name="checkmark-circle" size={18} color="#34C759" />
+                  <Text style={styles.featureText}>Unbegrenzte Tageseinträge</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <Ionicons name="checkmark-circle" size={18} color="#34C759" />
+                  <Text style={styles.featureText}>Unbegrenzte KI-Analysen</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <Ionicons name="checkmark-circle" size={18} color="#34C759" />
+                  <Text style={styles.featureText}>Unbegrenzter KI-Chat</Text>
+                </View>
+              </View>
+            </View>
+          ) : isTrialActive ? (
+            <View style={[styles.card, styles.trialCard]}>
+              <View style={styles.trialHeader}>
+                <Ionicons name="time" size={48} color="#FF9500" />
+                <View style={styles.trialInfo}>
+                  <Text style={styles.trialTitle}>Trial aktiv 🎉</Text>
+                  <Text style={styles.trialSubtitle}>
+                    Teste alle Premium-Features kostenlos
+                  </Text>
+                </View>
+              </View>
+
+              {trialTimeRemaining && !trialTimeRemaining.expired && (
+                <View style={styles.trialTimeContainer}>
+                  <Text style={styles.trialTimeLabel}>Verbleibende Zeit:</Text>
+                  <View style={styles.trialTimerRow}>
+                    <View style={styles.trialTimerSegment}>
+                      <Text style={styles.trialTimerNumber}>{trialTimeRemaining.days}</Text>
+                      <Text style={styles.trialTimerLabel}>
+                        Tag{trialTimeRemaining.days !== 1 ? 'e' : ''}
+                      </Text>
+                    </View>
+                    <Text style={styles.trialTimerSeparator}>:</Text>
+                    <View style={styles.trialTimerSegment}>
+                      <Text style={styles.trialTimerNumber}>
+                        {String(trialTimeRemaining.hours).padStart(2, '0')}
+                      </Text>
+                      <Text style={styles.trialTimerLabel}>Std</Text>
+                    </View>
+                    <Text style={styles.trialTimerSeparator}>:</Text>
+                    <View style={styles.trialTimerSegment}>
+                      <Text style={styles.trialTimerNumber}>
+                        {String(trialTimeRemaining.minutes).padStart(2, '0')}
+                      </Text>
+                      <Text style={styles.trialTimerLabel}>Min</Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={styles.upgradeButton}
+                onPress={() => navigation.navigate('Paywall')}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="diamond" size={20} color="#fff" />
+                <Text style={styles.upgradeButtonText}>Premium upgraden</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={[styles.card, styles.freeCard]}>
+              <View style={styles.freeHeader}>
+                <Ionicons name="lock-closed" size={48} color="#FF3B30" />
+                <View style={styles.freeInfo}>
+                  <Text style={styles.freeTitle}>Trial abgelaufen</Text>
+                  <Text style={styles.freeSubtitle}>
+                    Upgrade zu Premium für unbegrenzten Zugang
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.upgradeButton, styles.upgradeButtonPrimary]}
+                onPress={() => navigation.navigate('Paywall')}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="diamond" size={20} color="#fff" />
+                <Text style={styles.upgradeButtonText}>Jetzt upgraden</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
 
         {/* Account Info */}
         <View style={styles.section}>
@@ -1292,5 +1406,156 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#007AFF",
     opacity: 0.8,
+  },
+  // Premium/Trial Card Styles
+  premiumCard: {
+    backgroundColor: "#E8F5E9",
+    borderWidth: 2,
+    borderColor: "#34C759",
+  },
+  premiumHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  premiumInfo: {
+    marginLeft: 16,
+    flex: 1,
+  },
+  premiumTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#1B5E20",
+    marginBottom: 4,
+  },
+  premiumSubtitle: {
+    fontSize: 14,
+    color: "#2E7D32",
+  },
+  featureList: {
+    borderTopWidth: 1,
+    borderTopColor: "#C8E6C9",
+    paddingTop: 16,
+    marginTop: 16,
+  },
+  featureItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  featureText: {
+    fontSize: 14,
+    color: "#1B5E20",
+    marginLeft: 10,
+    fontWeight: "500",
+  },
+  trialCard: {
+    backgroundColor: "#FFF9E6",
+    borderWidth: 2,
+    borderColor: "#FFE066",
+  },
+  trialHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  trialInfo: {
+    marginLeft: 16,
+    flex: 1,
+  },
+  trialTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#996A13",
+    marginBottom: 4,
+  },
+  trialSubtitle: {
+    fontSize: 14,
+    color: "#8B5E3C",
+  },
+  trialTimeContainer: {
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "rgba(153, 106, 19, 0.2)",
+  },
+  trialTimeLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#996A13",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  trialTimerRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  trialTimerSegment: {
+    alignItems: "center",
+    paddingHorizontal: 12,
+  },
+  trialTimerNumber: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#996A13",
+    lineHeight: 32,
+  },
+  trialTimerLabel: {
+    fontSize: 12,
+    color: "#8B5E3C",
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  trialTimerSeparator: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#996A13",
+    marginHorizontal: 4,
+  },
+  upgradeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#007AFF",
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginTop: 4,
+  },
+  upgradeButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+    marginLeft: 8,
+  },
+  freeCard: {
+    backgroundColor: "#FFEBEE",
+    borderWidth: 2,
+    borderColor: "#FF3B30",
+  },
+  freeHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  freeInfo: {
+    marginLeft: 16,
+    flex: 1,
+  },
+  freeTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#B71C1C",
+    marginBottom: 4,
+  },
+  freeSubtitle: {
+    fontSize: 14,
+    color: "#C62828",
+  },
+  upgradeButtonPrimary: {
+    backgroundColor: "#FF3B30",
   },
 });
