@@ -918,6 +918,21 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
             )}
           </TouchableOpacity>
 
+          {/* Link zur Datenschutzerklärung */}
+          <TouchableOpacity
+            style={styles.privacyLink}
+            onPress={() => navigation.navigate("PrivacyPolicy")}
+          >
+            <Ionicons name="shield-checkmark-outline" size={24} color="#007AFF" />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.privacyLinkTitle}>Datenschutzerklärung</Text>
+              <Text style={styles.privacyLinkSubtitle}>
+                Lies unsere vollständige Datenschutzerklärung
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.dangerButton}
             onPress={handleResetData}
@@ -938,37 +953,22 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
             )}
           </TouchableOpacity>
 
-          {/* Link zur Datenschutzerklärung */}
+          {/* Account Löschen */}
           <TouchableOpacity
-            style={styles.privacyLink}
-            onPress={() => navigation.navigate("PrivacyPolicy")}
+            style={styles.deleteAccountButton}
+            onPress={handleDeleteAccount}
+            disabled={loading}
           >
-            <Ionicons name="shield-checkmark-outline" size={24} color="#007AFF" />
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.privacyLinkTitle}>Datenschutzerklärung</Text>
-              <Text style={styles.privacyLinkSubtitle}>
-                Lies unsere vollständige Datenschutzerklärung
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="trash-bin-outline" size={24} color="#fff" />
+                <Text style={styles.deleteAccountButtonText}>Account unwiderruflich löschen</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
-
-        {/* Account Löschen */}
-        <TouchableOpacity
-          style={styles.deleteAccountButton}
-          onPress={handleDeleteAccount}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <Ionicons name="trash-bin-outline" size={24} color="#fff" />
-              <Text style={styles.deleteAccountButtonText}>Account unwiderruflich löschen</Text>
-            </>
-          )}
-        </TouchableOpacity>
 
         {/* Admin Panel (nur für Admin sichtbar) */}
         {user?.email === "finn_bauermeister@web.de" && (
