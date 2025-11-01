@@ -495,12 +495,18 @@ Abschluss: Beende mit genau einem Wort in einer neuen Zeile: POSITIV, NEUTRAL od
         {aiText && (
           <View style={styles.analysisBox}>
             <Text style={styles.analysisHeader}>🧠 KI-Analyse</Text>
-            <Text
-              style={styles.analysisText}
-              numberOfLines={expanded ? undefined : 5} // Zeilenbegrenzung
-            >
-              {aiText}
-            </Text>
+
+            {/* Absätze mit Whitespace */}
+            {aiText.split('\n\n').filter(para => para.trim()).map((paragraph, index) => (
+              <View key={index} style={styles.paragraphContainer}>
+                <Text
+                  style={styles.analysisText}
+                  numberOfLines={!expanded && index > 0 ? 3 : undefined}
+                >
+                  {paragraph.trim()}
+                </Text>
+              </View>
+            ))}
 
             {/* Mehr/Weniger Button */}
             <TouchableOpacity
@@ -684,10 +690,18 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     textAlign: "center",
   },
+  paragraphContainer: {
+    backgroundColor: "#F7F9FC",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: "#007AFF",
+  },
   analysisText: {
     fontSize: 16,
-    color: "#333",
-    lineHeight: 22,
+    color: "#1C1C1E",
+    lineHeight: 26,
     textAlign: "left",
   },
   moreButton: {

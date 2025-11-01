@@ -627,7 +627,14 @@ Die Vorschläge sollen sofort umsetzbar sein (5-15 Minuten) und zur aktuellen Em
                 <Ionicons name="bulb" size={24} color="#fbbc05" />
                 <Text style={styles.resultTitle}>Deine persönliche Analyse</Text>
               </View>
-              <Text style={styles.resultText}>{aiText}</Text>
+
+              {/* Absätze mit Whitespace */}
+              {aiText.split('\n\n').filter(para => para.trim()).map((paragraph, index) => (
+                <View key={index} style={styles.paragraphContainer}>
+                  <Text style={styles.resultText}>{paragraph.trim()}</Text>
+                </View>
+              ))}
+
               {analysisValid && (
                 <View style={styles.successBadge}>
                   <Ionicons name="checkmark-circle" size={16} color="#34a853" />
@@ -994,10 +1001,18 @@ const styles = StyleSheet.create({
     color: "#1C1C1E",
     marginLeft: 8,
   },
+  paragraphContainer: {
+    backgroundColor: "#F7F9FC",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 14,
+    borderLeftWidth: 3,
+    borderLeftColor: "#007AFF",
+  },
   resultText: {
     fontSize: 16,
-    lineHeight: 24,
-    color: "#3C3C43",
+    lineHeight: 26,
+    color: "#1C1C1E",
   },
   successBadge: {
     flexDirection: "row",
