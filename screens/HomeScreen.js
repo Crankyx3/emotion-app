@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import ScreenHeader from "../components/ScreenHeader";
 import { MenuCard, InfoCard } from "../components/Card";
+import Button from "../components/Button";
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from "../theme";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
 import { useAuth } from "../components/AuthProvider";
 import { useFocusEffect } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function HomeScreen({ navigation }) {
   const { userName } = useAuth();
@@ -19,6 +21,46 @@ export default function HomeScreen({ navigation }) {
   const [dailyAnalysisDone, setDailyAnalysisDone] = useState(false);
   const [weeklyAnalysisDone, setWeeklyAnalysisDone] = useState(false);
   const [daysUntilWeekly, setDaysUntilWeekly] = useState(0);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+
+  // Prüfe ob neuer Nutzer und zeige Welcome Modal
+  useEffect(() => {
+    checkFirstTimeUser();
+  }, []);
+
+  const checkFirstTimeUser = async () => {
+    try {
+      if (!auth.currentUser) return;
+
+      const hasSeenWelcome = await AsyncStorage.getItem(`hasSeenWelcome_${auth.currentUser.uid}`);
+
+      if (!hasSeenWelcome) {
+        // Zeige Modal nach kurzer Verzögerung (damit Screen geladen ist)
+        setTimeout(() => {
+          setShowWelcomeModal(true);
+        }, 500);
+      }
+    } catch (error) {
+      console.error('Error checking first time user:', error);
+    }
+  };
+
+  const handleCloseWelcome = async (openGuide = false) => {
+    try {
+      // Markiere als gesehen
+      await AsyncStorage.setItem(`hasSeenWelcome_${auth.currentUser.uid}`, 'true');
+      setShowWelcomeModal(false);
+
+      // Öffne Guide falls gewünscht
+      if (openGuide) {
+        setTimeout(() => {
+          navigation.navigate('AppGuide');
+        }, 300);
+      }
+    } catch (error) {
+      console.error('Error closing welcome:', error);
+    }
+  };
 
   // Aktualisiere Dashboard-Daten wenn Screen fokussiert wird
   useFocusEffect(
@@ -360,6 +402,69 @@ export default function HomeScreen({ navigation }) {
           />
         ))}
       </ScrollView>
+
+      {/* Welcome Modal für neue Nutzer */}
+      <Modal
+        visible={showWelcomeModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => handleCloseWelcome(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <View style={styles.modalIconContainer}>
+                <Ionicons name="rocket" size={48} color={Colors.primary} />
+              </View>
+              <Text style={styles.modalTitle}>
+                Willkommen{userName ? `, ${userName}` : ''}! 🎉
+              </Text>
+              <Text style={styles.modalSubtitle}>
+                Schön, dass du da bist! Möchtest du eine kurze Einführung, wie die App funktioniert?
+              </Text>
+            </View>
+
+            {/* Modal Body */}
+            <View style={styles.modalBody}>
+              <View style={styles.featureItem}>
+                <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
+                <Text style={styles.featureText}>Verstehe alle Funktionen</Text>
+              </View>
+              <View style={styles.featureItem}>
+                <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
+                <Text style={styles.featureText}>Lerne Best Practices</Text>
+              </View>
+              <View style={styles.featureItem}>
+                <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
+                <Text style={styles.featureText}>Starte optimal durch</Text>
+              </View>
+            </View>
+
+            {/* Modal Actions */}
+            <View style={styles.modalActions}>
+              <Button
+                variant="primary"
+                size="large"
+                icon="book-outline"
+                fullWidth
+                onPress={() => handleCloseWelcome(true)}
+                style={styles.modalButton}
+              >
+                App-Anleitung öffnen
+              </Button>
+              <Button
+                variant="ghost"
+                size="medium"
+                fullWidth
+                onPress={() => handleCloseWelcome(false)}
+              >
+                Später ansehen
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </LinearGradient>
   );
 }
@@ -540,5 +645,63 @@ const styles = StyleSheet.create({
   menuSubtitle: {
     ...Typography.caption,
     marginTop: 4,
+  },
+  // Welcome Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: Colors.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.lg,
+  },
+  modalContent: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+    width: '100%',
+    maxWidth: 400,
+    ...Shadows.large,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
+  },
+  modalIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: BorderRadius.round,
+    backgroundColor: Colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.md,
+  },
+  modalTitle: {
+    ...Typography.h2,
+    textAlign: 'center',
+    marginBottom: Spacing.sm,
+  },
+  modalSubtitle: {
+    ...Typography.body,
+    textAlign: 'center',
+    color: Colors.textSecondary,
+  },
+  modalBody: {
+    marginBottom: Spacing.xl,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  featureText: {
+    ...Typography.body,
+    marginLeft: Spacing.md,
+    flex: 1,
+  },
+  modalActions: {
+    gap: Spacing.sm,
+  },
+  modalButton: {
+    marginBottom: Spacing.sm,
   },
 });
