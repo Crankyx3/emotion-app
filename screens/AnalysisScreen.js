@@ -15,6 +15,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { collection, getDocs, query, where, orderBy, addDoc, Timestamp, limit } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
 import { getAiResponse } from "../openaiService";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function AnalysisScreen() {
   const navigation = useNavigation();
@@ -226,6 +227,23 @@ export default function AnalysisScreen() {
   const avg = entries.reduce((sum, e) => sum + (e.feelScore ?? 0), 0) / entries.length;
 
   const handleWeeklyAnalysis = async () => {
+    // Prüfe ob KI-Analysen aktiviert sind
+    const aiEnabled = await AsyncStorage.getItem(`aiAnalysisEnabled_${auth.currentUser.uid}`);
+    if (aiEnabled === 'false') {
+      Alert.alert(
+        "KI-Analysen deaktiviert",
+        "Du hast KI-Analysen in den Einstellungen deaktiviert. Aktiviere sie, um diese Funktion zu nutzen.",
+        [
+          { text: "OK" },
+          {
+            text: "Zu Einstellungen",
+            onPress: () => navigation.navigate("Settings")
+          }
+        ]
+      );
+      return;
+    }
+
     if (!canAnalyze) {
       Alert.alert(
         "Analyse nicht verfügbar",

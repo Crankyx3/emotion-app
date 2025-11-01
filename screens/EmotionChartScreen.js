@@ -17,6 +17,7 @@ import { LineChart } from "react-native-chart-kit";
 import { getAiResponse } from "../openaiService";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -160,6 +161,23 @@ export default function EmotionChartScreen({ navigation }) {
   };
 
   const handleAiAnalysis = async (entry) => {
+    // Prüfe ob KI-Analysen aktiviert sind
+    const aiEnabled = await AsyncStorage.getItem(`aiAnalysisEnabled_${auth.currentUser.uid}`);
+    if (aiEnabled === 'false') {
+      Alert.alert(
+        "KI-Analysen deaktiviert",
+        "Du hast KI-Analysen in den Einstellungen deaktiviert. Aktiviere sie, um diese Funktion zu nutzen.",
+        [
+          { text: "OK" },
+          {
+            text: "Zu Einstellungen",
+            onPress: () => navigation.navigate("Settings")
+          }
+        ]
+      );
+      return;
+    }
+
     setAiLoading(true);
     try {
       const {

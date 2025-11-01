@@ -30,6 +30,7 @@ import {
   limit,
 } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function DailyAnalysisScreen({ route, navigation }) {
   const paramsData = route.params || {};
@@ -221,6 +222,23 @@ export default function DailyAnalysisScreen({ route, navigation }) {
   }, []);
 
   const handleAiAnalysis = async () => {
+    // Prüfe ob KI-Analysen aktiviert sind
+    const aiEnabled = await AsyncStorage.getItem(`aiAnalysisEnabled_${auth.currentUser.uid}`);
+    if (aiEnabled === 'false') {
+      Alert.alert(
+        "KI-Analysen deaktiviert",
+        "Du hast KI-Analysen in den Einstellungen deaktiviert. Aktiviere sie, um diese Funktion zu nutzen.",
+        [
+          { text: "OK" },
+          {
+            text: "Zu Einstellungen",
+            onPress: () => navigation.navigate("Settings")
+          }
+        ]
+      );
+      return;
+    }
+
     // Prüfe ob ein Tageseintrag vorhanden ist
     if (!todayEntry && !todayAnalysis) {
       Alert.alert(

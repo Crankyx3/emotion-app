@@ -8,12 +8,14 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Modal,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { collection, getDocs, query, where, addDoc, Timestamp } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function ChatHistoryScreen() {
   const navigation = useNavigation();
@@ -125,6 +127,35 @@ export default function ChatHistoryScreen() {
 
   const createNewChat = async (type, context, date, analysisId) => {
     try {
+      // Prüfe ob Chat-Historie gespeichert werden soll
+      const chatHistoryEnabled = await AsyncStorage.getItem(`chatHistoryEnabled_${auth.currentUser.uid}`);
+
+      if (chatHistoryEnabled === 'false') {
+        Alert.alert(
+          "Chat-Historie deaktiviert",
+          "Du hast die Chat-Speicherung in den Einstellungen deaktiviert. Möchtest du trotzdem einen temporären Chat starten? Dieser wird nicht gespeichert.",
+          [
+            { text: "Abbrechen", style: "cancel" },
+            {
+              text: "Zu Einstellungen",
+              onPress: () => {
+                setShowNewChatModal(false);
+                navigation.navigate("Settings");
+              }
+            },
+            {
+              text: "Temporär starten",
+              onPress: () => {
+                setShowNewChatModal(false);
+                // Starte Chat ohne chatId (wird nicht gespeichert)
+                navigation.navigate("Chat", { chatId: null, type, context, date });
+              }
+            }
+          ]
+        );
+        return;
+      }
+
       const chatDoc = await addDoc(collection(db, "chats"), {
         userId: auth.currentUser.uid,
         type, // "daily", "weekly", "all"

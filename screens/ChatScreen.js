@@ -335,8 +335,11 @@ Antworte empathisch und duze den Nutzer konsequent.
       // Zähle Chat-Nachricht
       await incrementChatCount();
 
-      // Speichere Chat-Nachricht in Firestore (falls chatId vorhanden)
-      if (chatId) {
+      // Prüfe ob Chat-Historie gespeichert werden soll
+      const chatHistoryEnabled = await AsyncStorage.getItem(`chatHistoryEnabled_${auth.currentUser.uid}`);
+
+      // Speichere Chat-Nachricht in Firestore (falls chatId vorhanden UND Chat-Historie aktiviert)
+      if (chatId && chatHistoryEnabled !== 'false') {
         await addDoc(collection(db, "chatMessages"), {
           chatId: chatId,
           userId: auth.currentUser.uid,
