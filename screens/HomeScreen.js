@@ -13,6 +13,7 @@ export default function HomeScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [currentStreak, setCurrentStreak] = useState(0);
   const [longestStreak, setLongestStreak] = useState(0);
+  const [dailyEntryDone, setDailyEntryDone] = useState(false);
   const [dailyAnalysisDone, setDailyAnalysisDone] = useState(false);
   const [weeklyAnalysisDone, setWeeklyAnalysisDone] = useState(false);
   const [daysUntilWeekly, setDaysUntilWeekly] = useState(0);
@@ -82,12 +83,22 @@ export default function HomeScreen({ navigation }) {
         setLongestStreak(Math.max(longest, current));
       }
 
-      // Tagesanalyse Check
+      // Heutiger Eintrag Check
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
+      const todayEntries = entriesSnapshot.docs.filter((doc) => {
+        const data = doc.data();
+        if (!data.createdAt) return false;
+        const createdDate = data.createdAt.toDate();
+        return createdDate >= today && createdDate < tomorrow;
+      });
+
+      setDailyEntryDone(todayEntries.length > 0);
+
+      // Tagesanalyse Check
       const todayAnalyses = entriesSnapshot.docs.filter((doc) => {
         const data = doc.data();
         if (!data.analysisDate) return false;
@@ -186,6 +197,14 @@ export default function HomeScreen({ navigation }) {
   ];
 
   const renderAnalysisStatus = (item) => {
+    if (item.title === "Tagesdaten eintragen" && dailyEntryDone) {
+      return (
+        <View style={styles.statusBadge}>
+          <Ionicons name="checkmark-circle" size={16} color="#34a853" />
+          <Text style={styles.statusText}>Erledigt</Text>
+        </View>
+      );
+    }
     if (item.title === "Tagesanalyse" && dailyAnalysisDone) {
       return (
         <View style={styles.statusBadge}>
