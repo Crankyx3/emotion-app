@@ -5,7 +5,7 @@
 ## 1. Verantwortlicher
 
 KI-Stimmungshelfer
-E-Mail: [DEINE-EMAIL@example.com]
+E-Mail: finnbauermeister@googlemail.com
 
 ## 2. Erhebung und Speicherung personenbezogener Daten
 
@@ -65,7 +65,7 @@ Sie haben das Recht auf:
 - ✅ **Datenübertragbarkeit**: Export Ihrer Daten (in den Einstellungen)
 - ✅ **Widerspruch**: Widerspruch gegen Datenverarbeitung
 
-Kontakt: [DEINE-EMAIL@example.com]
+Kontakt: finnbauermeister@googlemail.com
 
 ## 6. Datensicherheit
 
@@ -99,7 +99,7 @@ Wir behalten uns vor, diese Datenschutzerklärung zu aktualisieren. Bei wesentli
 ## 11. Kontakt
 
 Bei Fragen zum Datenschutz:
-📧 E-Mail: [DEINE-EMAIL@example.com]
+📧 E-Mail: finnbauermeister@googlemail.com
 
 ---
 
