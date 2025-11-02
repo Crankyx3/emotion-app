@@ -7,6 +7,7 @@ import { createStackNavigator } from "@react-navigation/stack";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
 import ChatScreen from "./screens/ChatScreen";
+import ChatHistoryScreen from "./screens/ChatHistoryScreen";
 import HomeScreen from "./screens/HomeScreen";
 import DailyEntryScreen from "./screens/DailyEntryScreen";
 import DailyAnalysisScreen from "./screens/DailyAnalysisScreen";
@@ -14,10 +15,15 @@ import EmotionChartScreen from "./screens/EmotionChartScreen";
 import AnalysisScreen from "./screens/AnalysisScreen";
 import MeditationScreen from "./screens/MeditationScreen";
 import PsychoEducationScreen from "./screens/PsychoEducationScreen";
+import AppGuideScreen from "./screens/AppGuideScreen";
+import PaywallScreen from "./screens/PaywallScreen";
 import LoginScreen from "./screens/LoginScreen";
 import SettingsScreen from "./screens/SettingsScreen";
+import PrivacyPolicyScreen from "./screens/PrivacyPolicyScreen";
+import AdminScreen from "./screens/AdminScreen";
 
 import { AuthProvider, useAuth } from "./components/AuthProvider";
+import { PremiumProvider } from "./components/PremiumProvider";
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -83,13 +89,13 @@ function MainTabs() {
         }}
       />
       <Tab.Screen
-        name="Settings"
-        component={SettingsScreen}
+        name="ChatSelection"
+        component={ChatHistoryScreen}
         options={{
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings-outline" size={size} color={color} />
+            <Ionicons name="chatbubbles" size={size} color={color} />
           ),
-          tabBarLabel: "Einstellungen"
+          tabBarLabel: "KI-Chat"
         }}
       />
     </Tab.Navigator>
@@ -97,25 +103,36 @@ function MainTabs() {
 }
 
 function RootNavigator() {
-  const { user, initializing } = useAuth();
+  const { user, initializing, isGuestMode } = useAuth();
 
   if (initializing) {
     // minimal placeholder while auth initializes
     return null;
   }
 
+  // Zeige Main App wenn eingeloggt ODER im Guest Mode
+  const showMainApp = user || isGuestMode;
+
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {user ? (
+        {showMainApp ? (
           <>
             <Stack.Screen name="Main" component={MainTabs} />
             <Stack.Screen name="Chat" component={ChatScreen} />
             <Stack.Screen name="Meditation" component={MeditationScreen} />
             <Stack.Screen name="PsychoEducation" component={PsychoEducationScreen} />
+            <Stack.Screen name="AppGuide" component={AppGuideScreen} />
+            <Stack.Screen name="Paywall" component={PaywallScreen} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+            <Stack.Screen name="Admin" component={AdminScreen} />
           </>
         ) : (
-          <Stack.Screen name="Auth" component={LoginScreen} />
+          <>
+            <Stack.Screen name="Auth" component={LoginScreen} />
+            <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>
@@ -125,7 +142,9 @@ function RootNavigator() {
 export default function App() {
   return (
     <AuthProvider>
-      <RootNavigator />
+      <PremiumProvider>
+        <RootNavigator />
+      </PremiumProvider>
     </AuthProvider>
   );
 }

@@ -17,10 +17,13 @@ import { LineChart } from "react-native-chart-kit";
 import { getAiResponse } from "../openaiService";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from "../components/AuthProvider";
 
 const screenWidth = Dimensions.get("window").width;
 
-export default function EmotionChartScreen() {
+export default function EmotionChartScreen({ navigation }) {
+  const { isGuestMode } = useAuth();
   const [entries, setEntries] = useState([]);
   const [allEntries, setAllEntries] = useState([]); // Für Trend & Insights
   const [loading, setLoading] = useState(true);
@@ -31,8 +34,10 @@ export default function EmotionChartScreen() {
   useEffect(() => {
     (async () => {
       try {
-        if (!auth.currentUser) {
+        if (isGuestMode || !auth.currentUser) {
           setLoading(false);
+          setEntries([]);
+          setAllEntries([]);
           return;
         }
 
@@ -160,16 +165,31 @@ export default function EmotionChartScreen() {
   };
 
   const handleAiAnalysis = async (entry) => {
+    // Prüfe ob KI-Analysen aktiviert sind
+    const aiEnabled = await AsyncStorage.getItem(`aiAnalysisEnabled_${auth.currentUser.uid}`);
+    if (aiEnabled === 'false') {
+      Alert.alert(
+        "KI-Analysen deaktiviert",
+        "Du hast KI-Analysen in den Einstellungen deaktiviert. Aktiviere sie, um diese Funktion zu nutzen.",
+        [
+          { text: "OK" },
+          {
+            text: "Zu Einstellungen",
+            onPress: () => navigation.navigate("Settings")
+          }
+        ]
+      );
+      return;
+    }
+
     setAiLoading(true);
     try {
       const {
         emotion = "Unbekannt",
         feelScore = 50,
-        sleep = 5,
-        energy = 5,
-        selfWorth = 5,
         theme = "Allgemein",
         text = "Keine Beschreibung angegeben",
+        gratitude = "",
         id,
       } = entry || {};
 
@@ -179,17 +199,24 @@ export default function EmotionChartScreen() {
       }
 
       const prompt = `
-Analysiere den psychischen Zustand basierend auf diesen Tagesdaten:
+Du bist ein einfühlsamer psychologischer Berater. Gib eine kurze, aber tiefgehende Analyse dieses Tageseintrags.
 
-Emotion: ${emotion}
-Wohlfühlscore: ${feelScore}/99
-Schlafqualität: ${sleep}/10
-Energielevel: ${energy}/10
-Selbstwertgefühl: ${selfWorth}/10
-Thema des Tages: ${theme}
-Beschreibung: ${text}
+📊 MESSWERTE:
+• Emotion: ${emotion}
+• Wohlfühlscore: ${feelScore}/99
 
-Gib eine empathische, kurze psychologische Einschätzung mit einem hilfreichen Ratschlag.
+📝 WAS DIE PERSON BESCHRIEBEN HAT:
+${theme ? `Thema: "${theme}"` : 'Kein Thema'}
+${text ? `Beschreibung: "${text}"` : 'Keine Beschreibung'}
+${gratitude ? `Dankbarkeit: "${gratitude}"` : ''}
+
+🎯 AUFGABE:
+Gib eine präzise psychologische Einschätzung (2-3 Sätze), die:
+1. DIREKT auf konkrete Worte/Situationen aus dem Text eingeht
+2. Ein psychologisches Muster oder Zusammenhang erklärt
+3. Eine hilfreiche Perspektive oder einen konkreten Ratschlag bietet
+
+Sei empathisch, validierend und spezifisch. Nutze psychologische Konzepte (CBT, ACT, Achtsamkeit).
 `;
 
       const reply = await getAiResponse("psychologische Tagesanalyse", prompt);
@@ -211,6 +238,12 @@ Gib eine empathische, kurze psychologische Einschätzung mit einem hilfreichen R
 
   return (
     <LinearGradient colors={["#F6FBFF", "#FFFFFF"]} style={styles.background}>
+      <TouchableOpacity
+        style={styles.settingsButton}
+        onPress={() => navigation.navigate("Settings")}
+      >
+        <Ionicons name="settings-outline" size={28} color="#007AFF" />
+      </TouchableOpacity>
       <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
         <ScreenHeader title="📈 Dein Wohlfühlverlauf" subtitle={`Durchschnitt: ${avg.toFixed(1)}/99`} />
 
@@ -345,12 +378,10 @@ Gib eine empathische, kurze psychologische Einschätzung mit einem hilfreichen R
 
               <View style={styles.modalBody}>
                 <Text style={styles.modalLine}>💙 Wohlfühlscore: {selectedEntry?.feelScore}/99</Text>
-                <Text style={styles.modalLine}>🛏 Schlaf: {selectedEntry?.sleep}/10</Text>
-                <Text style={styles.modalLine}>⚡ Energie: {selectedEntry?.energy}/10</Text>
-                <Text style={styles.modalLine}>❤️ Selbstwert: {selectedEntry?.selfWorth}/10</Text>
 
                 {selectedEntry?.theme ? <Text style={[styles.modalLine, { marginTop: 8 }]}>🧩 Thema: {selectedEntry?.theme}</Text> : null}
                 {selectedEntry?.text ? <Text style={[styles.modalText, { marginTop: 8 }]}>💭 {selectedEntry?.text}</Text> : null}
+                {selectedEntry?.gratitude ? <Text style={[styles.modalText, { marginTop: 8 }]}>💚 Dankbarkeit: {selectedEntry?.gratitude}</Text> : null}
 
                 {selectedEntry?.analysis ? (
                   <>
@@ -379,7 +410,23 @@ Gib eine empathische, kurze psychologische Einschätzung mit einem hilfreichen R
 
 const styles = StyleSheet.create({
   background: { flex: 1 },
-  scrollContainer: { paddingBottom: 80, backgroundColor: "#F7F9FB", alignItems: "center" },
+  settingsButton: {
+    position: "absolute",
+    top: 60,
+    right: 20,
+    zIndex: 10,
+    width: 50,
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+    borderRadius: 25,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  scrollContainer: { paddingTop: 40, paddingBottom: 80, backgroundColor: "#F7F9FB", alignItems: "center" },
   center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#F7F9FB" },
   placeholder: { color: "#9aa4b2", fontSize: 16 },
 

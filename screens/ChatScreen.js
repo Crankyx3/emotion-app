@@ -9,24 +9,277 @@ import {
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { getAiResponse } from "../openaiService";
+import { getAiResponse, getAiResponseStreaming } from "../openaiService";
 import { useNavigation } from "@react-navigation/native";
+import { collection, getDocs, query, where, addDoc, Timestamp, doc, updateDoc } from "firebase/firestore";
+import { db, auth } from "../firebaseconfig";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { usePremium } from "../components/PremiumProvider";
 
 export default function ChatScreen({ route }) {
   const navigation = useNavigation();
-  const { context } = route.params || {}; // Analyse-Text als Kontext
+  const { canUseFeature, getTrialText, isPremium, isTrialActive } = usePremium();
+  const { chatId, context, type, date } = route.params || {};
+  // chatId = ID des gespeicherten Chats (falls vorhanden)
+  // context = Analyse-Text
+  // type = "daily", "weekly", "all"
+  // date = Datum der Analyse
 
-  const [messages, setMessages] = useState(
-    context ? [{ sender: "ai", text: "Hier ist deine Analyse:\n\n" + context }] : []
-  );
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const scrollRef = useRef(null);
 
+  // Erweiterte States
+  const [historicalContext, setHistoricalContext] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [chatCount, setChatCount] = useState(0);
+  const [canChat, setCanChat] = useState(true);
+  const [chatMode, setChatMode] = useState(type || "single"); // "single" oder "all"
+
+  // Rate Limiting: Dynamisches Limit basierend auf Premium-Status
+  // Premium: 100 Nachrichten/Tag, Trial: 10 Nachrichten/Tag
+  const DAILY_CHAT_LIMIT = isPremium ? 100 : 10;
+
+  const checkChatLimit = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const key = `chatCount_${auth.currentUser.uid}_${today}`;
+      const stored = await AsyncStorage.getItem(key);
+      const count = stored ? parseInt(stored) : 0;
+
+      setChatCount(count);
+      setCanChat(count < DAILY_CHAT_LIMIT);
+
+      return count < DAILY_CHAT_LIMIT;
+    } catch (err) {
+      console.error("Fehler beim Prüfen des Chat-Limits:", err);
+      return true; // Im Fehlerfall: erlauben
+    }
+  };
+
+  const incrementChatCount = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const key = `chatCount_${auth.currentUser.uid}_${today}`;
+      const newCount = chatCount + 1;
+      await AsyncStorage.setItem(key, newCount.toString());
+      setChatCount(newCount);
+      setCanChat(newCount < DAILY_CHAT_LIMIT);
+    } catch (err) {
+      console.error("Fehler beim Speichern des Chat-Counts:", err);
+    }
+  };
+
+  // Lade vorhandene Chat-Nachrichten aus Firestore
+  const loadChatMessages = async () => {
+    if (!chatId) return [];
+
+    try {
+      const messagesQuery = query(
+        collection(db, "chatMessages"),
+        where("chatId", "==", chatId)
+      );
+
+      const messagesSnap = await getDocs(messagesQuery);
+
+      // Sortiere auf Client-Seite nach Timestamp (vermeidet Index-Anforderung)
+      const sortedDocs = messagesSnap.docs.sort((a, b) => {
+        const timeA = a.data().timestamp?.toMillis() || 0;
+        const timeB = b.data().timestamp?.toMillis() || 0;
+        return timeA - timeB; // Älteste zuerst
+      });
+
+      const loadedMessages = sortedDocs.map(doc => {
+        const data = doc.data();
+        return [
+          { sender: "user", text: data.userMessage },
+          { sender: "ai", text: data.aiResponse }
+        ];
+      }).flat();
+
+      return loadedMessages;
+    } catch (err) {
+      console.error("Fehler beim Laden der Chat-Nachrichten:", err);
+      return [];
+    }
+  };
+
+  // Initialisiere Chat basierend auf Modus
+  const initializeChat = async () => {
+    try {
+      // Wenn chatId vorhanden: Lade existierende Nachrichten
+      if (chatId) {
+        const existingMessages = await loadChatMessages();
+        if (existingMessages.length > 0) {
+          setMessages(existingMessages);
+          // Lade historischen Kontext falls "all" Modus
+          if (chatMode === "all") {
+            await loadHistoricalContext();
+          }
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Neuer Chat: Erstelle Einführungsnachricht
+      if (chatMode === "all") {
+        // Modus: Alle Analysen der letzten 14 Tage
+        const contextData = await loadHistoricalContext();
+
+        if (contextData && contextData.entriesCount > 0) {
+          // Erstelle Zusammenfassung mit KI
+          const summaryPrompt = `
+Du bist der "Stimmungshelfer", ein einfühlsamer psychologischer Begleiter. Sprich den Nutzer mit "Du" an.
+
+📊 VERFÜGBARE DATEN (letzte 14 Tage):
+**${contextData.entriesCount} Tageseinträge:**
+${contextData.entriesSummary}
+
+**${contextData.analysesCount} Wochenanalysen:**
+${contextData.analysesSummary}
+
+Erstelle eine kurze Zusammenfassung (3-4 Sätze) die:
+1. Die allgemeine Stimmungslage beschreibt
+2. Wichtige Muster oder Trends nennt
+3. Mit einer persönlichen Frage endet, um das Gespräch zu öffnen
+
+Sei empathisch, einladend und duze den Nutzer durchgehend.
+`;
+
+          const summary = await getAiResponse("Zusammenfassung 14 Tage", summaryPrompt);
+          setMessages([{ sender: "ai", text: summary }]);
+        } else {
+          setMessages([{ sender: "ai", text: "Ich konnte keine Einträge der letzten 14 Tage finden. Erstelle zuerst einige Tageseinträge und Analysen." }]);
+        }
+      } else {
+        // Modus: Einzelne Analyse
+        const analysisTypeText = type === "weekly" ? "Wochenanalyse" : "Tagesanalyse";
+        const introText = `Hier ist deine ${analysisTypeText} vom ${date}:\n\n${context}\n\nWas möchtest du darüber wissen oder besprechen?`;
+        setMessages([{ sender: "ai", text: introText }]);
+
+        // Keine historischen Daten laden
+        setHistoricalContext(null);
+      }
+    } catch (err) {
+      console.error("Fehler beim Initialisieren:", err);
+      setMessages([{ sender: "ai", text: "Entschuldigung, es gab einen Fehler beim Laden. Wie kann ich dir helfen?" }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Lade historischen Kontext (nur für "all" Modus)
+  const loadHistoricalContext = async () => {
+    if (!auth.currentUser) return null;
+
+    const fourteenDaysAgo = new Date();
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+
+    // Lade Einträge der letzten 14 Tage
+    const entriesQuery = query(
+      collection(db, "entries"),
+      where("userId", "==", auth.currentUser.uid)
+    );
+    const entriesSnap = await getDocs(entriesQuery);
+
+    const recentEntries = entriesSnap.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(entry => {
+        if (!entry.createdAt) return false;
+        const entryDate = entry.createdAt.toDate();
+        return entryDate >= fourteenDaysAgo;
+      })
+      .sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
+
+    // Lade alle Analysen
+    const analysesQuery = query(
+      collection(db, "weeklyAnalyses"),
+      where("userId", "==", auth.currentUser.uid)
+    );
+    const analysesSnap = await getDocs(analysesQuery);
+
+    const recentAnalyses = analysesSnap.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(analysis => {
+        if (!analysis.analysisDate) return false;
+        const analysisDate = analysis.analysisDate.toDate();
+        return analysisDate >= fourteenDaysAgo;
+      })
+      .sort((a, b) => b.analysisDate.toMillis() - a.analysisDate.toMillis());
+
+    // Erstelle kompakte Zusammenfassung (Token-Optimierung)
+    const entriesSummary = recentEntries.map(e => {
+      const date = e.createdAt.toDate().toLocaleDateString("de-DE");
+      return `${date}: ${e.emotion} (${e.feelScore}/99)${e.theme ? ` - ${e.theme}` : ''}${e.text ? ` - "${e.text.substring(0, 100)}..."` : ''}`;
+    }).join('\n');
+
+    const analysesSummary = recentAnalyses.map(a => {
+      const date = a.analysisDate.toDate().toLocaleDateString("de-DE");
+      return `Wochenanalyse vom ${date}: ${a.analysis?.substring(0, 200)}...`;
+    }).join('\n\n');
+
+    const contextData = {
+      entriesCount: recentEntries.length,
+      analysesCount: recentAnalyses.length,
+      entriesSummary,
+      analysesSummary,
+    };
+
+    setHistoricalContext(contextData);
+    return contextData;
+  };
+
+  useEffect(() => {
+    initializeChat();
+    checkChatLimit();
+  }, []);
+
   const sendMessage = async () => {
     if (!input.trim()) return;
+
+    // Prüfe Premium-Status
+    if (!canUseFeature('aiChat')) {
+      const trialInfo = getTrialText();
+      Alert.alert(
+        "Premium Feature",
+        `Unbegrenzter KI-Chat ist ein Premium-Feature.\n\n${trialInfo || 'Upgrade auf Premium für unbegrenzten Chat-Zugang.'}`,
+        [
+          { text: "Abbrechen", style: "cancel" },
+          {
+            text: "Mehr erfahren",
+            onPress: () => navigation.navigate('Paywall')
+          }
+        ]
+      );
+      return;
+    }
+
+    // Prüfe Chat-Limit
+    if (!canChat) {
+      const limitMessage = isPremium
+        ? `Du hast heute bereits ${chatCount} von ${DAILY_CHAT_LIMIT} möglichen Premium-Chat-Nachrichten genutzt. Das Limit wird um Mitternacht zurückgesetzt.`
+        : `Du hast heute bereits ${chatCount} von ${DAILY_CHAT_LIMIT} möglichen Chat-Nachrichten genutzt.\n\n💎 Mit Premium erhältst du 100 Nachrichten pro Tag!\n\nDas Limit wird um Mitternacht zurückgesetzt.`;
+
+      Alert.alert(
+        "Chat-Limit erreicht",
+        limitMessage,
+        isPremium
+          ? [{ text: "OK" }]
+          : [
+              { text: "Abbrechen", style: "cancel" },
+              {
+                text: "Premium holen",
+                onPress: () => navigation.navigate('Paywall')
+              }
+            ]
+      );
+      return;
+    }
 
     const userText = input.trim();
     const newMsg = { sender: "user", text: userText };
@@ -34,18 +287,109 @@ export default function ChatScreen({ route }) {
     setInput("");
 
     try {
-      const prompt = `
-Der Nutzer führt ein psychologisches Reflexionsgespräch basierend auf der Analyse:
+      let prompt;
 
+      if (chatMode === "all") {
+        // Modus: Alle 14 Tage
+        prompt = `
+Du bist der "Stimmungshelfer", ein einfühlsamer psychologischer Begleiter. Sprich den Nutzer IMMER mit "Du" an (niemals "Sie").
+
+📋 VERFÜGBARER KONTEXT (letzte 14 Tage):
+
+**${historicalContext?.entriesCount || 0} Tageseinträge:**
+${historicalContext?.entriesSummary || "Keine Einträge verfügbar."}
+
+**${historicalContext?.analysesCount || 0} Wochenanalysen:**
+${historicalContext?.analysesSummary || "Keine früheren Analysen verfügbar."}
+
+🎯 GESPRÄCHSFÜHRUNG:
+- Duze den Nutzer durchgehend und persönlich
+- Beziehe dich auf Muster aus den vergangenen 14 Tagen
+- Erkenne Zusammenhänge zwischen verschiedenen Einträgen
+- Stelle hilfreiche Reflexionsfragen
+- Gib konkrete, umsetzbare Vorschläge
+- Sei empathisch und validierend
+- Halte Antworten kurz (2-4 Sätze) aber tiefgehend
+
+💬 AKTUELLE NACHRICHT DES NUTZERS:
+"${userText}"
+
+Antworte empathisch, therapeutisch fundiert und duze den Nutzer konsequent.
+`;
+      } else {
+        // Modus: Einzelne Analyse
+        const analysisTypeText = type === "weekly" ? "Wochenanalyse" : "Tagesanalyse";
+        prompt = `
+Du bist der "Stimmungshelfer", ein einfühlsamer psychologischer Begleiter. Sprich den Nutzer IMMER mit "Du" an (niemals "Sie").
+
+📋 KONTEXT:
+Der Nutzer hat eine ${analysisTypeText} vom ${date} ausgewählt und spricht darüber.
+
+**Die Analyse:**
 ${context || "Keine Analyse verfügbar."}
 
-Sei empathisch, kurz und unterstützend. Antworte auf diese Nachricht:
+🎯 GESPRÄCHSFÜHRUNG:
+- Duze den Nutzer durchgehend und persönlich
+- Beziehe dich auf diese SPEZIFISCHE Analyse
+- Hilf beim Vertiefen der Erkenntnisse
+- Stelle Reflexionsfragen zu den genannten Themen
+- Gib konkrete Handlungsempfehlungen basierend auf der Analyse
+- Sei empathisch und validierend
+- Halte Antworten kurz (2-4 Sätze) aber tiefgehend
+
+💬 AKTUELLE NACHRICHT DES NUTZERS:
 "${userText}"
+
+Antworte empathisch und duze den Nutzer konsequent.
 `;
-      const reply = await getAiResponse("Reflexionschat", prompt);
-      setMessages((prev) => [...prev, { sender: "ai", text: reply }]);
+      }
+
+      // Füge leere AI-Nachricht hinzu für Streaming
+      const aiMessageIndex = messages.length + 1;
+      setMessages((prev) => [...prev, { sender: "ai", text: "", streaming: true }]);
+
+      // Streaming mit Live-Update
+      const reply = await getAiResponseStreaming("Therapeutischer Chat", prompt, (currentText) => {
+        setMessages((prev) => {
+          const newMessages = [...prev];
+          newMessages[aiMessageIndex] = { sender: "ai", text: currentText, streaming: true };
+          return newMessages;
+        });
+      });
+
+      // Markiere als fertig (entferne streaming Flag)
+      setMessages((prev) => {
+        const newMessages = [...prev];
+        newMessages[aiMessageIndex] = { sender: "ai", text: reply, streaming: false };
+        return newMessages;
+      });
+
+      // Zähle Chat-Nachricht
+      await incrementChatCount();
+
+      // Prüfe ob Chat-Historie gespeichert werden soll
+      const chatHistoryEnabled = await AsyncStorage.getItem(`chatHistoryEnabled_${auth.currentUser.uid}`);
+
+      // Speichere Chat-Nachricht in Firestore (falls chatId vorhanden UND Chat-Historie aktiviert)
+      if (chatId && chatHistoryEnabled !== 'false') {
+        await addDoc(collection(db, "chatMessages"), {
+          chatId: chatId,
+          userId: auth.currentUser.uid,
+          userMessage: userText,
+          aiResponse: reply,
+          timestamp: Timestamp.now(),
+        });
+
+        // Update lastMessageAt im Chat-Dokument
+        const chatRef = doc(db, "chats", chatId);
+        await updateDoc(chatRef, {
+          lastMessageAt: Timestamp.now(),
+        });
+      }
+
     } catch (err) {
-      setMessages((prev) => [...prev, { sender: "ai", text: "Fehler bei der Antwort 😕" }]);
+      console.error("Chat-Fehler:", err);
+      setMessages((prev) => [...prev, { sender: "ai", text: "Entschuldigung, es gab einen Fehler. Bitte versuche es erneut." }]);
     }
   };
 
@@ -64,13 +408,41 @@ Sei empathisch, kurz und unterstützend. Antworte auf diese Nachricht:
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text numberOfLines={1} style={styles.headerTitle}>
-              Reflexions-Chat
+              KI-Chat
             </Text>
             <Text numberOfLines={1} style={styles.headerSubtitle}>
-              Kurz, empathisch, unterstützend
+              {loading
+                ? "Lade Kontext..."
+                : isPremium
+                  ? `💎 Premium: ${chatCount}/${DAILY_CHAT_LIMIT} Nachrichten heute`
+                  : isTrialActive
+                    ? `⏱️ Trial: ${chatCount}/${DAILY_CHAT_LIMIT} Nachrichten heute`
+                    : `${chatCount}/${DAILY_CHAT_LIMIT} Nachrichten heute`
+              }
             </Text>
           </View>
         </View>
+
+        {/* Kontext-Info Card */}
+        {!loading && (
+          <View style={styles.contextInfo}>
+            <Ionicons name="information-circle" size={18} color="#007AFF" />
+            <Text style={styles.contextText}>
+              {chatMode === "all" && historicalContext
+                ? `${historicalContext.entriesCount} Einträge · ${historicalContext.analysesCount} Analysen geladen`
+                : `${type === "weekly" ? "Wochenanalyse" : "Tagesanalyse"} vom ${date}`
+              }
+            </Text>
+          </View>
+        )}
+
+        {/* Loading Indicator */}
+        {loading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#007AFF" />
+            <Text style={styles.loadingText}>Lade deine Daten der letzten 14 Tage...</Text>
+          </View>
+        )}
 
         <KeyboardAvoidingView
           style={{ flex: 1 }}
@@ -103,6 +475,7 @@ Sei empathisch, kurz und unterstützend. Antworte auf diese Nachricht:
                     ]}
                   >
                     {msg.text}
+                    {msg.streaming && <Text style={styles.cursor}>▊</Text>}
                   </Text>
                 </View>
               </View>
@@ -164,6 +537,33 @@ const styles = StyleSheet.create({
     color: "#666",
     marginTop: 2,
   },
+  contextInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E3F2FD",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#BBDEFB",
+  },
+  contextText: {
+    fontSize: 13,
+    color: "#1976D2",
+    marginLeft: 8,
+    fontWeight: "500",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 15,
+    color: "#666",
+    textAlign: "center",
+  },
   chatContainer: {
     padding: 16,
     paddingBottom: 12,
@@ -199,6 +599,11 @@ const styles = StyleSheet.create({
   msgText: { fontSize: 15, lineHeight: 20 },
   userText: { color: "#fff" },
   aiText: { color: "#222" },
+  cursor: {
+    color: "#007AFF",
+    fontWeight: "700",
+    fontSize: 16,
+  },
   inputContainer: {
     flexDirection: "row",
     alignItems: "flex-end",

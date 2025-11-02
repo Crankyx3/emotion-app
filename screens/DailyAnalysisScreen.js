@@ -30,8 +30,13 @@ import {
   limit,
 } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { usePremium } from "../components/PremiumProvider";
+import { useAuth } from "../components/AuthProvider";
 
 export default function DailyAnalysisScreen({ route, navigation }) {
+  const { canUseFeature, getTrialText, isTrialActive, trialDaysLeft } = usePremium();
+  const { isGuestMode } = useAuth();
   const paramsData = route.params || {};
 
   // Lokale States für alle Werte (aus route.params oder Firestore)
@@ -87,12 +92,13 @@ export default function DailyAnalysisScreen({ route, navigation }) {
   }, [route.params]);
 
   const checkTodayAnalysis = async () => {
-    if (!auth.currentUser) {
+    if (isGuestMode || !auth.currentUser) {
       setCheckingLimit(false);
+      setAnalysisValid(false);
       return;
     }
 
-    try {
+    try{
       // Hole heutiges Datum (Start des Tages)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -221,6 +227,40 @@ export default function DailyAnalysisScreen({ route, navigation }) {
   }, []);
 
   const handleAiAnalysis = async () => {
+    // Prüfe ob KI-Analysen aktiviert sind
+    const aiEnabled = await AsyncStorage.getItem(`aiAnalysisEnabled_${auth.currentUser.uid}`);
+    if (aiEnabled === 'false') {
+      Alert.alert(
+        "KI-Analysen deaktiviert",
+        "Du hast KI-Analysen in den Einstellungen deaktiviert. Aktiviere sie, um diese Funktion zu nutzen.",
+        [
+          { text: "OK" },
+          {
+            text: "Zu Einstellungen",
+            onPress: () => navigation.navigate("Settings")
+          }
+        ]
+      );
+      return;
+    }
+
+    // Prüfe Premium-Status
+    if (!canUseFeature('aiAnalysis')) {
+      const trialInfo = getTrialText();
+      Alert.alert(
+        "Premium Feature",
+        `KI-Tagesanalysen sind ein Premium-Feature.\n\n${trialInfo || 'Upgrade auf Premium für unbegrenzte Analysen.'}`,
+        [
+          { text: "Abbrechen", style: "cancel" },
+          {
+            text: "Mehr erfahren",
+            onPress: () => navigation.navigate('Paywall')
+          }
+        ]
+      );
+      return;
+    }
+
     // Prüfe ob ein Tageseintrag vorhanden ist
     if (!todayEntry && !todayAnalysis) {
       Alert.alert(
@@ -277,37 +317,42 @@ export default function DailyAnalysisScreen({ route, navigation }) {
 
     try {
       const prompt = `
-Analysiere den psychischen Zustand dieser Person basierend auf diesen Tagesdaten:
+Du bist ein einfühlsamer psychologischer Berater. Analysiere den aktuellen emotionalen Zustand dieser Person.
 
-📊 MESSWERTE:
-• Emotion: ${emotion}
-• Wohlfühlscore: ${feelScore}/99
+DATEN:
+Emotion: ${emotion}
+Wohlfühlscore: ${feelScore}/99
+${theme ? `Thema: "${theme}"` : 'Kein spezifisches Thema'}
+${text ? `Beschreibung: "${text}"` : 'Keine detaillierte Beschreibung'}
 
-📝 THEMA & PERSÖNLICHE BESCHREIBUNG:
-${theme ? `Thema: ${theme}` : 'Kein Thema angegeben'}
-${text ? `\n"${text}"\n` : '\nKeine Beschreibung angegeben\n'}
+AUFGABE:
+Erstelle eine strukturierte Tagesanalyse mit klaren Überschriften.
 
-WICHTIG: Gehe in deiner Analyse DIREKT auf die persönliche Beschreibung ein. Beziehe dich auf konkrete Situationen, Gefühle oder Gedanken, die erwähnt wurden. Falls keine Beschreibung vorhanden ist, konzentriere dich auf die Emotion und den Wohlfühlscore.
+WICHTIG: Schreibe in fließendem, gut lesbarem Text OHNE Markdown, OHNE Sternchen, OHNE ### Überschriften.
 
-Gib eine empathische, individuelle psychologische Einschätzung (2-4 Sätze), die konkret auf ${text ? 'die beschriebene Situation' : 'die aktuellen Messwerte'} eingeht.
+STRUKTUR:
+Beginne mit "Emotionale Lage:" gefolgt von 2-3 Sätzen die konkret auf die beschriebenen Gefühle eingehen.
 
-Dann gib GENAU 3 konkrete, sofort umsetzbare Handlungsvorschläge, die ${theme ? `zum Thema "${theme}"` : 'zur aktuellen Situation'} passen:
+Dann "Psychologische Einordnung:" mit 2-3 Sätzen die psychologische Zusammenhänge erklären (z.B. aus CBT, ACT, Achtsamkeit).
+
+Dann "Perspektive:" mit 1-2 Sätzen die eine hilfreiche neue Sichtweise bieten.
+
+Danach gib GENAU 3 konkrete Handlungsvorschläge im folgenden Format:
 [VORSCHLÄGE]
-1. [Kurzer Titel]: [Konkrete Anweisung in 1-2 Sätzen]
-2. [Kurzer Titel]: [Konkrete Anweisung in 1-2 Sätzen]
-3. [Kurzer Titel]: [Konkrete Anweisung in 1-2 Sätzen]
+1. Kurzer Titel: Konkrete Anweisung, die zur Person und Situation passt
+2. Kurzer Titel: Konkrete Anweisung, die zur Person und Situation passt
+3. Kurzer Titel: Konkrete Anweisung, die zur Person und Situation passt
 [/VORSCHLÄGE]
 
-Beispiele für gute Vorschläge:
-- "5-Minuten-Pause: Steh auf, öffne das Fenster und atme 5x tief ein und aus."
-- "Soziale Verbindung: Ruf eine Person an, mit der du gerne sprichst."
-- "Bewegung: Mach einen 10-minütigen Spaziergang um den Block."
+Die Vorschläge sollen sofort umsetzbar sein (5-15 Minuten) und zur aktuellen Emotion (${emotion}) passen.
 `;
 
       const reply = await getAiResponse("psychologische Tagesanalyse", prompt);
 
       // Parse Vorschläge aus der Antwort (unterstützt [VORSCHLÄGE] und [VORSCHLAG])
       const suggestionsMatch = reply.match(/\[VORSCHL[ÄA]GE?\](.*?)\[\/VORSCHL[ÄA]GE?\]/is);
+      let cleanedText = reply;
+
       if (suggestionsMatch) {
         const suggestionsText = suggestionsMatch[1];
         const suggestions = suggestionsText
@@ -323,12 +368,16 @@ Beispiele für gute Vorschläge:
           .slice(0, 3);
         setActionSuggestions(suggestions);
 
-        // Entferne die Vorschläge aus dem Haupttext (unterstützt beide Varianten)
-        setAiText(reply.replace(/\[VORSCHL[ÄA]GE?\].*?\[\/VORSCHL[ÄA]GE?\]/gis, '').trim());
+        // Entferne die Vorschläge aus dem Haupttext (robuster mit mehreren Varianten)
+        cleanedText = reply
+          .replace(/\[VORSCHL[ÄA]GE?\][\s\S]*?\[\/VORSCHL[ÄA]GE?\]/gi, '')
+          .replace(/\[VORSCHLAG\][\s\S]*?\[\/VORSCHLAG\]/gi, '')
+          .trim();
       } else {
-        setAiText(reply);
         setActionSuggestions([]);
       }
+
+      setAiText(cleanedText);
       // Prüfung, ob die Antwort plausibel ist (kein Fehler-Text)
       const ok = typeof reply === "string" && reply.trim().length > 20 && !/fehler/i.test(reply);
       setAnalysisValid(ok);
@@ -439,6 +488,12 @@ Beispiele für gute Vorschläge:
 
   return (
     <LinearGradient colors={["#f0f4ff", "#ffffff"]} style={styles.gradient}>
+      <TouchableOpacity
+        style={styles.settingsButton}
+        onPress={() => navigation.navigate("Settings")}
+      >
+        <Ionicons name="settings-outline" size={28} color="#007AFF" />
+      </TouchableOpacity>
       <SafeAreaView style={styles.safe}>
         <ScreenHeader title="📊 Tagesanalyse" subtitle="Deine KI-gestützte Auswertung" />
         <ScrollView contentContainerStyle={styles.container}>
@@ -603,7 +658,33 @@ Beispiele für gute Vorschläge:
                 <Ionicons name="bulb" size={24} color="#fbbc05" />
                 <Text style={styles.resultTitle}>Deine persönliche Analyse</Text>
               </View>
-              <Text style={styles.resultText}>{aiText}</Text>
+
+              {/* Absätze mit Whitespace und fetten Überschriften */}
+              {aiText.split('\n\n').filter(para => para.trim()).map((paragraph, index) => {
+                const trimmedPara = paragraph.trim();
+                // Prüfe ob der Absatz mit "Überschrift:" beginnt
+                const headingMatch = trimmedPara.match(/^([^:]+):\s*(.*)$/s);
+
+                if (headingMatch) {
+                  const heading = headingMatch[1];
+                  const content = headingMatch[2];
+                  return (
+                    <View key={index} style={styles.paragraphContainer}>
+                      <Text style={styles.resultText}>
+                        <Text style={styles.headingText}>{heading}:</Text>
+                        {' ' + content}
+                      </Text>
+                    </View>
+                  );
+                }
+
+                return (
+                  <View key={index} style={styles.paragraphContainer}>
+                    <Text style={styles.resultText}>{trimmedPara}</Text>
+                  </View>
+                );
+              })}
+
               {analysisValid && (
                 <View style={styles.successBadge}>
                   <Ionicons name="checkmark-circle" size={16} color="#34a853" />
@@ -680,15 +761,6 @@ Beispiele für gute Vorschläge:
                   ))}
                 </View>
               )}
-
-              {/* Chat-Button: öffnet den Reflexions-Chat mit der Analyse als Kontext */}
-              <TouchableOpacity
-                style={styles.chatButton}
-                onPress={() => navigation.navigate("Chat", { context: aiText })}
-              >
-                <Ionicons name="chatbubble-ellipses-outline" size={20} color="#fff" />
-                <Text style={styles.chatButtonText}>Reflexions-Chat starten</Text>
-              </TouchableOpacity>
             </View>
           )}
         </ScrollView>
@@ -781,6 +853,22 @@ Beispiele für gute Vorschläge:
 
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
+  settingsButton: {
+    position: "absolute",
+    top: 60,
+    right: 20,
+    zIndex: 10,
+    width: 50,
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+    borderRadius: 25,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   safe: { flex: 1 },
   container: {
     paddingHorizontal: 20,
@@ -963,10 +1051,22 @@ const styles = StyleSheet.create({
     color: "#1C1C1E",
     marginLeft: 8,
   },
+  paragraphContainer: {
+    backgroundColor: "#F7F9FC",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 14,
+    borderLeftWidth: 3,
+    borderLeftColor: "#007AFF",
+  },
   resultText: {
     fontSize: 16,
-    lineHeight: 24,
-    color: "#3C3C43",
+    lineHeight: 26,
+    color: "#1C1C1E",
+  },
+  headingText: {
+    fontWeight: "700",
+    color: "#007AFF",
   },
   successBadge: {
     flexDirection: "row",
@@ -981,26 +1081,6 @@ const styles = StyleSheet.create({
     color: "#34a853",
     marginLeft: 6,
     fontWeight: "600",
-  },
-  chatButton: {
-    backgroundColor: "#007AFF",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    marginTop: 16,
-    shadowColor: "#007AFF",
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  chatButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-    marginLeft: 8,
   },
   suggestionsSection: {
     marginTop: 24,

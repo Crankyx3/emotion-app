@@ -15,9 +15,14 @@ import { LinearGradient } from "expo-linear-gradient";
 import { collection, getDocs, query, where, orderBy, addDoc, Timestamp, limit } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
 import { getAiResponse } from "../openaiService";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { usePremium } from "../components/PremiumProvider";
+import { useAuth } from "../components/AuthProvider";
 
 export default function AnalysisScreen() {
   const navigation = useNavigation();
+  const { canUseFeature, getTrialText } = usePremium();
+  const { isGuestMode } = useAuth();
   const scrollViewRef = useRef(null);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,6 +42,12 @@ export default function AnalysisScreen() {
   // Prüfen, ob Analyse in den letzten 7 Tagen erstellt wurde
   const checkRecentAnalysis = async () => {
     try {
+      if (isGuestMode || !auth.currentUser) {
+        setCheckingLimit(false);
+        setCanAnalyze(false);
+        return;
+      }
+
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -84,6 +95,11 @@ export default function AnalysisScreen() {
   // Alle bisherigen Analysen laden (für Verlauf)
   const loadAnalysisHistory = async () => {
     try {
+      if (isGuestMode || !auth.currentUser) {
+        setAllAnalyses([]);
+        return;
+      }
+
       const q = query(
         collection(db, "weeklyAnalyses"),
         where("userId", "==", auth.currentUser.uid)
@@ -162,8 +178,9 @@ export default function AnalysisScreen() {
   useEffect(() => {
     const fetchWeekData = async () => {
       try {
-        if (!auth.currentUser) {
+        if (isGuestMode || !auth.currentUser) {
           setLoading(false);
+          setEntries([]);
           return;
         }
 
@@ -226,6 +243,40 @@ export default function AnalysisScreen() {
   const avg = entries.reduce((sum, e) => sum + (e.feelScore ?? 0), 0) / entries.length;
 
   const handleWeeklyAnalysis = async () => {
+    // Prüfe ob KI-Analysen aktiviert sind
+    const aiEnabled = await AsyncStorage.getItem(`aiAnalysisEnabled_${auth.currentUser.uid}`);
+    if (aiEnabled === 'false') {
+      Alert.alert(
+        "KI-Analysen deaktiviert",
+        "Du hast KI-Analysen in den Einstellungen deaktiviert. Aktiviere sie, um diese Funktion zu nutzen.",
+        [
+          { text: "OK" },
+          {
+            text: "Zu Einstellungen",
+            onPress: () => navigation.navigate("Settings")
+          }
+        ]
+      );
+      return;
+    }
+
+    // Prüfe Premium-Status
+    if (!canUseFeature('weeklyAnalysis')) {
+      const trialInfo = getTrialText();
+      Alert.alert(
+        "Premium Feature",
+        `KI-Wochenanalysen sind ein Premium-Feature.\n\n${trialInfo || 'Upgrade auf Premium für unbegrenzte Analysen.'}`,
+        [
+          { text: "Abbrechen", style: "cancel" },
+          {
+            text: "Mehr erfahren",
+            onPress: () => navigation.navigate('Paywall')
+          }
+        ]
+      );
+      return;
+    }
+
     if (!canAnalyze) {
       Alert.alert(
         "Analyse nicht verfügbar",
@@ -249,23 +300,34 @@ export default function AnalysisScreen() {
         .join("\n\n");
 
       const prompt = `
-Analysiere die psychologische Entwicklung dieser Woche basierend auf folgenden Daten:
+Du bist ein psychologischer Therapeut, der eine wöchentliche Verlaufsanalyse durchführt.
 
-📊 DURCHSCHNITTSWERTE:
-• Durchschnittlicher Wohlfühlscore: ${avg.toFixed(1)} / 99
+WOCHENDATEN:
+Durchschnittlicher Wohlfühlscore: ${avg.toFixed(1)} / 99
+Anzahl Einträge: ${entries.length} Tage
 
-📅 TÄGLICHE EINTRÄGE MIT PERSÖNLICHEN BESCHREIBUNGEN:
+DETAILLIERTE EINTRÄGE:
 ${detailedSummary}
 
-WICHTIG: Gehe in deiner Wochenanalyse auf die KONKRETEN THEMEN und BESCHREIBUNGEN der Person ein. Erkenne Muster in den beschriebenen Situationen und Gedanken. Beziehe dich auf wiederkehrende Themen oder Veränderungen im Wochenverlauf.
+AUFGABE:
+Erstelle eine tiefgehende Wochenanalyse mit folgenden Aspekten:
+- Welche Themen, Muster und Emotionen wiederholen sich?
+- Welche kognitiven Muster zeigen sich (z.B. aus CBT, ACT)?
+- Wie hat sich die Stimmung im Wochenverlauf entwickelt?
+- Was sind konkrete Empfehlungen für die nächste Woche?
 
-Bitte gib eine strukturierte, empathische Analyse mit:
-1️⃣ Allgemeine Stimmung der Woche (beziehe dich auf konkrete Themen, die erwähnt wurden)
-2️⃣ Entwicklung (positiv, stabil, rückläufig) - erkenne Muster in den Beschreibungen
-3️⃣ Auffällige emotionale Trends und wiederkehrende Themen
-4️⃣ Individueller psychologischer Rat für nächste Woche basierend auf den konkreten Themen
+WICHTIG: Schreibe in fließendem, gut lesbarem Text OHNE Markdown, OHNE Sternchen, OHNE ### Überschriften. Verwende stattdessen natürliche Absätze und klare Struktur.
 
-Beende mit einem einzelnen Wort, das die Stimmung beschreibt: POSITIV, NEUTRAL oder NEGATIV.
+STRUKTUR:
+Beginne mit "Wochenüberblick:" gefolgt von 2-3 Sätzen zum Gesamteindruck.
+
+Dann "Erkannte Muster:" mit 3-4 Sätzen zu wiederkehrenden Themen und kognitiven Mustern.
+
+Dann "Entwicklung:" mit 2-3 Sätzen zur Veränderung im Wochenverlauf.
+
+Dann "Empfehlungen:" mit 3-4 konkreten, umsetzbaren Vorschlägen.
+
+Abschluss: Beende mit genau einem Wort in einer neuen Zeile: POSITIV, NEUTRAL oder NEGATIV.
 `;
 
       const reply = await getAiResponse("psychologische Wochenanalyse", prompt);
@@ -276,6 +338,12 @@ Beende mit einem einzelnen Wort, das die Stimmung beschreibt: POSITIV, NEUTRAL o
         : reply.toUpperCase().includes("NEGATIV")
         ? "negativ"
         : "neutral";
+
+      // Entferne die Stimmungs-Markierung aus dem Text
+      const cleanedText = reply
+        .replace(/\n\s*(POSITIV|NEGATIV|NEUTRAL)\s*$/i, '')
+        .replace(/(POSITIV|NEGATIV|NEUTRAL)\s*$/i, '')
+        .trim();
 
       const colorMap = {
         positiv: ["#b2f2bb", "#d3f9d8"],
@@ -296,7 +364,7 @@ Beende mit einem einzelnen Wort, das die Stimmung beschreibt: POSITIV, NEUTRAL o
       };
 
       setHighlight(highlightData);
-      setAiText(reply);
+      setAiText(cleanedText);
       setExpanded(false);
 
       // In Firestore speichern
@@ -329,6 +397,12 @@ Beende mit einem einzelnen Wort, das die Stimmung beschreibt: POSITIV, NEUTRAL o
 
   return (
     <LinearGradient colors={["#EAF4FF", "#FFFFFF"]} style={styles.gradient}>
+      <TouchableOpacity
+        style={styles.settingsButton}
+        onPress={() => navigation.navigate("Settings")}
+      >
+        <Ionicons name="settings-outline" size={28} color="#007AFF" />
+      </TouchableOpacity>
       <ScrollView ref={scrollViewRef} contentContainerStyle={styles.container}>
         <ScreenHeader
           title="🧭 KI-Wochenanalyse"
@@ -460,12 +534,40 @@ Beende mit einem einzelnen Wort, das die Stimmung beschreibt: POSITIV, NEUTRAL o
         {aiText && (
           <View style={styles.analysisBox}>
             <Text style={styles.analysisHeader}>🧠 KI-Analyse</Text>
-            <Text
-              style={styles.analysisText}
-              numberOfLines={expanded ? undefined : 5} // Zeilenbegrenzung
-            >
-              {aiText}
-            </Text>
+
+            {/* Absätze mit Whitespace und fetten Überschriften */}
+            {aiText.split('\n\n').filter(para => para.trim()).map((paragraph, index) => {
+              const trimmedPara = paragraph.trim();
+              // Prüfe ob der Absatz mit "Überschrift:" beginnt
+              const headingMatch = trimmedPara.match(/^([^:]+):\s*(.*)$/s);
+
+              if (headingMatch) {
+                const heading = headingMatch[1];
+                const content = headingMatch[2];
+                return (
+                  <View key={index} style={styles.paragraphContainer}>
+                    <Text
+                      style={styles.analysisText}
+                      numberOfLines={!expanded && index > 0 ? 3 : undefined}
+                    >
+                      <Text style={styles.headingText}>{heading}:</Text>
+                      {' ' + content}
+                    </Text>
+                  </View>
+                );
+              }
+
+              return (
+                <View key={index} style={styles.paragraphContainer}>
+                  <Text
+                    style={styles.analysisText}
+                    numberOfLines={!expanded && index > 0 ? 3 : undefined}
+                  >
+                    {trimmedPara}
+                  </Text>
+                </View>
+              );
+            })}
 
             {/* Mehr/Weniger Button */}
             <TouchableOpacity
@@ -475,17 +577,6 @@ Beende mit einem einzelnen Wort, das die Stimmung beschreibt: POSITIV, NEUTRAL o
               <Text style={styles.moreButtonText}>
                 {expanded ? "Weniger anzeigen ↑" : "Mehr anzeigen ↓"}
               </Text>
-            </TouchableOpacity>
-
-            {/* Chat-Button: öffnet den Reflexions-Chat mit der KI-Analyse als Kontext */}
-            <TouchableOpacity
-              style={[styles.button, { marginTop: 14 }]}
-              onPress={() => navigation.navigate("Chat", { context: aiText })}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
-                <Ionicons name="chatbubble-ellipses-outline" size={18} color="#fff" />
-                <Text style={[styles.buttonText, { marginLeft: 10 }]}>Reflexions-Chat starten</Text>
-              </View>
             </TouchableOpacity>
           </View>
         )}
@@ -568,8 +659,25 @@ Beende mit einem einzelnen Wort, das die Stimmung beschreibt: POSITIV, NEUTRAL o
 
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
+  settingsButton: {
+    position: "absolute",
+    top: 60,
+    right: 20,
+    zIndex: 10,
+    width: 50,
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+    borderRadius: 25,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   container: {
     alignItems: "center",
+    paddingTop: 40,
     paddingBottom: 100,
     paddingHorizontal: 20,
   },
@@ -643,11 +751,23 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     textAlign: "center",
   },
+  paragraphContainer: {
+    backgroundColor: "#F7F9FC",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: "#007AFF",
+  },
   analysisText: {
     fontSize: 16,
-    color: "#333",
-    lineHeight: 22,
+    color: "#1C1C1E",
+    lineHeight: 26,
     textAlign: "left",
+  },
+  headingText: {
+    fontWeight: "700",
+    color: "#007AFF",
   },
   moreButton: {
     marginTop: 10,

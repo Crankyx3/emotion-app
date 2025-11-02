@@ -2,17 +2,21 @@
   "expo": {
     "name": "KI-Stimmungshelfer",
     "slug": "ki-stimmungshelfer",
+    "owner": "Crankyx",
     "version": "1.0.0",
     "entryPoint": "./index.js",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "scheme": "ki-stimmungshelfer",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "ios": { "supportsTablet": true },
+    "ios": {
+      "supportsTablet": true
+    },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -20,6 +24,13 @@
       },
       "edgeToEdgeEnabled": true
     },
-    "web": { "favicon": "./assets/favicon.png" }
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "f29e6649-e02f-4701-a034-7614e00f87ba"
+      }
+    }
   }
 }

@@ -7,15 +7,18 @@ import {
   TouchableOpacity,
   Modal,
   Dimensions,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { MotiView } from "moti";
 import ScreenHeader from "../components/ScreenHeader";
+import { usePremium } from "../components/PremiumProvider";
 
 const { width } = Dimensions.get("window");
 
 export default function MeditationScreen({ navigation }) {
+  const { canUseFeature, getTrialText } = usePremium();
   const [selectedMeditation, setSelectedMeditation] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(0);
@@ -146,12 +149,46 @@ export default function MeditationScreen({ navigation }) {
   }, [isPlaying, timeRemaining]);
 
   const startMeditation = (meditation) => {
+    // Prüfe Premium-Status
+    if (!canUseFeature('meditation')) {
+      const trialInfo = getTrialText();
+      Alert.alert(
+        "Premium Feature",
+        `Alle Meditationen & Übungen sind ein Premium-Feature.\n\n${trialInfo || 'Upgrade auf Premium für unbegrenzte Meditationen.'}`,
+        [
+          { text: "Abbrechen", style: "cancel" },
+          {
+            text: "Mehr erfahren",
+            onPress: () => navigation.navigate('Paywall')
+          }
+        ]
+      );
+      return;
+    }
+
     setSelectedMeditation(meditation);
     setTimeRemaining(meditation.duration * 60);
     setIsPlaying(true);
   };
 
   const startBreathingExercise = (exercise) => {
+    // Prüfe Premium-Status
+    if (!canUseFeature('meditation')) {
+      const trialInfo = getTrialText();
+      Alert.alert(
+        "Premium Feature",
+        `Alle Meditationen & Übungen sind ein Premium-Feature.\n\n${trialInfo || 'Upgrade auf Premium für unbegrenzte Meditationen.'}`,
+        [
+          { text: "Abbrechen", style: "cancel" },
+          {
+            text: "Mehr erfahren",
+            onPress: () => navigation.navigate('Paywall')
+          }
+        ]
+      );
+      return;
+    }
+
     // Simple breathing exercise implementation
     setSelectedMeditation(exercise);
     setIsPlaying(true);
@@ -202,7 +239,19 @@ export default function MeditationScreen({ navigation }) {
 
   return (
     <LinearGradient colors={["#EAF4FF", "#FFFFFF"]} style={styles.gradient}>
+      <TouchableOpacity
+        style={styles.settingsButton}
+        onPress={() => navigation.navigate("Settings")}
+      >
+        <Ionicons name="settings-outline" size={28} color="#007AFF" />
+      </TouchableOpacity>
       <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.topRow}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={32} color="#007AFF" />
+          </TouchableOpacity>
+        </View>
+
         <ScreenHeader
           title="🧘‍♀️ Meditation & Achtsamkeit"
           subtitle="Finde innere Ruhe und Gelassenheit"
@@ -369,10 +418,45 @@ const styles = StyleSheet.create({
   gradient: {
     flex: 1,
   },
+  settingsButton: {
+    position: "absolute",
+    top: 60,
+    right: 20,
+    zIndex: 10,
+    width: 50,
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+    borderRadius: 25,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   container: {
     alignItems: "center",
-    paddingVertical: 40,
+    paddingVertical: 20,
     paddingHorizontal: 20,
+  },
+  topRow: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 15,
+    marginTop: 25,
+  },
+  backButton: {
+    width: 50,
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   section: {
     width: "100%",

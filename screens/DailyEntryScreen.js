@@ -20,9 +20,12 @@ import { getAiResponse } from "../openaiService";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "../components/AuthProvider";
+import GuestBlockModal from "../components/GuestBlockModal";
 
 export default function DailyEntryScreen() {
   const navigation = useNavigation();
+  const { isGuestMode, exitGuestMode } = useAuth();
 
   const [selectedEmotion, setSelectedEmotion] = useState(null);
   const [text, setText] = useState("");
@@ -41,6 +44,9 @@ export default function DailyEntryScreen() {
   const [currentStreak, setCurrentStreak] = useState(0);
   const [longestStreak, setLongestStreak] = useState(0);
 
+  // Guest Mode
+  const [showGuestModal, setShowGuestModal] = useState(false);
+
   const emotions = [
     { key: "happy", emoji: "😊", label: "Glücklich", value: 85 },
     { key: "content", emoji: "😌", label: "Zufrieden", value: 75 },
@@ -53,6 +59,13 @@ export default function DailyEntryScreen() {
   // Prüfen, ob heute bereits ein Eintrag erstellt wurde
   useEffect(() => {
     const checkTodayEntry = async () => {
+      // Skip im Gastmodus oder wenn nicht eingeloggt
+      if (isGuestMode || !auth.currentUser) {
+        setCheckingLimit(false);
+        setCanCreateEntry(false);
+        return;
+      }
+
       try {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -174,6 +187,12 @@ export default function DailyEntryScreen() {
   const feelScore = useMemo(computeFeelScore, [selectedEmotion, text, gratitude]);
 
   const handleSave = async () => {
+    // Guest Mode Check
+    if (isGuestMode) {
+      setShowGuestModal(true);
+      return;
+    }
+
     if (!canCreateEntry) {
       Alert.alert(
         "Eintrag bereits vorhanden",
@@ -265,6 +284,12 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
 
   return (
     <LinearGradient colors={["#F6FBFF", "#FFFFFF"]} style={styles.background}>
+      <TouchableOpacity
+        style={styles.settingsButton}
+        onPress={() => navigation.navigate("Settings")}
+      >
+        <Ionicons name="settings-outline" size={28} color="#007AFF" />
+      </TouchableOpacity>
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
           <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
@@ -419,12 +444,39 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
+
+      {/* Guest Mode Block Modal */}
+      <GuestBlockModal
+        visible={showGuestModal}
+        onClose={() => setShowGuestModal(false)}
+        onRegister={() => {
+          setShowGuestModal(false);
+          exitGuestMode();
+        }}
+        featureName="Tageseintrag erstellen"
+      />
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   background: { flex: 1 },
+  settingsButton: {
+    position: "absolute",
+    top: 60,
+    right: 20,
+    zIndex: 10,
+    width: 50,
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+    borderRadius: 25,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   container: {
     padding: 18,
     paddingBottom: 40,

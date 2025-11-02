@@ -19,13 +19,15 @@ import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "../firebaseconfig";
 
 export default function LoginScreen() {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, signInWithGoogle, googleLoading, enterGuestMode } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState("login"); // 'login' | 'signup'
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
 
   // Übersetze Firebase-Fehler ins Deutsche
   const getErrorMessage = (errorCode) => {
@@ -63,6 +65,18 @@ export default function LoginScreen() {
       return;
     }
 
+    // Name validation für Registrierung
+    if (mode === "signup" && !name.trim()) {
+      setError("Bitte gib deinen Namen ein.");
+      return;
+    }
+
+    // Privacy Policy validation für Registrierung
+    if (mode === "signup" && !acceptedPrivacy) {
+      setError("Bitte akzeptiere die Datenschutzerklärung.");
+      return;
+    }
+
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
@@ -81,10 +95,10 @@ export default function LoginScreen() {
       if (mode === "login") {
         await signIn(email.trim(), password);
       } else {
-        await signUp(email.trim(), password);
+        await signUp(email.trim(), password, name.trim());
         Alert.alert(
           "Erfolg! 🎉",
-          "Dein Account wurde erstellt. Du bist jetzt angemeldet!"
+          `Willkommen ${name.trim()}! Dein Account wurde erstellt.`
         );
       }
     } catch (err) {
@@ -177,8 +191,34 @@ export default function LoginScreen() {
                 </View>
               ) : null}
 
+              {/* Name Input (nur bei Registrierung) */}
+              {mode === "signup" && (
+                <>
+                  <Text style={styles.label}>Dein Name</Text>
+                  <View style={styles.inputContainer}>
+                    <Ionicons
+                      name="person-outline"
+                      size={20}
+                      color="#8E8E93"
+                      style={styles.inputIcon}
+                    />
+                    <TextInput
+                      style={styles.input}
+                      autoCapitalize="words"
+                      value={name}
+                      onChangeText={(text) => {
+                        setName(text);
+                        setError("");
+                      }}
+                      placeholder="z.B. Finn"
+                      placeholderTextColor="#C7C7CC"
+                    />
+                  </View>
+                </>
+              )}
+
               {/* Email Input */}
-              <Text style={styles.label}>E-Mail</Text>
+              <Text style={[styles.label, mode === "signup" && { marginTop: 16 }]}>E-Mail</Text>
               <View style={styles.inputContainer}>
                 <Ionicons
                   name="mail-outline"
@@ -244,6 +284,35 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               )}
 
+              {/* Privacy Policy Checkbox (nur im Signup-Modus) */}
+              {mode === "signup" && (
+                <View style={styles.privacyContainer}>
+                  <TouchableOpacity
+                    style={styles.checkbox}
+                    onPress={() => {
+                      setAcceptedPrivacy(!acceptedPrivacy);
+                      setError("");
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.checkboxBox, acceptedPrivacy && styles.checkboxChecked]}>
+                      {acceptedPrivacy && (
+                        <Ionicons name="checkmark" size={16} color="#fff" />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                  <Text style={styles.privacyText}>
+                    Ich akzeptiere die{" "}
+                    <Text
+                      style={styles.privacyLink}
+                      onPress={() => navigation.navigate("PrivacyPolicy", { fromRegistration: true })}
+                    >
+                      Datenschutzerklärung
+                    </Text>
+                  </Text>
+                </View>
+              )}
+
               {/* Submit Button */}
               <TouchableOpacity
                 style={[
@@ -263,6 +332,29 @@ export default function LoginScreen() {
                 )}
               </TouchableOpacity>
 
+              {/* Divider */}
+              <View style={styles.dividerContainer}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>oder</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              {/* Google Sign-In Button */}
+              <TouchableOpacity
+                style={[
+                  styles.googleButton,
+                  googleLoading && styles.buttonDisabled,
+                ]}
+                onPress={signInWithGoogle}
+                disabled={googleLoading || loading}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="logo-google" size={20} color="#DB4437" />
+                <Text style={styles.googleButtonText}>
+                  Mit Google anmelden
+                </Text>
+              </TouchableOpacity>
+
               {/* Mode Switch */}
               <View style={styles.switchContainer}>
                 <Text style={styles.switchLabel}>
@@ -274,6 +366,7 @@ export default function LoginScreen() {
                   onPress={() => {
                     setMode(mode === "login" ? "signup" : "login");
                     setError("");
+                    setAcceptedPrivacy(false);
                   }}
                 >
                   <Text style={styles.switchText}>
@@ -281,6 +374,26 @@ export default function LoginScreen() {
                   </Text>
                 </TouchableOpacity>
               </View>
+
+              {/* Guest Mode Button */}
+              <View style={styles.guestDivider}>
+                <View style={styles.dividerLine} />
+              </View>
+
+              <TouchableOpacity
+                style={styles.guestButton}
+                onPress={enterGuestMode}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="eye-outline" size={22} color="#666" />
+                <Text style={styles.guestButtonText}>
+                  App ohne Registrierung anschauen
+                </Text>
+              </TouchableOpacity>
+
+              <Text style={styles.guestDisclaimer}>
+                Im Gastmodus kannst du die App erkunden, aber keine Funktionen nutzen.
+              </Text>
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -397,6 +510,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
   },
+  privacyContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  checkbox: {
+    marginRight: 10,
+  },
+  checkboxBox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: "#E5E5EA",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+  },
+  checkboxChecked: {
+    backgroundColor: "#007AFF",
+    borderColor: "#007AFF",
+  },
+  privacyText: {
+    fontSize: 13,
+    color: "#1C1C1E",
+    flex: 1,
+    lineHeight: 18,
+  },
+  privacyLink: {
+    color: "#007AFF",
+    fontWeight: "600",
+    textDecorationLine: "underline",
+  },
   button: {
     backgroundColor: "#007AFF",
     padding: 16,
@@ -431,5 +578,69 @@ const styles = StyleSheet.create({
     color: "#007AFF",
     fontWeight: "600",
     fontSize: 14,
+  },
+  dividerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#E5E5EA",
+  },
+  dividerText: {
+    marginHorizontal: 12,
+    color: "#8E8E93",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  googleButton: {
+    backgroundColor: "#fff",
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "#E5E5EA",
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  googleButtonText: {
+    color: "#1C1C1E",
+    fontWeight: "600",
+    fontSize: 16,
+    marginLeft: 10,
+  },
+  guestDivider: {
+    marginTop: 24,
+    marginBottom: 16,
+  },
+  guestButton: {
+    backgroundColor: "#F2F2F7",
+    padding: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "#E5E5EA",
+  },
+  guestButtonText: {
+    color: "#666",
+    fontWeight: "600",
+    fontSize: 15,
+    marginLeft: 8,
+  },
+  guestDisclaimer: {
+    textAlign: "center",
+    color: "#8E8E93",
+    fontSize: 12,
+    marginTop: 12,
+    lineHeight: 16,
+    paddingHorizontal: 20,
   },
 });
