@@ -10,7 +10,6 @@ module.exports = function (api) {
           path: "./openAi.env",
         },
       ],
-      "react-native-reanimated/plugin", // Muss immer das letzte Plugin sein!
     ],
   };
 };
