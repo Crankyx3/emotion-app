@@ -27,6 +27,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "309b02e9-0cdb-4e8a-a97a-ddf1f8334090"
+      }
+    },
+    "owner": "crankyx3"
   }
 }
