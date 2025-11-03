@@ -3,7 +3,6 @@
     "name": "KI-Stimmungshelfer",
     "slug": "ki-stimmungshelfer",
     "version": "1.0.0",
-    "entryPoint": "./index.js",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
