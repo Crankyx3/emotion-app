@@ -2,7 +2,6 @@
   "expo": {
     "name": "KI-Stimmungshelfer",
     "slug": "ki-stimmungshelfer",
-    "owner": "crankyx",
     "version": "1.0.0",
     "entryPoint": "./index.js",
     "orientation": "portrait",
@@ -28,11 +27,6 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    },
-    "extra": {
-      "eas": {
-        "projectId": "f29e6649-e02f-4701-a034-7614e00f87ba"
-      }
     }
   }
 }
