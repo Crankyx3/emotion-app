@@ -20,7 +20,6 @@
     "expo-application": "~6.0.0",
     "expo-auth-session": "~6.0.0",
     "expo-crypto": "~14.0.0",
-    "expo-dev-client": "~5.0.0",
     "expo-file-system": "~18.0.0",
     "expo-linear-gradient": "~14.0.0",
     "expo-sharing": "~13.0.0",
