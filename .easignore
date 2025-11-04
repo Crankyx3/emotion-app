@@ -1,0 +1,19 @@
+# Gradle build artifacts
+android/.gradle/
+android/build/
+android/app/build/
+
+# iOS build artifacts
+ios/Pods/
+ios/build/
+
+# Node modules (already in .gitignore but good to be explicit)
+node_modules/
+
+# Local environment files
+.env
+.env.local
+
+# IDE files
+.vscode/
+.idea/

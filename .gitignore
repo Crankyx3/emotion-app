@@ -43,3 +43,15 @@ openAi.env
 # Temporary files
 *.tmp
 *.temp
+
+# Android/Gradle build artifacts
+android/.gradle/
+android/build/
+android/app/build/
+android/.cxx/
+android/local.properties
+
+# iOS build artifacts
+ios/Pods/
+ios/build/
+ios/.xcode.env.local
