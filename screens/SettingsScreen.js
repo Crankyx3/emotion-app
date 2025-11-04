@@ -19,7 +19,7 @@ import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/fire
 import { deleteUser, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import ScreenHeader from "../components/ScreenHeader";
 import * as Sharing from "expo-sharing";
-import * as FileSystem from "expo-file-system/legacy";
+import * as FileSystem from "expo-file-system";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function SettingsScreen({ navigation }) {
