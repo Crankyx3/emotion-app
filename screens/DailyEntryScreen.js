@@ -14,11 +14,11 @@ import {
   Animated,
   ActivityIndicator,
 } from "react-native";
-import { collection, addDoc, Timestamp } from "firebase/firestore";
+import { collection, addDoc, Timestamp, query, where, getDocs } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
 import { getAiResponse } from "../openaiService";
 import { useNavigation } from "@react-navigation/native";
-import { saveEntryLocally } from "../services/localStorageService";
+import { saveEntryLocally, getLocalEntries, getTodaysLocalEntry } from "../services/localStorageService";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../components/AuthProvider";
@@ -68,34 +68,21 @@ export default function DailyEntryScreen() {
       }
 
       try {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
+        // 🔒 DATENSCHUTZ: Prüfe lokalen Storage für heutigen Eintrag
+        const todayEntry = await getTodaysLocalEntry(auth.currentUser.uid);
 
-        const q = query(
-          collection(db, "entries"),
-          where("userId", "==", auth.currentUser.uid)
-        );
-
-        const snapshot = await getDocs(q);
-
-        const todayEntries = snapshot.docs.filter((doc) => {
-          const data = doc.data();
-          if (!data.createdAt) return false;
-          const entryDate = data.createdAt.toDate();
-          return entryDate >= today && entryDate < tomorrow;
-        });
-
-        if (todayEntries.length > 0) {
-          const entry = todayEntries[0].data();
+        if (todayEntry) {
           setCanCreateEntry(false);
-          setTodayEntry(entry);
+          setTodayEntry(todayEntry);
+          console.log("📝 Heute bereits Eintrag erstellt (lokal)");
         } else {
           setCanCreateEntry(true);
+          console.log("✅ Kein Eintrag heute - kann erstellen");
         }
       } catch (err) {
         console.error("Fehler beim Prüfen des Eintrags:", err);
+        // Im Fehlerfall: Erstellung erlauben
+        setCanCreateEntry(true);
       } finally {
         setCheckingLimit(false);
       }
@@ -110,17 +97,13 @@ export default function DailyEntryScreen() {
       try {
         if (!auth.currentUser) return;
 
-        const q = query(
-          collection(db, "entries"),
-          where("userId", "==", auth.currentUser.uid)
-        );
-        const snapshot = await getDocs(q);
+        // 🔒 DATENSCHUTZ: Lade Einträge aus lokalem Storage
+        const localEntries = await getLocalEntries(auth.currentUser.uid);
 
-        const entryDates = snapshot.docs
-          .map(doc => {
-            const data = doc.data();
-            if (!data.createdAt) return null;
-            const date = data.createdAt.toDate();
+        const entryDates = localEntries
+          .map(entry => {
+            if (!entry.createdAt) return null;
+            const date = new Date(entry.createdAt);
             const normalized = new Date(date.getFullYear(), date.getMonth(), date.getDate());
             return normalized.getTime();
           })
