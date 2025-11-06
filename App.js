@@ -22,9 +22,11 @@ import PrivacyPolicyScreen from "./screens/PrivacyPolicyScreen";
 import AdminScreen from "./screens/AdminScreen";
 import EmergencyScreen from "./screens/EmergencyScreen";
 import AchievementsScreen from "./screens/AchievementsScreen";
+import OnboardingScreen from "./screens/OnboardingScreen";
 
 import { AuthProvider, useAuth } from "./components/AuthProvider";
 import { PremiumProvider } from "./components/PremiumProvider";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -105,8 +107,39 @@ function MainTabs() {
 
 function RootNavigator() {
   const { user, initializing, isGuestMode } = useAuth();
+  const [needsOnboarding, setNeedsOnboarding] = React.useState(false);
+  const [checkingOnboarding, setCheckingOnboarding] = React.useState(true);
 
-  if (initializing) {
+  React.useEffect(() => {
+    checkOnboardingStatus();
+  }, [user, isGuestMode]);
+
+  const checkOnboardingStatus = async () => {
+    try {
+      // Guest Mode braucht kein Onboarding
+      if (isGuestMode || !user) {
+        setNeedsOnboarding(false);
+        setCheckingOnboarding(false);
+        return;
+      }
+
+      // Prüfe ob User Onboarding bereits gesehen hat
+      const hasSeenOnboarding = await AsyncStorage.getItem(`hasSeenOnboarding_${user.uid}`);
+
+      if (!hasSeenOnboarding) {
+        setNeedsOnboarding(true);
+      } else {
+        setNeedsOnboarding(false);
+      }
+    } catch (error) {
+      console.error("Error checking onboarding status:", error);
+      setNeedsOnboarding(false);
+    } finally {
+      setCheckingOnboarding(false);
+    }
+  };
+
+  if (initializing || checkingOnboarding) {
     // minimal placeholder while auth initializes
     return null;
   }
@@ -119,6 +152,13 @@ function RootNavigator() {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {showMainApp ? (
           <>
+            {needsOnboarding && (
+              <Stack.Screen
+                name="Onboarding"
+                component={OnboardingScreen}
+                options={{ gestureEnabled: false }}
+              />
+            )}
             <Stack.Screen name="Main" component={MainTabs} />
             <Stack.Screen name="Chat" component={ChatScreen} />
             <Stack.Screen name="Meditation" component={MeditationScreen} />

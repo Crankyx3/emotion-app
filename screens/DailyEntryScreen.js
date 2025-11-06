@@ -13,6 +13,7 @@ import {
   SafeAreaView,
   Animated,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import { collection, addDoc, Timestamp, query, where, getDocs } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
@@ -47,6 +48,39 @@ export default function DailyEntryScreen() {
 
   // Guest Mode
   const [showGuestModal, setShowGuestModal] = useState(false);
+
+  // Smart Input Helper
+  const [showInputHelper, setShowInputHelper] = useState(false);
+
+  const quickPhrases = [
+    { category: "Gefühle", phrases: [
+      "Ich fühle mich heute...",
+      "Es beschäftigt mich, dass...",
+      "Ich bin froh über...",
+      "Mir macht Sorgen, dass...",
+      "Ich habe bemerkt, dass...",
+    ]},
+    { category: "Tag", phrases: [
+      "Heute war ein guter Tag, weil...",
+      "Mein Tag war herausfordernd, weil...",
+      "Ich habe heute erreicht, dass...",
+      "Was mir heute wichtig war...",
+      "Ein besonderer Moment heute war...",
+    ]},
+    { category: "Gedanken", phrases: [
+      "Ich denke oft darüber nach, wie...",
+      "Mir ist klar geworden, dass...",
+      "Ich frage mich, ob...",
+      "Es fällt mir schwer zu...",
+      "Ich möchte gerne...",
+    ]},
+  ];
+
+  const addPhrase = (phrase) => {
+    const separator = text.length > 0 && !text.endsWith(" ") ? " " : "";
+    setText(text + separator + phrase);
+    setShowInputHelper(false);
+  };
 
   const emotions = [
     { key: "happy", emoji: "😊", label: "Glücklich", value: 85 },
@@ -374,7 +408,17 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
                 numberOfLines={8}
                 textAlignVertical="top"
               />
-              <Text style={styles.charCount}>{text.length} Zeichen</Text>
+              <View style={styles.inputHelperRow}>
+                <Text style={styles.charCount}>{text.length} Zeichen</Text>
+                <TouchableOpacity
+                  style={styles.inputHelperButton}
+                  onPress={() => setShowInputHelper(true)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="bulb" size={18} color="#007AFF" />
+                  <Text style={styles.inputHelperText}>Schnell-Eingaben</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Dankbarkeit (optional) */}
@@ -439,6 +483,49 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
+
+      {/* Smart Input Helper Modal */}
+      <Modal
+        visible={showInputHelper}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowInputHelper(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Ionicons name="bulb" size={28} color="#007AFF" />
+              <Text style={styles.modalTitle}>Schnell-Eingaben</Text>
+              <TouchableOpacity onPress={() => setShowInputHelper(false)}>
+                <Ionicons name="close-circle" size={32} color="#8E8E93" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalSubtitle}>
+              Wähle einen Satzanfang zum schnellen Eintragen:
+            </Text>
+
+            <ScrollView style={styles.modalScroll}>
+              {quickPhrases.map((group, idx) => (
+                <View key={idx} style={styles.phraseGroup}>
+                  <Text style={styles.phraseCategory}>{group.category}</Text>
+                  {group.phrases.map((phrase, pIdx) => (
+                    <TouchableOpacity
+                      key={pIdx}
+                      style={styles.phraseButton}
+                      onPress={() => addPhrase(phrase)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="add-circle-outline" size={20} color="#007AFF" />
+                      <Text style={styles.phraseText}>{phrase}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* Guest Mode Block Modal */}
       <GuestBlockModal
@@ -703,5 +790,91 @@ const styles = StyleSheet.create({
     color: "#8B5E3C",
     fontWeight: "700",
     marginLeft: 4,
+  },
+
+  // Smart Input Helper
+  inputHelperRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 8,
+  },
+  inputHelperButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E3F2FD",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 6,
+  },
+  inputHelperText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#007AFF",
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#FFF",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingBottom: 40,
+    maxHeight: "70%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E5EA",
+  },
+  modalTitle: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#1C1C1E",
+    marginLeft: 12,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: "#8E8E93",
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 12,
+  },
+  modalScroll: {
+    paddingHorizontal: 20,
+  },
+  phraseGroup: {
+    marginBottom: 24,
+  },
+  phraseCategory: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1C1C1E",
+    marginBottom: 12,
+  },
+  phraseButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F7F9FC",
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 10,
+    gap: 12,
+  },
+  phraseText: {
+    flex: 1,
+    fontSize: 15,
+    color: "#3C3C43",
   },
 });
