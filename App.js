@@ -20,6 +20,7 @@ import LoginScreen from "./screens/LoginScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 import PrivacyPolicyScreen from "./screens/PrivacyPolicyScreen";
 import AdminScreen from "./screens/AdminScreen";
+import EmergencyScreen from "./screens/EmergencyScreen";
 
 import { AuthProvider, useAuth } from "./components/AuthProvider";
 import { PremiumProvider } from "./components/PremiumProvider";
@@ -55,6 +56,17 @@ function MainTabs() {
             <Ionicons name="create-outline" size={size} color={color} />
           ),
           tabBarLabel: "Eintrag"
+        }}
+      />
+      <Tab.Screen
+        name="Emergency"
+        component={EmergencyScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="medical" size={size} color="#E03131" />
+          ),
+          tabBarLabel: "SOS",
+          tabBarActiveTintColor: "#E03131",
         }}
       />
       <Tab.Screen
