@@ -101,20 +101,24 @@ export default function AnalysisScreen() {
       // 🔒 DATENSCHUTZ: Lade Analysen aus lokalem Storage
       const localAnalyses = await getLocalWeeklyAnalyses(userId);
 
-      // Nach Datum sortieren
-      const analyses = localAnalyses
+      // Nach Datum sortieren und Dates konvertieren
+      const analyses = (localAnalyses || [])
         .map((analysis) => ({
           id: analysis.localId,
           ...analysis,
+          // Konvertiere String-Dates zu Date-Objekten
+          createdAt: analysis.createdAt ? new Date(analysis.createdAt) : null,
+          analysisDate: analysis.createdAt ? new Date(analysis.createdAt) : null,
         }))
         .sort((a, b) => {
           if (!a.createdAt || !b.createdAt) return 0;
-          return new Date(b.createdAt) - new Date(a.createdAt);
+          return b.createdAt.getTime() - a.createdAt.getTime();
         });
 
       setAllAnalyses(analyses);
     } catch (err) {
       console.error("Fehler beim Laden der Analysen:", err);
+      setAllAnalyses([]); // Sicherheitsfallback
     }
   };
 
@@ -220,7 +224,7 @@ export default function AnalysisScreen() {
     );
   }
 
-  if (entries.length === 0) {
+  if (!entries || entries.length === 0) {
     return (
       <View style={styles.center}>
         <Text style={styles.placeholder}>Noch keine Einträge in dieser Woche 😌</Text>
@@ -229,7 +233,7 @@ export default function AnalysisScreen() {
   }
 
   // Durchschnittswerte berechnen
-  const avg = entries.reduce((sum, e) => sum + (e.feelScore ?? 0), 0) / entries.length;
+  const avg = entries.reduce((sum, e) => sum + (e.feelScore ?? 0), 0) / Math.max(entries.length, 1);
 
   const handleWeeklyAnalysis = async () => {
     // Prüfe ob KI-Analysen aktiviert sind
@@ -277,7 +281,7 @@ export default function AnalysisScreen() {
     setAnalyzing(true);
     try {
       // Erweiterte Zusammenfassung mit Themen und Texten
-      const detailedSummary = entries
+      const detailedSummary = (entries || [])
         .map((e, index) => {
           const date = new Date(e.createdAt).toLocaleDateString("de-DE");
           const basics = `${e.emotion || "Unbekannt"} | Wohlfühlscore=${e.feelScore}/99`;
@@ -469,7 +473,7 @@ Abschluss: Beende mit genau einem Wort in einer neuen Zeile: POSITIV, NEUTRAL od
         </View>
 
         {/* Muster-Erkennung: Insights */}
-        {insights.length > 0 && (
+        {insights && insights.length > 0 && (
           <View style={styles.insightsSection}>
             <View style={styles.insightsHeader}>
               <Ionicons name="analytics" size={22} color="#007AFF" />
@@ -585,7 +589,7 @@ Abschluss: Beende mit genau einem Wort in einer neuen Zeile: POSITIV, NEUTRAL od
         )}
 
         {/* Verlauf aller Wochenanalysen */}
-        {allAnalyses.length > 0 && (
+        {allAnalyses && allAnalyses.length > 0 && (
           <View style={styles.historySection}>
             <View style={styles.historyHeader}>
               <Ionicons name="time-outline" size={24} color="#007AFF" />
@@ -593,12 +597,13 @@ Abschluss: Beende mit genau einem Wort in einer neuen Zeile: POSITIV, NEUTRAL od
             </View>
 
             {allAnalyses.map((item, index) => {
-              const date = item.analysisDate?.toDate();
+              // analysisDate ist bereits ein Date-Objekt (von loadAnalysisHistory)
+              const date = item.analysisDate;
               return (
                 <View key={item.id} style={styles.historyItem}>
                   <View style={styles.historyItemHeader}>
                     <Text style={styles.historyDate}>
-                      {date ? date.toLocaleDateString("de-DE", {
+                      {date instanceof Date ? date.toLocaleDateString("de-DE", {
                         weekday: "short",
                         day: "2-digit",
                         month: "short",
