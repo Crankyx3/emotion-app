@@ -391,6 +391,33 @@ export default function HomeScreen({ navigation }) {
           </View>
         </View>
 
+        {/* Achievements Button */}
+        {!isGuestMode && (
+          <TouchableOpacity
+            style={styles.achievementsButton}
+            onPress={() => navigation.navigate("Achievements")}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={['#FFB900', '#FF9500']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.achievementsGradient}
+            >
+              <View style={styles.achievementsContent}>
+                <Ionicons name="trophy" size={28} color="#FFF" />
+                <View style={styles.achievementsText}>
+                  <Text style={styles.achievementsTitle}>Deine Erfolge</Text>
+                  <Text style={styles.achievementsSubtitle}>
+                    Sieh dir deine Fortschritte an
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={24} color="#FFF" />
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+
         {/* Guest Mode Banner */}
         {isGuestMode && (
           <View style={styles.guestBanner}>
@@ -1013,5 +1040,40 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     marginBottom: Spacing.sm,
+  },
+
+  // Achievements Button
+  achievementsButton: {
+    marginHorizontal: 20,
+    marginTop: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
+  },
+  achievementsGradient: {
+    padding: 20,
+  },
+  achievementsContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  achievementsText: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  achievementsTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFF',
+    marginBottom: 4,
+  },
+  achievementsSubtitle: {
+    fontSize: 14,
+    color: '#FFF',
+    opacity: 0.9,
   },
 });

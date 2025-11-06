@@ -23,6 +23,7 @@ import * as FileSystem from "expo-file-system";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { deleteAllLocalEntries, deleteAllLocalWeeklyAnalyses, getLocalEntries, getLocalWeeklyAnalyses } from "../services/localStorageService";
 import { runFullTestSuite, runQuickHealthCheck } from "../services/testService";
+import NotificationSettings from "../components/NotificationSettings";
 
 export default function SettingsScreen({ navigation }) {
   const { user, signOut } = useAuth();
@@ -931,6 +932,12 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
               />
             </TouchableOpacity>
           </View>
+        </View>
+
+        {/* Notifications */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🔔 Erinnerungen</Text>
+          <NotificationSettings userId={user?.uid} />
         </View>
 
         {/* Logout */}

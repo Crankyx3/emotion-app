@@ -21,6 +21,7 @@ import SettingsScreen from "./screens/SettingsScreen";
 import PrivacyPolicyScreen from "./screens/PrivacyPolicyScreen";
 import AdminScreen from "./screens/AdminScreen";
 import EmergencyScreen from "./screens/EmergencyScreen";
+import AchievementsScreen from "./screens/AchievementsScreen";
 
 import { AuthProvider, useAuth } from "./components/AuthProvider";
 import { PremiumProvider } from "./components/PremiumProvider";
@@ -138,6 +139,7 @@ function RootNavigator() {
             <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
             <Stack.Screen name="Admin" component={AdminScreen} />
+            <Stack.Screen name="Achievements" component={AchievementsScreen} />
           </>
         ) : (
           <>
