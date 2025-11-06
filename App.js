@@ -26,7 +26,6 @@ import OnboardingScreen from "./screens/OnboardingScreen";
 
 import { AuthProvider, useAuth } from "./components/AuthProvider";
 import { PremiumProvider } from "./components/PremiumProvider";
-import { ThemeProvider } from "./components/ThemeProvider";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const Tab = createBottomTabNavigator();
@@ -185,12 +184,10 @@ function RootNavigator() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <PremiumProvider>
-          <RootNavigator />
-        </PremiumProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <AuthProvider>
+      <PremiumProvider>
+        <RootNavigator />
+      </PremiumProvider>
+    </AuthProvider>
   );
 }

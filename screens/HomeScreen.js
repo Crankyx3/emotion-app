@@ -10,7 +10,6 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
 import { useAuth } from "../components/AuthProvider";
 import { usePremium } from "../components/PremiumProvider";
-import { useTheme } from "../components/ThemeProvider";
 import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getLocalEntries, getTodaysLocalEntry } from "../services/localStorageService";
@@ -18,7 +17,6 @@ import { getLocalEntries, getTodaysLocalEntry } from "../services/localStorageSe
 export default function HomeScreen({ navigation }) {
   const { userName, isGuestMode, exitGuestMode } = useAuth();
   const { isPremium, isTrialActive, trialDaysLeft, getTrialTimeRemaining } = usePremium();
-  const { theme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [currentStreak, setCurrentStreak] = useState(0);
   const [longestStreak, setLongestStreak] = useState(0);
@@ -330,21 +328,21 @@ export default function HomeScreen({ navigation }) {
 
   if (loading) {
     return (
-      <LinearGradient colors={[theme.backgroundGradientStart, theme.backgroundGradientEnd]} style={styles.gradient}>
+      <LinearGradient colors={["#EAF4FF", "#FFFFFF"]} style={styles.gradient}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.primary} />
+          <ActivityIndicator size="large" color="#007AFF" />
         </View>
       </LinearGradient>
     );
   }
 
   return (
-    <LinearGradient colors={[theme.backgroundGradientStart, theme.backgroundGradientEnd]} style={styles.gradient}>
+    <LinearGradient colors={["#EAF4FF", "#FFFFFF"]} style={styles.gradient}>
       <TouchableOpacity
-        style={[styles.settingsButton, { backgroundColor: theme.surface }]}
+        style={styles.settingsButton}
         onPress={() => navigation.navigate("Settings")}
       >
-        <Ionicons name="settings-outline" size={28} color={theme.primary} />
+        <Ionicons name="settings-outline" size={28} color="#007AFF" />
       </TouchableOpacity>
 
       <TouchableOpacity
