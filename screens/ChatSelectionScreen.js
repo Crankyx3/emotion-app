@@ -152,8 +152,9 @@ export default function ChatSelectionScreen() {
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>📊 Wochenanalysen</Text>
                 {weeklyAnalyses.map((analysis) => {
-                  const date = analysis.analysisDate?.toDate();
-                  const dateStr = date
+                  // analysisDate ist bereits ein Date-Objekt (von filter mapping)
+                  const date = analysis.analysisDate;
+                  const dateStr = date instanceof Date
                     ? date.toLocaleDateString("de-DE", {
                         weekday: "short",
                         day: "2-digit",
@@ -223,8 +224,9 @@ export default function ChatSelectionScreen() {
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>📝 Tagesanalysen</Text>
                 {dailyAnalyses.slice(0, 10).map((entry) => {
-                  const date = entry.analysisDate?.toDate();
-                  const dateStr = date
+                  // analysisDate ist bereits ein Date-Objekt (von filter mapping)
+                  const date = entry.analysisDate;
+                  const dateStr = date instanceof Date
                     ? date.toLocaleDateString("de-DE", {
                         weekday: "short",
                         day: "2-digit",
