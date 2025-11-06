@@ -13,11 +13,17 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Diese App benötigt Zugriff auf dein Mikrofon für Spracheingaben in Tagebucheinträgen."
+      }
     },
     "android": {
       "package": "com.ki.stimmungshelfer",
       "versionCode": 1,
+      "permissions": [
+        "RECORD_AUDIO"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
