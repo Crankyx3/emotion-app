@@ -966,26 +966,28 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
             )}
           </TouchableOpacity>
 
-          {/* Test Suite Button */}
-          <TouchableOpacity
-            style={styles.testButton}
-            onPress={() => handleRunTests(true)}
-            disabled={loading || testRunning}
-          >
-            {testRunning ? (
-              <ActivityIndicator color="#007AFF" />
-            ) : (
-              <>
-                <Ionicons name="flask-outline" size={24} color="#007AFF" />
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.testButtonTitle}>🧪 App-Tests durchführen</Text>
-                  <Text style={styles.testButtonSubtitle}>
-                    Teste alle Funktionen (Datenbank, Storage, APIs)
-                  </Text>
-                </View>
-              </>
-            )}
-          </TouchableOpacity>
+          {/* Test Suite Button (nur für Admin) */}
+          {user?.email === "finn_bauermeister@web.de" && (
+            <TouchableOpacity
+              style={styles.testButton}
+              onPress={() => handleRunTests(true)}
+              disabled={loading || testRunning}
+            >
+              {testRunning ? (
+                <ActivityIndicator color="#007AFF" />
+              ) : (
+                <>
+                  <Ionicons name="flask-outline" size={24} color="#007AFF" />
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={styles.testButtonTitle}>🧪 App-Tests durchführen</Text>
+                    <Text style={styles.testButtonSubtitle}>
+                      Teste alle Funktionen (Datenbank, Storage, APIs)
+                    </Text>
+                  </View>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
 
           {/* Link zur Datenschutzerklärung */}
           <TouchableOpacity
