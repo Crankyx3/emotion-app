@@ -344,6 +344,14 @@ export default function HomeScreen({ navigation }) {
       >
         <Ionicons name="settings-outline" size={28} color="#007AFF" />
       </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.sosButton}
+        onPress={() => navigation.navigate("Emergency")}
+      >
+        <Ionicons name="medical" size={28} color="#FFF" />
+      </TouchableOpacity>
+
       <ScrollView contentContainerStyle={styles.container}>
         <ScreenHeader title="KI-Stimmungshelfer" subtitle="Dein persönliches Stimmungs-Dashboard" />
 
@@ -650,6 +658,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.round,
+    ...Shadows.medium,
+  },
+  sosButton: {
+    position: "absolute",
+    top: 120,
+    right: 20,
+    zIndex: 10,
+    width: 50,
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#E03131",
     borderRadius: BorderRadius.round,
     ...Shadows.medium,
   },

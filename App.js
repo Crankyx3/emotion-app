@@ -60,17 +60,6 @@ function MainTabs() {
         }}
       />
       <Tab.Screen
-        name="Emergency"
-        component={EmergencyScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="medical" size={size} color="#E03131" />
-          ),
-          tabBarLabel: "SOS",
-          tabBarActiveTintColor: "#E03131",
-        }}
-      />
-      <Tab.Screen
         name="DailyAnalysis"
         component={DailyAnalysisScreen}
         options={{
@@ -140,6 +129,7 @@ function RootNavigator() {
             <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
             <Stack.Screen name="Admin" component={AdminScreen} />
             <Stack.Screen name="Achievements" component={AchievementsScreen} />
+            <Stack.Screen name="Emergency" component={EmergencyScreen} />
           </>
         ) : (
           <>
