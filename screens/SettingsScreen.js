@@ -21,7 +21,7 @@ import ScreenHeader from "../components/ScreenHeader";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { deleteAllLocalEntries, deleteAllLocalWeeklyAnalyses } from "../services/localStorageService";
+import { deleteAllLocalEntries, deleteAllLocalWeeklyAnalyses, getLocalEntries, getLocalWeeklyAnalyses } from "../services/localStorageService";
 import { runFullTestSuite, runQuickHealthCheck } from "../services/testService";
 
 export default function SettingsScreen({ navigation }) {
@@ -113,29 +113,14 @@ export default function SettingsScreen({ navigation }) {
     if (!user) return;
 
     try {
-      // Zähle alle Einträge
-      const entriesSnapshot = await getDocs(
-        query(collection(db, "entries"), where("userId", "==", user.uid))
-      );
+      // 🔒 DATENSCHUTZ: Stats aus lokalem Storage
+      const localEntries = await getLocalEntries(user.uid);
+      const localWeeklyAnalyses = await getLocalWeeklyAnalyses(user.uid);
 
-      // Filtere nach Typ
-      let totalEntries = 0;
-      let dailyAnalyses = 0;
-      let weeklyAnalyses = 0;
-
-      entriesSnapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data.type === "dailyEntry") {
-          totalEntries++;
-        } else if (data.type === "dailyAnalysis") {
-          dailyAnalyses++;
-        } else if (data.type === "weeklyAnalysis") {
-          weeklyAnalyses++;
-        } else {
-          // Falls kein type gesetzt ist, zähle als Entry
-          totalEntries++;
-        }
-      });
+      // Zähle Einträge mit Analysen
+      const totalEntries = localEntries.length;
+      const dailyAnalyses = localEntries.filter(e => e.analysis).length;
+      const weeklyAnalyses = localWeeklyAnalyses.length;
 
       setStats({
         totalEntries,
@@ -151,19 +136,14 @@ export default function SettingsScreen({ navigation }) {
     try {
       if (!user) return;
 
-      // Lade alle Einträge des Users
-      const q = query(
-        collection(db, "entries"),
-        where("userId", "==", user.uid)
-      );
-      const snapshot = await getDocs(q);
+      // 🔒 DATENSCHUTZ: Lade Einträge aus lokalem Storage
+      const localEntries = await getLocalEntries(user.uid);
 
       // Extrahiere Datum (ohne Uhrzeit) für jeden Eintrag
-      const entryDates = snapshot.docs
-        .map(doc => {
-          const data = doc.data();
-          if (!data.createdAt) return null;
-          const date = data.createdAt.toDate();
+      const entryDates = localEntries
+        .map(entry => {
+          if (!entry.createdAt) return null;
+          const date = new Date(entry.createdAt);
           // Normalisiere auf Mitternacht
           const normalized = new Date(date.getFullYear(), date.getMonth(), date.getDate());
           return normalized.getTime();
