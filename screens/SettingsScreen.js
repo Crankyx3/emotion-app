@@ -14,6 +14,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../components/AuthProvider";
 import { usePremium } from "../components/PremiumProvider";
+import { useTheme } from "../components/ThemeProvider";
 import { db, auth } from "../firebaseconfig";
 import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { deleteUser, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
@@ -28,6 +29,7 @@ import NotificationSettings from "../components/NotificationSettings";
 export default function SettingsScreen({ navigation }) {
   const { user, signOut } = useAuth();
   const { isPremium, isTrialActive, trialDaysLeft, getTrialTimeRemaining } = usePremium();
+  const { theme, themeMode, setTheme, isDark } = useTheme();
   const [loading, setLoading] = useState(false);
   const [trialTimeRemaining, setTrialTimeRemaining] = useState(null);
   const [stats, setStats] = useState({
@@ -883,6 +885,90 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
               </View>
             </View>
           )}
+        </View>
+
+        {/* Erscheinungsbild */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🎨 Erscheinungsbild</Text>
+
+          <View style={styles.themeOptions}>
+            <TouchableOpacity
+              style={[
+                styles.themeOption,
+                themeMode === "light" && styles.themeOptionActive,
+              ]}
+              onPress={() => setTheme("light")}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name="sunny"
+                size={24}
+                color={themeMode === "light" ? "#007AFF" : "#8E8E93"}
+              />
+              <Text
+                style={[
+                  styles.themeOptionText,
+                  themeMode === "light" && styles.themeOptionTextActive,
+                ]}
+              >
+                Hell
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.themeOption,
+                themeMode === "dark" && styles.themeOptionActive,
+              ]}
+              onPress={() => setTheme("dark")}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name="moon"
+                size={24}
+                color={themeMode === "dark" ? "#007AFF" : "#8E8E93"}
+              />
+              <Text
+                style={[
+                  styles.themeOptionText,
+                  themeMode === "dark" && styles.themeOptionTextActive,
+                ]}
+              >
+                Dunkel
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.themeOption,
+                themeMode === "system" && styles.themeOptionActive,
+              ]}
+              onPress={() => setTheme("system")}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name="phone-portrait"
+                size={24}
+                color={themeMode === "system" ? "#007AFF" : "#8E8E93"}
+              />
+              <Text
+                style={[
+                  styles.themeOptionText,
+                  themeMode === "system" && styles.themeOptionTextActive,
+                ]}
+              >
+                System
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.themeDescription}>
+            {themeMode === "system"
+              ? "Folgt automatisch den Systemeinstellungen deines Geräts"
+              : themeMode === "dark"
+              ? "Dunkles Design für bessere Sicht bei Nacht"
+              : "Helles Design mit hohem Kontrast"}
+          </Text>
         </View>
 
         {/* Privacy & Datenschutz */}
@@ -2021,5 +2107,42 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#007AFF",
     marginLeft: 6,
+  },
+
+  // Theme Styles
+  themeOptions: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 12,
+  },
+  themeOption: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F7F9FC",
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  themeOptionActive: {
+    backgroundColor: "#E3F2FD",
+    borderColor: "#007AFF",
+  },
+  themeOptionText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#8E8E93",
+    marginTop: 6,
+  },
+  themeOptionTextActive: {
+    color: "#007AFF",
+  },
+  themeDescription: {
+    fontSize: 13,
+    color: "#8E8E93",
+    lineHeight: 18,
+    paddingHorizontal: 4,
   },
 });
