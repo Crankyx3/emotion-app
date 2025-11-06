@@ -36,46 +36,26 @@ export default function ChatSelectionScreen() {
       // 🔒 DATENSCHUTZ: Lade Tagesanalysen aus lokalem Storage
       const localEntries = await getLocalEntries(auth.currentUser.uid);
 
-      console.log('📊 ChatSelection: Geladene lokale Einträge:', localEntries?.length || 0);
-
-      // Debug: Zeige alle Einträge mit Analysen
-      const entriesWithAnalysis = (localEntries || []).filter(e => e.analysis);
-      console.log('📝 Einträge MIT Analyse:', entriesWithAnalysis.length);
-
       const daily = (localEntries || [])
         .filter(entry => {
           // Nur Einträge mit Analyse
-          if (!entry.analysis) {
-            return false;
-          }
+          if (!entry.analysis) return false;
+
           // Verwende analysisDate wenn vorhanden, sonst createdAt
           const dateToCheck = entry.analysisDate || entry.createdAt;
-          if (!dateToCheck) {
-            console.log('⚠️ Eintrag ohne Datum:', entry.localId);
-            return false;
-          }
+          if (!dateToCheck) return false;
+
           const analysisDate = new Date(dateToCheck);
-          const isRecent = analysisDate >= fourteenDaysAgo;
-
-          console.log('🔍 Eintrag Check:', {
-            localId: entry.localId?.substring(0, 8),
-            hasAnalysis: !!entry.analysis,
-            analysisDate: dateToCheck,
-            isRecent
-          });
-
-          return isRecent;
+          return analysisDate >= fourteenDaysAgo;
         })
         .map(entry => ({
           id: entry.localId,
           ...entry,
-          // Für Kompatibilität: analysisDate als Date object (fallback auf createdAt)
           analysisDate: new Date(entry.analysisDate || entry.createdAt),
           createdAt: new Date(entry.createdAt)
         }))
         .sort((a, b) => b.analysisDate.getTime() - a.analysisDate.getTime());
 
-      console.log('✅ Tagesanalysen für Chat-Menü:', daily.length);
       setDailyAnalyses(daily);
 
       // 🔒 DATENSCHUTZ: Lade Wochenanalysen aus lokalem Storage
