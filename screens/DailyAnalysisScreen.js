@@ -486,8 +486,8 @@ Die Vorschläge sollen sofort umsetzbar sein (5-15 Minuten) und zur aktuellen Em
           {/* Score-Kreis */}
           <Animated.View style={[styles.circleWrapper, { transform: [{ scale: pulseAnim }] }]}>
             <AnimatedCircularProgress
-              size={200}
-              width={16}
+              size={180}
+              width={14}
               fill={(displayedScore / 99) * 100}
               tintColor="#007aff"
               backgroundColor="#eef3fb"
@@ -949,14 +949,16 @@ const styles = StyleSheet.create({
     marginVertical: 24,
   },
   scoreNumber: {
-    fontSize: 56,
+    fontSize: 48,
     fontWeight: "800",
     color: "#007aff",
+    letterSpacing: -1,
   },
   scoreLabel: {
-    fontSize: 15,
+    fontSize: 14,
     color: "#8E8E93",
-    marginTop: 4,
+    marginTop: 2,
+    fontWeight: "500",
   },
   emotionBadge: {
     backgroundColor: "#fff",
