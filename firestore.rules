@@ -20,16 +20,17 @@ service cloud.firestore {
     }
 
     // USERS Collection
-    // Users can only read/write their own document
+    // Users can only read/write their own document, admins can manage all
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       allow create: if isSignedIn() && request.auth.uid == userId;
       allow update: if isOwner(userId) ||
+                      isAdmin() ||
                       (isSignedIn() &&
                        request.auth.uid == userId &&
                        request.auth.token.email == 'finn_bauermeister@web.de' &&
                        request.resource.data.isAdmin == true);
-      allow delete: if isOwner(userId);
+      allow delete: if isOwner(userId) || isAdmin();
     }
 
     // ENTRIES Collection (Tageseinträge)
