@@ -19,6 +19,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../components/AuthProvider";
+import { getLocalEntries } from "../services/localStorageService";
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -41,20 +42,15 @@ export default function EmotionChartScreen({ navigation }) {
           return;
         }
 
-        // Lade alle Einträge des aktuellen Users
-        const q = query(
-          collection(db, "entries"),
-          where("userId", "==", auth.currentUser.uid)
-        );
-        const snap = await getDocs(q);
+        // 🔒 DATENSCHUTZ: Lade alle Einträge aus lokalem Storage
+        const localEntries = await getLocalEntries(auth.currentUser.uid);
 
-        // Mappe alle Einträge und sortiere clientseitig nach Datum
-        const all = snap.docs
-          .map((docSnap) => {
-            const e = docSnap.data();
-            const ts = e.createdAt?.seconds ? new Date(e.createdAt.seconds * 1000) : new Date();
+        // Mappe alle Einträge und sortiere nach Datum
+        const all = (localEntries || [])
+          .map((e) => {
+            const ts = e.createdAt ? new Date(e.createdAt) : new Date();
             return {
-              id: docSnap.id,
+              id: e.localId,
               ...e,
               date: ts.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }),
               timestamp: ts.getTime(),
@@ -69,6 +65,9 @@ export default function EmotionChartScreen({ navigation }) {
         setEntries(filtered);
       } catch (err) {
         console.error("Fehler beim Laden:", err);
+        // Defensive: Setze leere Arrays bei Fehler
+        setEntries([]);
+        setAllEntries([]);
       } finally {
         setLoading(false);
       }
