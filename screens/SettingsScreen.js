@@ -1093,42 +1093,42 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
                 </View>
               )}
 
-              {testResults && (
+              {testResults && testResults.summary && (
                 <>
                   {/* Summary */}
                   <View style={styles.testSummaryCard}>
                     <Text style={styles.testSummaryTitle}>Zusammenfassung</Text>
                     <View style={styles.testSummaryRow}>
                       <View style={styles.testSummaryItem}>
-                        <Text style={styles.testSummaryNumber}>{testResults.summary.total}</Text>
+                        <Text style={styles.testSummaryNumber}>{testResults.summary.total || 0}</Text>
                         <Text style={styles.testSummaryLabel}>Tests</Text>
                       </View>
                       <View style={styles.testSummaryItem}>
                         <Text style={[styles.testSummaryNumber, { color: '#34C759' }]}>
-                          {testResults.summary.passed}
+                          {testResults.summary.passed || 0}
                         </Text>
                         <Text style={styles.testSummaryLabel}>Erfolg</Text>
                       </View>
                       <View style={styles.testSummaryItem}>
                         <Text style={[styles.testSummaryNumber, { color: '#FF3B30' }]}>
-                          {testResults.summary.failed}
+                          {testResults.summary.failed || 0}
                         </Text>
                         <Text style={styles.testSummaryLabel}>Fehler</Text>
                       </View>
                       <View style={styles.testSummaryItem}>
                         <Text style={[styles.testSummaryNumber, { color: '#FF9500' }]}>
-                          {testResults.summary.warnings}
+                          {testResults.summary.warnings || 0}
                         </Text>
                         <Text style={styles.testSummaryLabel}>Warnung</Text>
                       </View>
                     </View>
                     <Text style={styles.testSummaryDuration}>
-                      Dauer: {(testResults.summary.duration / 1000).toFixed(2)}s
+                      Dauer: {((testResults.summary.duration || 0) / 1000).toFixed(2)}s
                     </Text>
                   </View>
 
                   {/* Individual Results */}
-                  {testResults.results.map((result, index) => (
+                  {testResults.results && testResults.results.map((result, index) => (
                     <View
                       key={index}
                       style={[
@@ -1165,7 +1165,7 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
                           <Text style={styles.testResultName}>{result.name}</Text>
                         </View>
                         {result.duration && (
-                          <Text style={styles.testResultDuration}>{result.duration}ms</Text>
+                          <Text style={styles.testResultDuration}>{result.duration} ms</Text>
                         )}
                       </View>
                       <Text style={styles.testResultMessage}>{result.message}</Text>
