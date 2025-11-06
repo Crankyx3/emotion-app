@@ -77,6 +77,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // TEST COLLECTION (für App-Tests)
+    // Nur für Admin zugänglich
+    match /test_collection/{testId} {
+      allow read, write: if isAdmin();
+    }
+
     // Default: Deny all other access
     match /{document=**} {
       allow read, write: if false;
