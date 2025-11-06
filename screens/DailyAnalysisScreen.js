@@ -21,9 +21,13 @@ import {
   collection,
   addDoc,
   Timestamp,
+  query,
+  where,
+  getDocs,
+  updateDoc,
 } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
-import { getTodaysLocalEntry, saveEntryLocally, getLocalEntryById } from "../services/localStorageService";
+import { getTodaysLocalEntry, saveEntryLocally, getLocalEntryById, updateLocalEntry } from "../services/localStorageService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { usePremium } from "../components/PremiumProvider";
 import { useAuth } from "../components/AuthProvider";
@@ -92,88 +96,38 @@ export default function DailyAnalysisScreen({ route, navigation }) {
       return;
     }
 
-    try{
-      // Hole heutiges Datum (Start des Tages)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+    try {
+      const userId = auth.currentUser.uid;
 
-      // Hole morgiges Datum (Ende des Tages)
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
+      // 🔒 DATENSCHUTZ: Lade lokalen Eintrag (enthält sensible Daten)
+      const localEntry = await getTodaysLocalEntry(userId);
 
-      // Erst nach userId filtern, dann clientseitig nach Datum
-      const q = query(
-        collection(db, "entries"),
-        where("userId", "==", auth.currentUser.uid)
-      );
+      if (localEntry) {
+        console.log("📝 Lokaler Eintrag heute gefunden");
 
-      const snapshot = await getDocs(q);
+        // Setze Werte aus lokalem Eintrag
+        if (localEntry.feelScore != null) setFeelScore(localEntry.feelScore);
+        if (localEntry.emotion) setEmotion(localEntry.emotion);
+        if (localEntry.text) setText(localEntry.text);
+        if (localEntry.theme) setTheme(localEntry.theme);
 
-      console.log(`📊 Gefunden: ${snapshot.size} Einträge für User`);
+        setTodayEntry(localEntry);
 
-      // Clientseitig nach heutigem Datum filtern
-      const todayAnalyses = snapshot.docs.filter((doc) => {
-        const data = doc.data();
-        if (!data.analysisDate) return false;
-        const analysisDate = data.analysisDate.toDate();
-        const isToday = analysisDate >= today && analysisDate < tomorrow;
-        if (isToday) console.log("📅 Analyse heute gefunden:", data);
-        return isToday;
-      });
-
-      // Suche nach heutigem Eintrag (mit createdAt heute)
-      const todayEntries = snapshot.docs.filter((doc) => {
-        const data = doc.data();
-        if (!data.createdAt) return false;
-        const createdDate = data.createdAt.toDate();
-        const isToday = createdDate >= today && createdDate < tomorrow;
-        if (isToday) {
-          console.log("📝 Eintrag heute gefunden:", {
-            emotion: data.emotion,
-            feelScore: data.feelScore,
-            hasAnalysis: !!data.analysis,
-            hasAnalysisDate: !!data.analysisDate,
-          });
+        // Prüfe ob bereits eine Analyse vorhanden ist
+        if (localEntry.analysis) {
+          // Analyse existiert bereits lokal
+          setAiText(localEntry.analysis);
+          setAnalysisValid(true);
+          setCanAnalyze(false);
+          setTodayAnalysis(localEntry);
+          console.log("✅ Analyse bereits vorhanden (lokal)");
+        } else {
+          // Eintrag vorhanden, aber noch keine Analyse
+          setCanAnalyze(true);
+          console.log("✅ Eintrag vorhanden, Analyse verfügbar");
         }
-        return isToday;
-      });
-
-      console.log(`✅ Heute: ${todayAnalyses.length} Analysen, ${todayEntries.length} Einträge`);
-
-      if (todayAnalyses.length > 0) {
-        // Heute wurde bereits analysiert
-        const data = todayAnalyses[0].data();
-        setTodayAnalysis(data);
-        setTodayEntry(data); // Eintrag existiert
-        setAiText(data.analysis);
-        setAnalysisValid(true);
-        setCanAnalyze(false);
-
-        // Lade alle Werte aus Firestore
-        if (data.feelScore != null) setFeelScore(data.feelScore);
-        if (data.emotion) setEmotion(data.emotion);
-        if (data.text) setText(data.text);
-        if (data.theme) setTheme(data.theme);
-
-        console.log("✅ Heute bereits analysiert");
-      } else if (todayEntries.length > 0) {
-        // Eintrag vorhanden, aber noch keine Analyse
-        const data = todayEntries[0].data();
-        setTodayEntry(data);
-        setCanAnalyze(true);
-
-        // Lade Werte aus Eintrag
-        if (data.feelScore != null) setFeelScore(data.feelScore);
-        if (data.emotion) setEmotion(data.emotion);
-        if (data.text) setText(data.text);
-        if (data.theme) setTheme(data.theme);
-
-        console.log("✅ Eintrag vorhanden, Analyse verfügbar", {
-          canAnalyze: true,
-          todayEntry: !!data
-        });
       } else {
-        // Weder Eintrag noch Analyse vorhanden
+        // Kein lokaler Eintrag vorhanden
         setCanAnalyze(false);
         setTodayEntry(null);
         console.log("❌ Kein Eintrag heute gefunden");
@@ -376,49 +330,41 @@ Die Vorschläge sollen sofort umsetzbar sein (5-15 Minuten) und zur aktuellen Em
       const ok = typeof reply === "string" && reply.trim().length > 20 && !/fehler/i.test(reply);
       setAnalysisValid(ok);
 
-      // Speichere mit analysisDate für das Daily Limit
-      const analysisDate = Timestamp.now();
+      const userId = auth.currentUser?.uid;
+      const now = new Date();
 
-      // Nur wenn Werte gültig sind, Query ausführen
-      const q = query(
-        collection(db, "entries"),
-        where("feelScore", "==", feelScore),
-        where("theme", "==", theme)
-      );
+      // 🔒 DATENSCHUTZ: Hole heutigen lokalen Eintrag
+      const localEntry = await getTodaysLocalEntry(userId);
 
-      const snap = await getDocs(q);
-
-      if (!snap.empty) {
-        const entryDoc = snap.docs[0].ref;
-        await updateDoc(entryDoc, {
-          analysis: reply,
-          analysisDate: analysisDate
+      if (localEntry) {
+        // Update bestehender lokaler Eintrag mit Analyse
+        const updatedEntry = await updateLocalEntry(userId, localEntry.localId, {
+          analysis: reply, // ✅ NUR LOKAL
+          analysisDate: now.toISOString(),
         });
-        console.log("✅ Analyse in Firestore gespeichert.");
+
+        if (updatedEntry) {
+          console.log("✅ Analyse lokal gespeichert");
+
+          // Nur Metadaten in Firestore (für Daily-Limit-Prüfung)
+          await addDoc(collection(db, "entries"), {
+            userId: userId,
+            emotion: emotion,
+            feelScore: feelScore,
+            analysisDate: Timestamp.now(),
+            createdAt: Timestamp.fromDate(new Date(localEntry.createdAt)),
+            hasLocalData: true,
+            // KEIN text, KEINE analysis - Datenschutz!
+          });
+          console.log("✅ Analyse-Metadaten in Cloud gespeichert");
+
+          // Markiere als heute bereits verwendet
+          setCanAnalyze(false);
+          setTodayAnalysis(updatedEntry);
+        }
       } else {
-        await addDoc(collection(db, "entries"), {
-          userId: auth.currentUser?.uid,
-          emotion,
-          feelScore,
-          theme,
-          text,
-          analysis: reply,
-          analysisDate: analysisDate,
-          createdAt: Timestamp.now(),
-        });
-        console.log("📄 Neuer Eintrag mit Analyse erstellt.");
+        console.error("❌ Kein lokaler Eintrag gefunden - kann Analyse nicht speichern");
       }
-
-      // Markiere als heute bereits verwendet
-      setCanAnalyze(false);
-      setTodayAnalysis({
-        emotion,
-        feelScore,
-        theme,
-        text,
-        analysis: reply,
-        analysisDate: analysisDate.toDate(),
-      });
 
     } catch (error) {
       setAiText("Fehler bei der Analyse 😕");

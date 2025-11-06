@@ -106,6 +106,33 @@ export const getTodaysLocalEntry = async (userId) => {
 };
 
 /**
+ * Aktualisiert einen existierenden Eintrag
+ */
+export const updateLocalEntry = async (userId, localId, updates) => {
+  try {
+    const entries = await getLocalEntries(userId);
+    const index = entries.findIndex(e => e.localId === localId);
+
+    if (index === -1) {
+      console.error('Entry not found for update:', localId);
+      return null;
+    }
+
+    // Update entry
+    entries[index] = {
+      ...entries[index],
+      ...updates,
+    };
+
+    await AsyncStorage.setItem(KEYS.ENTRIES(userId), JSON.stringify(entries));
+    return entries[index];
+  } catch (error) {
+    console.error('Error updating local entry:', error);
+    return null;
+  }
+};
+
+/**
  * Löscht einen Eintrag
  */
 export const deleteLocalEntry = async (userId, localId) => {

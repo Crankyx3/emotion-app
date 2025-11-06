@@ -18,6 +18,7 @@ import { getAiResponse } from "../openaiService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { usePremium } from "../components/PremiumProvider";
 import { useAuth } from "../components/AuthProvider";
+import { getLocalEntries, getLocalWeeklyAnalyses, saveWeeklyAnalysisLocally } from "../services/localStorageService";
 
 export default function AnalysisScreen() {
   const navigation = useNavigation();
@@ -48,30 +49,25 @@ export default function AnalysisScreen() {
         return;
       }
 
+      const userId = auth.currentUser.uid;
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-      // Erst nach userId filtern, dann clientseitig nach Datum
-      const q = query(
-        collection(db, "weeklyAnalyses"),
-        where("userId", "==", auth.currentUser.uid)
-      );
+      // 🔒 DATENSCHUTZ: Lade Wochenanalysen aus lokalem Storage
+      const localAnalyses = await getLocalWeeklyAnalyses(userId);
 
-      const snapshot = await getDocs(q);
-
-      // Clientseitig nach Datum filtern und sortieren
-      const recentAnalyses = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
+      // Nach Datum filtern und sortieren
+      const recentAnalyses = localAnalyses
         .filter(analysis => {
-          if (!analysis.analysisDate) return false;
-          const analysisDate = analysis.analysisDate.toDate();
+          if (!analysis.createdAt) return false;
+          const analysisDate = new Date(analysis.createdAt);
           return analysisDate >= sevenDaysAgo;
         })
-        .sort((a, b) => b.analysisDate.toMillis() - a.analysisDate.toMillis());
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
       if (recentAnalyses.length > 0) {
         const lastAnalysis = recentAnalyses[0];
-        const lastDate = lastAnalysis.analysisDate.toDate();
+        const lastDate = new Date(lastAnalysis.createdAt);
         const now = new Date();
         const diffTime = Math.abs(now - lastDate);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -100,22 +96,20 @@ export default function AnalysisScreen() {
         return;
       }
 
-      const q = query(
-        collection(db, "weeklyAnalyses"),
-        where("userId", "==", auth.currentUser.uid)
-      );
+      const userId = auth.currentUser.uid;
 
-      const snapshot = await getDocs(q);
+      // 🔒 DATENSCHUTZ: Lade Analysen aus lokalem Storage
+      const localAnalyses = await getLocalWeeklyAnalyses(userId);
 
-      // Clientseitig nach Datum sortieren
-      const analyses = snapshot.docs
-        .map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
+      // Nach Datum sortieren
+      const analyses = localAnalyses
+        .map((analysis) => ({
+          id: analysis.localId,
+          ...analysis,
         }))
         .sort((a, b) => {
-          if (!a.analysisDate || !b.analysisDate) return 0;
-          return b.analysisDate.toMillis() - a.analysisDate.toMillis();
+          if (!a.createdAt || !b.createdAt) return 0;
+          return new Date(b.createdAt) - new Date(a.createdAt);
         });
 
       setAllAnalyses(analyses);
@@ -184,29 +178,24 @@ export default function AnalysisScreen() {
           return;
         }
 
+        const userId = auth.currentUser.uid;
         const now = new Date();
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(now.getDate() - 7);
 
-        // Lade nur Einträge des aktuellen Users
-        const q = query(
-          collection(db, "entries"),
-          where("userId", "==", auth.currentUser.uid)
-        );
+        // 🔒 DATENSCHUTZ: Lade Einträge aus lokalem Storage
+        const localEntries = await getLocalEntries(userId);
 
-        const snap = await getDocs(q);
-
-        // Clientseitig nach Datum filtern (letzte 7 Tage)
-        const data = snap.docs
-          .map((doc) => doc.data())
+        // Nach Datum filtern (letzte 7 Tage)
+        const data = localEntries
           .filter((entry) => {
             if (!entry.createdAt) return false;
-            const entryDate = entry.createdAt.toDate();
+            const entryDate = new Date(entry.createdAt);
             return entryDate >= sevenDaysAgo;
           })
           .sort((a, b) => {
             if (!a.createdAt || !b.createdAt) return 0;
-            return a.createdAt.toMillis() - b.createdAt.toMillis();
+            return new Date(a.createdAt) - new Date(b.createdAt);
           });
 
         setEntries(data);
@@ -290,7 +279,7 @@ export default function AnalysisScreen() {
       // Erweiterte Zusammenfassung mit Themen und Texten
       const detailedSummary = entries
         .map((e, index) => {
-          const date = new Date(e.createdAt.seconds * 1000).toLocaleDateString("de-DE");
+          const date = new Date(e.createdAt).toLocaleDateString("de-DE");
           const basics = `${e.emotion || "Unbekannt"} | Wohlfühlscore=${e.feelScore}/99`;
           const themeText = e.theme ? `\n   Thema: ${e.theme}` : '';
           const userText = e.text ? `\n   "${e.text}"` : '';
@@ -367,21 +356,35 @@ Abschluss: Beende mit genau einem Wort in einer neuen Zeile: POSITIV, NEUTRAL od
       setAiText(cleanedText);
       setExpanded(false);
 
-      // In Firestore speichern
-      await addDoc(collection(db, "weeklyAnalyses"), {
-        userId: auth.currentUser.uid,
-        analysis: reply,
+      const userId = auth.currentUser.uid;
+      const now = new Date();
+
+      // 🔒 DATENSCHUTZ: Speichere Analyse lokal
+      const savedAnalysis = await saveWeeklyAnalysisLocally(userId, {
+        analysis: reply, // ✅ NUR LOKAL
         highlight: highlightData,
-        analysisDate: Timestamp.now(),
         entriesCount: entries.length,
         avgStats: {
           feelScore: avg,
         },
       });
 
+      console.log("✅ Wochenanalyse lokal gespeichert");
+
+      // Nur Metadaten in Firestore (für 7-Tage-Limit)
+      await addDoc(collection(db, "weeklyAnalyses"), {
+        userId: userId,
+        analysisDate: Timestamp.now(),
+        entriesCount: entries.length,
+        hasLocalData: true,
+        // KEINE analysis, KEINE highlight - Datenschutz!
+      });
+
+      console.log("✅ Analyse-Metadaten in Cloud gespeichert");
+
       // Status aktualisieren
       setCanAnalyze(false);
-      setLastAnalysisDate(new Date());
+      setLastAnalysisDate(now);
       setDaysUntilNext(7);
 
       // Verlauf neu laden

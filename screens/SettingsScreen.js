@@ -21,6 +21,7 @@ import ScreenHeader from "../components/ScreenHeader";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { deleteAllLocalEntries, deleteAllLocalWeeklyAnalyses } from "../services/localStorageService";
 
 export default function SettingsScreen({ navigation }) {
   const { user, signOut } = useAuth();
@@ -226,32 +227,45 @@ export default function SettingsScreen({ navigation }) {
   const confirmResetData = async () => {
     setLoading(true);
     try {
-      // Lade nur Einträge des aktuellen Users
+      const userId = user.uid;
+
+      // 🔒 DATENSCHUTZ: Lösche ZUERST lokale Daten
+      await deleteAllLocalEntries(userId);
+      await deleteAllLocalWeeklyAnalyses(userId);
+      console.log("✅ Lokale Daten gelöscht");
+
+      // Lösche Chat-Daten aus AsyncStorage
+      const chatKeys = await AsyncStorage.getAllKeys();
+      const userChatKeys = chatKeys.filter(key => key.includes(`chatMessages_${userId}`));
+      await AsyncStorage.multiRemove(userChatKeys);
+      console.log("✅ Lokale Chat-Daten gelöscht");
+
+      // Dann Firestore Metadaten löschen
       const userEntriesQuery = query(
         collection(db, "entries"),
-        where("userId", "==", user.uid)
+        where("userId", "==", userId)
       );
       const userEntriesSnapshot = await getDocs(userEntriesQuery);
 
-      console.log(`Lösche ${userEntriesSnapshot.size} Einträge des Users...`);
+      console.log(`Lösche ${userEntriesSnapshot.size} Cloud-Metadaten...`);
 
       // Hole auch alle Wochenanalysen des Users
       const weeklyAnalysesSnapshot = await getDocs(
-        query(collection(db, "weeklyAnalyses"), where("userId", "==", user.uid))
+        query(collection(db, "weeklyAnalyses"), where("userId", "==", userId))
       );
 
-      console.log(`Lösche ${weeklyAnalysesSnapshot.size} Wochenanalysen...`);
+      console.log(`Lösche ${weeklyAnalysesSnapshot.size} Wochenanalyse-Metadaten...`);
 
       // Hole alle Chats des Users
       const chatsSnapshot = await getDocs(
-        query(collection(db, "chats"), where("userId", "==", user.uid))
+        query(collection(db, "chats"), where("userId", "==", userId))
       );
 
       console.log(`Lösche ${chatsSnapshot.size} Chats...`);
 
       // Hole alle Chat-Nachrichten des Users
       const chatMessagesSnapshot = await getDocs(
-        query(collection(db, "chatMessages"), where("userId", "==", user.uid))
+        query(collection(db, "chatMessages"), where("userId", "==", userId))
       );
 
       console.log(`Lösche ${chatMessagesSnapshot.size} Chat-Nachrichten...`);
@@ -272,7 +286,7 @@ export default function SettingsScreen({ navigation }) {
 
       Alert.alert(
         "✅ Erfolgreich gelöscht",
-        `${userEntriesSnapshot.size} Einträge, ${weeklyAnalysesSnapshot.size} Wochenanalysen und ${chatsSnapshot.size} Chat-Verläufe wurden vollständig entfernt.\n\n💡 Hinweis: Bitte starte die App neu, damit alle Änderungen vollständig übernommen werden.`,
+        `Alle Daten wurden vollständig entfernt:\n• Lokale Einträge & Analysen\n• Cloud-Metadaten\n• Chat-Verläufe\n\n💡 Hinweis: Bitte starte die App neu, damit alle Änderungen vollständig übernommen werden.`,
         [{ text: "OK", style: "default" }]
       );
     } catch (error) {
@@ -578,45 +592,62 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
         return;
       }
 
-      // 1. Lösche alle Firestore-Daten
+      const userId = currentUser.uid;
+
+      // 🔒 DATENSCHUTZ: 1. Lösche ZUERST alle lokalen Daten
+      await deleteAllLocalEntries(userId);
+      await deleteAllLocalWeeklyAnalyses(userId);
+      console.log("✅ Lokale Daten gelöscht");
+
+      // Lösche Chat-Daten aus AsyncStorage
+      const chatKeys = await AsyncStorage.getAllKeys();
+      const userChatKeys = chatKeys.filter(key => key.includes(`chatMessages_${userId}`));
+      await AsyncStorage.multiRemove(userChatKeys);
+
+      // Lösche alle anderen AsyncStorage Keys des Users
+      const allUserKeys = chatKeys.filter(key => key.includes(userId));
+      await AsyncStorage.multiRemove(allUserKeys);
+      console.log("✅ Alle lokalen Daten gelöscht");
+
+      // 2. Lösche alle Firestore-Metadaten
       const deletePromises = [];
 
       // Entries
       const entriesSnap = await getDocs(
-        query(collection(db, "entries"), where("userId", "==", currentUser.uid))
+        query(collection(db, "entries"), where("userId", "==", userId))
       );
       deletePromises.push(...entriesSnap.docs.map(d => deleteDoc(d.ref)));
 
       // Weekly Analyses
       const weeklySnap = await getDocs(
-        query(collection(db, "weeklyAnalyses"), where("userId", "==", currentUser.uid))
+        query(collection(db, "weeklyAnalyses"), where("userId", "==", userId))
       );
       deletePromises.push(...weeklySnap.docs.map(d => deleteDoc(d.ref)));
 
       // Chats
       const chatsSnap = await getDocs(
-        query(collection(db, "chats"), where("userId", "==", currentUser.uid))
+        query(collection(db, "chats"), where("userId", "==", userId))
       );
       deletePromises.push(...chatsSnap.docs.map(d => deleteDoc(d.ref)));
 
       // Chat Messages
       const messagesSnap = await getDocs(
-        query(collection(db, "chatMessages"), where("userId", "==", currentUser.uid))
+        query(collection(db, "chatMessages"), where("userId", "==", userId))
       );
       deletePromises.push(...messagesSnap.docs.map(d => deleteDoc(d.ref)));
 
       // User Profile
-      deletePromises.push(deleteDoc(doc(db, "users", currentUser.uid)));
+      deletePromises.push(deleteDoc(doc(db, "users", userId)));
 
       // Lösche alle Firestore-Daten parallel
       await Promise.all(deletePromises);
 
-      // 2. Lösche Firebase Auth Account
+      // 3. Lösche Firebase Auth Account
       await deleteUser(currentUser);
 
       Alert.alert(
         "✅ Account gelöscht",
-        "Dein Account und alle Daten wurden vollständig entfernt. Auf Wiedersehen!",
+        "Dein Account und alle Daten (lokal & cloud) wurden vollständig entfernt. Auf Wiedersehen!",
         [{ text: "OK" }]
       );
     } catch (error) {

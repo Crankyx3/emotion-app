@@ -12,6 +12,7 @@ import { useAuth } from "../components/AuthProvider";
 import { usePremium } from "../components/PremiumProvider";
 import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getLocalEntries, getTodaysLocalEntry } from "../services/localStorageService";
 
 export default function HomeScreen({ navigation }) {
   const { userName, isGuestMode, exitGuestMode } = useAuth();
@@ -99,18 +100,15 @@ export default function HomeScreen({ navigation }) {
     }
 
     try {
-      // Streak berechnen
-      const entriesQuery = query(
-        collection(db, "entries"),
-        where("userId", "==", auth.currentUser.uid)
-      );
-      const entriesSnapshot = await getDocs(entriesQuery);
+      const userId = auth.currentUser.uid;
 
-      const entryDates = entriesSnapshot.docs
-        .map(doc => {
-          const data = doc.data();
-          if (!data.createdAt) return null;
-          const date = data.createdAt.toDate();
+      // 🔒 DATENSCHUTZ: Streak aus lokalen Einträgen berechnen
+      const localEntries = await getLocalEntries(userId);
+
+      const entryDates = localEntries
+        .map(entry => {
+          if (!entry.createdAt) return null;
+          const date = new Date(entry.createdAt);
           const normalized = new Date(date.getFullYear(), date.getMonth(), date.getDate());
           return normalized.getTime();
         })
@@ -150,30 +148,24 @@ export default function HomeScreen({ navigation }) {
         setLongestStreak(Math.max(longest, current));
       }
 
-      // Heutiger Eintrag Check
+      // 🔒 DATENSCHUTZ: Heutiger Eintrag aus lokalem Storage
+      const todayEntry = await getTodaysLocalEntry(userId);
+      setDailyEntryDone(!!todayEntry);
+
+      // Tagesanalyse Check (aus Firestore Metadaten)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
-      const todayEntries = entriesSnapshot.docs.filter((doc) => {
-        const data = doc.data();
-        if (!data.createdAt) return false;
-        const createdDate = data.createdAt.toDate();
-        return createdDate >= today && createdDate < tomorrow;
-      });
-
-      setDailyEntryDone(todayEntries.length > 0);
-
-      // Tagesanalyse Check
-      const todayAnalyses = entriesSnapshot.docs.filter((doc) => {
-        const data = doc.data();
-        if (!data.analysisDate) return false;
-        const analysisDate = data.analysisDate.toDate();
-        return analysisDate >= today && analysisDate < tomorrow;
-      });
-
-      setDailyAnalysisDone(todayAnalyses.length > 0);
+      const analysisQuery = query(
+        collection(db, "entries"),
+        where("userId", "==", userId),
+        where("analysisDate", ">=", today),
+        where("analysisDate", "<", tomorrow)
+      );
+      const analysisSnapshot = await getDocs(analysisQuery);
+      setDailyAnalysisDone(analysisSnapshot.size > 0);
 
       // Wochenanalyse Check
       const sevenDaysAgo = new Date();
