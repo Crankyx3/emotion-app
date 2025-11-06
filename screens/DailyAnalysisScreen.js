@@ -18,18 +18,12 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { getAiResponse } from "../openaiService";
 import {
-  doc,
-  updateDoc,
   collection,
   addDoc,
-  query,
-  where,
-  getDocs,
   Timestamp,
-  orderBy,
-  limit,
 } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
+import { getTodaysLocalEntry, saveEntryLocally, getLocalEntryById } from "../services/localStorageService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { usePremium } from "../components/PremiumProvider";
 import { useAuth } from "../components/AuthProvider";

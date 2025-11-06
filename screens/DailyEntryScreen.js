@@ -14,10 +14,11 @@ import {
   Animated,
   ActivityIndicator,
 } from "react-native";
-import { collection, addDoc, Timestamp, updateDoc, query, where, getDocs } from "firebase/firestore";
+import { collection, addDoc, Timestamp } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
 import { getAiResponse } from "../openaiService";
 import { useNavigation } from "@react-navigation/native";
+import { saveEntryLocally } from "../services/localStorageService";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../components/AuthProvider";
@@ -228,18 +229,28 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
 `;
       const aiReply = await getAiResponse(selectedEmotion, fullInput);
 
-      const docRef = await addDoc(collection(db, "entries"), {
-        userId: auth.currentUser?.uid,
+      const userId = auth.currentUser?.uid;
+
+      // 1. LOKAL SPEICHERN (vollständige Daten inkl. Text & KI-Analyse)
+      const localEntry = await saveEntryLocally(userId, {
         emotion: selectedEmotion,
         feelScore: feelScore,
-        theme: text.substring(0, 50), // Erste 50 Zeichen als "Thema"
+        theme: text.substring(0, 50),
         text,
         gratitude: gratitude.trim() || null,
         analysis: aiReply || null,
-        createdAt: Timestamp.now(),
       });
 
-      await updateDoc(docRef, { id: docRef.id });
+      // 2. NUR METADATEN in Cloud (für Charts & Statistiken)
+      // KEIN Text, KEINE KI-Analyse - Datenschutz!
+      await addDoc(collection(db, "entries"), {
+        userId: userId,
+        emotion: selectedEmotion,
+        feelScore: feelScore,
+        createdAt: Timestamp.now(),
+        // Hinweis: Texte & Analysen nur lokal gespeichert
+        hasLocalData: true,
+      });
 
       Animated.timing(progress, {
         toValue: 1,
@@ -252,6 +263,7 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
 
           navigation.navigate("DailyAnalysis", {
             aiReply,
+            localEntryId: localEntry.localId,  // Für lokales Laden
             emotion: selectedEmotion,
             text,
             theme: text.substring(0, 50),
