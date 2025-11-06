@@ -24,6 +24,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../components/AuthProvider";
 import GuestBlockModal from "../components/GuestBlockModal";
+import { startRecording, stopRecording, cancelRecording, getRecordingDuration } from "../services/audioRecordingService";
+import { transcribeAudioWithRetry } from "../services/whisperService";
 
 export default function DailyEntryScreen() {
   const navigation = useNavigation();
@@ -51,6 +53,12 @@ export default function DailyEntryScreen() {
 
   // Smart Input Helper
   const [showInputHelper, setShowInputHelper] = useState(false);
+
+  // Voice Recording
+  const [isRecordingAudio, setIsRecordingAudio] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const recordingInterval = useRef(null);
 
   const quickPhrases = [
     { category: "Gefühle", phrases: [
@@ -81,6 +89,100 @@ export default function DailyEntryScreen() {
     setText(text + separator + phrase);
     setShowInputHelper(false);
   };
+
+  // Voice Recording Functions
+  const handleStartRecording = async () => {
+    try {
+      await startRecording();
+      setIsRecordingAudio(true);
+      setRecordingDuration(0);
+
+      // Update duration every second
+      recordingInterval.current = setInterval(async () => {
+        const duration = await getRecordingDuration();
+        setRecordingDuration(Math.floor(duration / 1000));
+      }, 1000);
+    } catch (error) {
+      console.error('Recording error:', error);
+      Alert.alert(
+        'Fehler',
+        'Mikrofonzugriff konnte nicht gestartet werden. Bitte erlaube den Mikrofonzugriff in den Einstellungen.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const handleStopRecording = async () => {
+    try {
+      // Clear interval
+      if (recordingInterval.current) {
+        clearInterval(recordingInterval.current);
+        recordingInterval.current = null;
+      }
+
+      const audioUri = await stopRecording();
+      setIsRecordingAudio(false);
+      setIsTranscribing(true);
+
+      // Transcribe audio
+      try {
+        const transcription = await transcribeAudioWithRetry(audioUri);
+
+        // Add transcription to text
+        const separator = text.length > 0 && !text.endsWith(" ") ? " " : "";
+        setText(text + separator + transcription);
+
+        Alert.alert(
+          'Erfolgreich!',
+          'Deine Aufnahme wurde in Text umgewandelt.',
+          [{ text: 'OK' }]
+        );
+      } catch (transcriptionError) {
+        console.error('Transcription error:', transcriptionError);
+        Alert.alert(
+          'Fehler bei der Umwandlung',
+          'Die Spracherkennung ist fehlgeschlagen. Bitte versuche es erneut.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Stop recording error:', error);
+      Alert.alert(
+        'Fehler',
+        'Die Aufnahme konnte nicht gestoppt werden.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
+  const handleCancelRecording = async () => {
+    try {
+      if (recordingInterval.current) {
+        clearInterval(recordingInterval.current);
+        recordingInterval.current = null;
+      }
+
+      await cancelRecording();
+      setIsRecordingAudio(false);
+      setRecordingDuration(0);
+    } catch (error) {
+      console.error('Cancel recording error:', error);
+    }
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (recordingInterval.current) {
+        clearInterval(recordingInterval.current);
+      }
+      if (isRecordingAudio) {
+        cancelRecording();
+      }
+    };
+  }, []);
 
   const emotions = [
     { key: "happy", emoji: "😊", label: "Glücklich", value: 85 },
@@ -410,14 +512,61 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
               />
               <View style={styles.inputHelperRow}>
                 <Text style={styles.charCount}>{text.length} Zeichen</Text>
-                <TouchableOpacity
-                  style={styles.inputHelperButton}
-                  onPress={() => setShowInputHelper(true)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="bulb" size={18} color="#007AFF" />
-                  <Text style={styles.inputHelperText}>Schnell-Eingaben</Text>
-                </TouchableOpacity>
+                <View style={styles.inputButtonsRow}>
+                  {/* Voice Recording Button */}
+                  {!isRecordingAudio && !isTranscribing && (
+                    <TouchableOpacity
+                      style={[styles.inputHelperButton, styles.voiceButton]}
+                      onPress={handleStartRecording}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="mic" size={18} color="#E03131" />
+                      <Text style={[styles.inputHelperText, { color: "#E03131" }]}>Sprechen</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Recording in Progress */}
+                  {isRecordingAudio && (
+                    <View style={styles.recordingContainer}>
+                      <TouchableOpacity
+                        style={styles.recordingStopButton}
+                        onPress={handleStopRecording}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.recordingPulse} />
+                        <Ionicons name="stop-circle" size={24} color="#E03131" />
+                        <Text style={styles.recordingTime}>
+                          {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.recordingCancelButton}
+                        onPress={handleCancelRecording}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="close-circle" size={20} color="#8E8E93" />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {/* Transcribing */}
+                  {isTranscribing && (
+                    <View style={styles.transcribingContainer}>
+                      <ActivityIndicator size="small" color="#007AFF" />
+                      <Text style={styles.transcribingText}>Wird umgewandelt...</Text>
+                    </View>
+                  )}
+
+                  {/* Quick Input Helper */}
+                  <TouchableOpacity
+                    style={styles.inputHelperButton}
+                    onPress={() => setShowInputHelper(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="bulb" size={18} color="#007AFF" />
+                    <Text style={styles.inputHelperText}>Schnell</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
 
@@ -799,6 +948,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 8,
   },
+  inputButtonsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   inputHelperButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -808,7 +962,55 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     gap: 6,
   },
+  voiceButton: {
+    backgroundColor: "#FFE5E5",
+  },
   inputHelperText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#007AFF",
+  },
+
+  // Voice Recording Styles
+  recordingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  recordingStopButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFE5E5",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 6,
+  },
+  recordingPulse: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#E03131",
+    opacity: 0.8,
+  },
+  recordingTime: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#E03131",
+  },
+  recordingCancelButton: {
+    padding: 6,
+  },
+  transcribingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E3F2FD",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 8,
+  },
+  transcribingText: {
     fontSize: 13,
     fontWeight: "600",
     color: "#007AFF",
