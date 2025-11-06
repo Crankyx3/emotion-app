@@ -22,6 +22,7 @@ import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { deleteAllLocalEntries, deleteAllLocalWeeklyAnalyses } from "../services/localStorageService";
+import { runFullTestSuite, runQuickHealthCheck } from "../services/testService";
 
 export default function SettingsScreen({ navigation }) {
   const { user, signOut } = useAuth();
@@ -42,6 +43,11 @@ export default function SettingsScreen({ navigation }) {
   // Privacy Settings
   const [aiAnalysisEnabled, setAiAnalysisEnabled] = useState(true);
   const [chatHistoryEnabled, setChatHistoryEnabled] = useState(true);
+
+  // Test Suite
+  const [showTestModal, setShowTestModal] = useState(false);
+  const [testResults, setTestResults] = useState(null);
+  const [testRunning, setTestRunning] = useState(false);
 
   useEffect(() => {
     loadStats();
@@ -206,6 +212,37 @@ export default function SettingsScreen({ navigation }) {
       setLongestStreak(Math.max(longest, current));
     } catch (err) {
       console.error("Fehler beim Berechnen des Streaks:", err);
+    }
+  };
+
+  const handleRunTests = async (fullSuite = true) => {
+    setTestRunning(true);
+    setShowTestModal(true);
+    setTestResults(null);
+
+    try {
+      let results;
+      if (fullSuite) {
+        // Full test suite (skips expensive tests by default)
+        results = await runFullTestSuite({
+          skipExpensiveTests: true, // Don't call OpenAI (costs money)
+          skipDestructiveTests: true, // Don't delete data
+          includePerformanceTests: false // Skip performance tests for faster execution
+        });
+      } else {
+        // Quick health check
+        results = await runQuickHealthCheck();
+      }
+
+      setTestResults(results);
+    } catch (error) {
+      console.error('Test suite error:', error);
+      Alert.alert(
+        'Test-Fehler',
+        'Die Tests konnten nicht vollständig ausgeführt werden.\n\n' + error.message
+      );
+    } finally {
+      setTestRunning(false);
     }
   };
 
@@ -949,6 +986,27 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
             )}
           </TouchableOpacity>
 
+          {/* Test Suite Button */}
+          <TouchableOpacity
+            style={styles.testButton}
+            onPress={() => handleRunTests(true)}
+            disabled={loading || testRunning}
+          >
+            {testRunning ? (
+              <ActivityIndicator color="#007AFF" />
+            ) : (
+              <>
+                <Ionicons name="flask-outline" size={24} color="#007AFF" />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.testButtonTitle}>🧪 App-Tests durchführen</Text>
+                  <Text style={styles.testButtonSubtitle}>
+                    Teste alle Funktionen (Datenbank, Storage, APIs)
+                  </Text>
+                </View>
+              </>
+            )}
+          </TouchableOpacity>
+
           {/* Link zur Datenschutzerklärung */}
           <TouchableOpacity
             style={styles.privacyLink}
@@ -1017,6 +1075,153 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
         {/* App Version */}
         <Text style={styles.versionText}>KI-Stimmungshelfer v1.0.0</Text>
       </ScrollView>
+
+      {/* Test Results Modal */}
+      <Modal
+        visible={showTestModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => {
+          if (!testRunning) {
+            setShowTestModal(false);
+            setTestResults(null);
+          }
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.testModalContent}>
+            <View style={styles.testModalHeader}>
+              <Text style={styles.testModalTitle}>🧪 Test-Ergebnisse</Text>
+              {!testRunning && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowTestModal(false);
+                    setTestResults(null);
+                  }}
+                >
+                  <Ionicons name="close-circle" size={32} color="#8E8E93" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <ScrollView style={styles.testModalScroll}>
+              {testRunning && !testResults && (
+                <View style={styles.testLoadingContainer}>
+                  <ActivityIndicator size="large" color="#007AFF" />
+                  <Text style={styles.testLoadingText}>Tests werden ausgeführt...</Text>
+                  <Text style={styles.testLoadingSubtext}>Dies kann einige Sekunden dauern</Text>
+                </View>
+              )}
+
+              {testResults && (
+                <>
+                  {/* Summary */}
+                  <View style={styles.testSummaryCard}>
+                    <Text style={styles.testSummaryTitle}>Zusammenfassung</Text>
+                    <View style={styles.testSummaryRow}>
+                      <View style={styles.testSummaryItem}>
+                        <Text style={styles.testSummaryNumber}>{testResults.summary.total}</Text>
+                        <Text style={styles.testSummaryLabel}>Tests</Text>
+                      </View>
+                      <View style={styles.testSummaryItem}>
+                        <Text style={[styles.testSummaryNumber, { color: '#34C759' }]}>
+                          {testResults.summary.passed}
+                        </Text>
+                        <Text style={styles.testSummaryLabel}>Erfolg</Text>
+                      </View>
+                      <View style={styles.testSummaryItem}>
+                        <Text style={[styles.testSummaryNumber, { color: '#FF3B30' }]}>
+                          {testResults.summary.failed}
+                        </Text>
+                        <Text style={styles.testSummaryLabel}>Fehler</Text>
+                      </View>
+                      <View style={styles.testSummaryItem}>
+                        <Text style={[styles.testSummaryNumber, { color: '#FF9500' }]}>
+                          {testResults.summary.warnings}
+                        </Text>
+                        <Text style={styles.testSummaryLabel}>Warnung</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.testSummaryDuration}>
+                      Dauer: {(testResults.summary.duration / 1000).toFixed(2)}s
+                    </Text>
+                  </View>
+
+                  {/* Individual Results */}
+                  {testResults.results.map((result, index) => (
+                    <View
+                      key={index}
+                      style={[
+                        styles.testResultCard,
+                        result.status === 'success' && styles.testResultSuccess,
+                        result.status === 'error' && styles.testResultError,
+                        result.status === 'warning' && styles.testResultWarning,
+                        result.status === 'skipped' && styles.testResultSkipped,
+                      ]}
+                    >
+                      <View style={styles.testResultHeader}>
+                        <View style={styles.testResultTitleRow}>
+                          <Ionicons
+                            name={
+                              result.status === 'success'
+                                ? 'checkmark-circle'
+                                : result.status === 'error'
+                                ? 'close-circle'
+                                : result.status === 'warning'
+                                ? 'warning'
+                                : 'remove-circle'
+                            }
+                            size={20}
+                            color={
+                              result.status === 'success'
+                                ? '#34C759'
+                                : result.status === 'error'
+                                ? '#FF3B30'
+                                : result.status === 'warning'
+                                ? '#FF9500'
+                                : '#8E8E93'
+                            }
+                          />
+                          <Text style={styles.testResultName}>{result.name}</Text>
+                        </View>
+                        {result.duration && (
+                          <Text style={styles.testResultDuration}>{result.duration}ms</Text>
+                        )}
+                      </View>
+                      <Text style={styles.testResultMessage}>{result.message}</Text>
+                      {result.error && (
+                        <Text style={styles.testResultError}>{result.error}</Text>
+                      )}
+                    </View>
+                  ))}
+                </>
+              )}
+            </ScrollView>
+
+            {/* Actions */}
+            {testResults && !testRunning && (
+              <View style={styles.testModalActions}>
+                <TouchableOpacity
+                  style={styles.testModalButton}
+                  onPress={() => handleRunTests(true)}
+                >
+                  <Ionicons name="refresh" size={20} color="#007AFF" />
+                  <Text style={styles.testModalButtonText}>Neu testen</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.testModalButton, styles.testModalButtonPrimary]}
+                  onPress={() => {
+                    setShowTestModal(false);
+                    setTestResults(null);
+                  }}
+                >
+                  <Text style={[styles.testModalButtonText, { color: '#FFF' }]}>Schließen</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* Password Re-Authentication Modal */}
       <Modal
@@ -1628,5 +1833,204 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     marginRight: 10,
     flex: 1,
+  },
+  // Test Button Styles
+  testButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: "#007AFF",
+    shadowColor: "#007AFF",
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  testButtonTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1C1C1E",
+    marginBottom: 4,
+  },
+  testButtonSubtitle: {
+    fontSize: 12,
+    color: "#8E8E93",
+    lineHeight: 16,
+  },
+  // Test Modal Styles
+  testModalContent: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingBottom: 40,
+    maxHeight: "90%",
+    minHeight: "70%",
+  },
+  testModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E5EA",
+  },
+  testModalTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#1C1C1E",
+  },
+  testModalScroll: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  testLoadingContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+  },
+  testLoadingText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1C1C1E",
+    marginTop: 16,
+  },
+  testLoadingSubtext: {
+    fontSize: 14,
+    color: "#8E8E93",
+    marginTop: 8,
+  },
+  testSummaryCard: {
+    backgroundColor: "#F7F9FC",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#E5E5EA",
+  },
+  testSummaryTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1C1C1E",
+    marginBottom: 16,
+  },
+  testSummaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: 12,
+  },
+  testSummaryItem: {
+    alignItems: "center",
+  },
+  testSummaryNumber: {
+    fontSize: 32,
+    fontWeight: "800",
+    color: "#007AFF",
+  },
+  testSummaryLabel: {
+    fontSize: 12,
+    color: "#8E8E93",
+    marginTop: 4,
+    fontWeight: "600",
+  },
+  testSummaryDuration: {
+    fontSize: 14,
+    color: "#8E8E93",
+    textAlign: "center",
+    marginTop: 8,
+  },
+  testResultCard: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: "#E5E5EA",
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  testResultSuccess: {
+    borderLeftColor: "#34C759",
+    backgroundColor: "#F0FFF4",
+  },
+  testResultError: {
+    borderLeftColor: "#FF3B30",
+    backgroundColor: "#FFF5F5",
+  },
+  testResultWarning: {
+    borderLeftColor: "#FF9500",
+    backgroundColor: "#FFF9F0",
+  },
+  testResultSkipped: {
+    borderLeftColor: "#8E8E93",
+    backgroundColor: "#F9F9F9",
+  },
+  testResultHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  testResultTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  testResultName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1C1C1E",
+    marginLeft: 8,
+    flex: 1,
+  },
+  testResultDuration: {
+    fontSize: 12,
+    color: "#8E8E93",
+  },
+  testResultMessage: {
+    fontSize: 13,
+    color: "#3C3C43",
+    lineHeight: 18,
+  },
+  testResultError: {
+    fontSize: 12,
+    color: "#FF3B30",
+    marginTop: 6,
+    fontFamily: "monospace",
+  },
+  testModalActions: {
+    flexDirection: "row",
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#E5E5EA",
+    gap: 12,
+  },
+  testModalButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#007AFF",
+    backgroundColor: "#fff",
+  },
+  testModalButtonPrimary: {
+    backgroundColor: "#007AFF",
+    borderColor: "#007AFF",
+  },
+  testModalButtonText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#007AFF",
+    marginLeft: 6,
   },
 });
