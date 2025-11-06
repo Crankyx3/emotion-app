@@ -24,7 +24,11 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       allow create: if isSignedIn() && request.auth.uid == userId;
-      allow update: if isOwner(userId);
+      allow update: if isOwner(userId) ||
+                      (isSignedIn() &&
+                       request.auth.uid == userId &&
+                       request.auth.token.email == 'finn_bauermeister@web.de' &&
+                       request.resource.data.isAdmin == true);
       allow delete: if isOwner(userId);
     }
 

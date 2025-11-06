@@ -21,6 +21,8 @@ import {
   updateDoc,
   query,
   orderBy,
+  setDoc,
+  getDoc,
 } from "firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import ScreenHeader from "../components/ScreenHeader";
@@ -46,8 +48,44 @@ export default function AdminScreen({ navigation }) {
       return;
     }
 
-    loadUsers();
+    // Stelle sicher, dass Admin-Flag in Firestore gesetzt ist
+    setupAdminFlag();
   }, []);
+
+  const setupAdminFlag = async () => {
+    try {
+      if (!user?.uid) return;
+
+      const userDocRef = doc(db, "users", user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        // Erstelle User-Dokument mit Admin-Flag
+        await setDoc(userDocRef, {
+          email: user.email,
+          isAdmin: true,
+          createdAt: new Date(),
+        });
+        console.log("✅ Admin-Dokument erstellt");
+      } else if (!userDoc.data().isAdmin) {
+        // Update bestehendes Dokument mit Admin-Flag
+        await updateDoc(userDocRef, {
+          isAdmin: true,
+        });
+        console.log("✅ Admin-Flag hinzugefügt");
+      }
+
+      // Jetzt User laden
+      loadUsers();
+    } catch (error) {
+      console.error("Error setting up admin flag:", error);
+      Alert.alert(
+        "Setup Fehler",
+        "Konnte Admin-Flag nicht setzen. Bitte stelle sicher, dass du als " + ADMIN_EMAIL + " angemeldet bist."
+      );
+      navigation.goBack();
+    }
+  };
 
   const loadUsers = async () => {
     try {
