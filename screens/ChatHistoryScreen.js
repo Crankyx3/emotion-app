@@ -92,33 +92,17 @@ export default function ChatHistoryScreen() {
       // 🔒 DATENSCHUTZ: Lade Tagesanalysen aus lokalem Storage
       const localEntries = await getLocalEntries(auth.currentUser.uid);
 
-      console.log('🔍 DEBUG ChatHistory - Total entries:', localEntries?.length || 0);
-
       const daily = (localEntries || [])
         .filter(entry => {
           // Nur Einträge mit Analyse
-          if (!entry.analysis) {
-            console.log('❌ Gefiltert: Keine Analyse -', entry.localId?.substring(0, 10));
-            return false;
-          }
+          if (!entry.analysis) return false;
 
           // Verwende analysisDate wenn vorhanden, sonst createdAt
           const dateToCheck = entry.analysisDate || entry.createdAt;
-          if (!dateToCheck) {
-            console.log('❌ Gefiltert: Kein Datum -', entry.localId?.substring(0, 10));
-            return false;
-          }
+          if (!dateToCheck) return false;
 
           const analysisDate = new Date(dateToCheck);
-          const isRecent = analysisDate >= fourteenDaysAgo;
-
-          if (!isRecent) {
-            console.log('❌ Gefiltert: Zu alt -', entry.localId?.substring(0, 10));
-          } else {
-            console.log('✅ Akzeptiert:', entry.localId?.substring(0, 10), 'Analyse:', entry.analysis?.substring(0, 50));
-          }
-
-          return isRecent;
+          return analysisDate >= fourteenDaysAgo;
         })
         .map(entry => ({
           id: entry.localId,
@@ -128,7 +112,6 @@ export default function ChatHistoryScreen() {
         }))
         .sort((a, b) => b.analysisDate.getTime() - a.analysisDate.getTime());
 
-      console.log('✅ Tagesanalysen für Modal:', daily.length);
       setDailyAnalyses(daily);
 
       // 🔒 DATENSCHUTZ: Lade Wochenanalysen aus lokalem Storage
