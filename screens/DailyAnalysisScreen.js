@@ -325,6 +325,14 @@ Die Vorschläge sollen sofort umsetzbar sein (5-15 Minuten) und zur aktuellen Em
         setActionSuggestions([]);
       }
 
+      // Entferne Markdown-Formatierungen (###, **, etc.)
+      cleanedText = cleanedText
+        .replace(/###\s*/g, '') // Entferne ###
+        .replace(/##\s*/g, '')  // Entferne ##
+        .replace(/\*\*(.*?)\*\*/g, '$1') // Entferne **bold**
+        .replace(/\*(.*?)\*/g, '$1')     // Entferne *italic*
+        .trim();
+
       setAiText(cleanedText);
       // Prüfung, ob die Antwort plausibel ist (kein Fehler-Text)
       const ok = typeof reply === "string" && reply.trim().length > 20 && !/fehler/i.test(reply);
@@ -478,8 +486,8 @@ Die Vorschläge sollen sofort umsetzbar sein (5-15 Minuten) und zur aktuellen Em
           {/* Score-Kreis */}
           <Animated.View style={[styles.circleWrapper, { transform: [{ scale: pulseAnim }] }]}>
             <AnimatedCircularProgress
-              size={220}
-              width={18}
+              size={200}
+              width={16}
               fill={(displayedScore / 99) * 100}
               tintColor="#007aff"
               backgroundColor="#eef3fb"
@@ -938,15 +946,15 @@ const styles = StyleSheet.create({
     color: "#D32F2F",
   },
   circleWrapper: {
-    marginVertical: 30,
+    marginVertical: 24,
   },
   scoreNumber: {
-    fontSize: 64,
+    fontSize: 56,
     fontWeight: "800",
     color: "#007aff",
   },
   scoreLabel: {
-    fontSize: 16,
+    fontSize: 15,
     color: "#8E8E93",
     marginTop: 4,
   },
@@ -1048,8 +1056,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#F7F9FC",
     borderRadius: 16,
     padding: 18,
-    marginHorizontal: 16,
     marginVertical: 10,
+    width: "100%",
     borderLeftWidth: 4,
     shadowColor: "#000",
     shadowOpacity: 0.04,
@@ -1126,6 +1134,7 @@ const styles = StyleSheet.create({
   },
   suggestionsSection: {
     marginTop: 20,
+    width: "100%",
   },
   suggestionsGradientHeader: {
     flexDirection: "row",
@@ -1134,7 +1143,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 12,
     borderRadius: 16,
-    marginHorizontal: 16,
   },
   suggestionsGradientTitle: {
     fontSize: 18,
@@ -1158,7 +1166,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
     marginBottom: 16,
-    marginHorizontal: 16,
     fontStyle: "italic",
   },
   suggestionCard: {
@@ -1167,7 +1174,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    marginHorizontal: 16,
+    width: "100%",
     borderLeftWidth: 4,
     shadowColor: "#000",
     shadowOpacity: 0.04,
