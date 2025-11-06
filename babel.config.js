@@ -10,6 +10,15 @@ module.exports = function (api) {
           path: "./openAi.env",
         },
       ],
+      [
+        "module-resolver",
+        {
+          alias: {
+            "^react-native$": "react-native"
+          }
+        }
+      ],
+      "react-native-reanimated/plugin"
     ],
   };
 };
