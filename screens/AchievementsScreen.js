@@ -6,6 +6,7 @@ import {
   ScrollView,
   SafeAreaView,
   ActivityIndicator,
+  TouchableOpacity,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,7 +15,7 @@ import { useAuth } from "../components/AuthProvider";
 import { getAllAchievementsWithStatus, getAchievementProgress } from "../services/achievementService";
 import { getLocalEntries, getLocalWeeklyAnalyses } from "../services/localStorageService";
 
-export default function AchievementsScreen() {
+export default function AchievementsScreen({ navigation }) {
   const { user } = useAuth();
   const [achievements, setAchievements] = useState([]);
   const [progress, setProgress] = useState([]);
@@ -101,6 +102,13 @@ export default function AchievementsScreen() {
   return (
     <LinearGradient colors={["#FFF9E6", "#FFFFFF"]} style={styles.gradient}>
       <SafeAreaView style={styles.safe}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={28} color="#FFB900" />
+        </TouchableOpacity>
+
         <ScreenHeader
           title="🏆 Erfolge"
           subtitle="Deine Fortschritte und Meilensteine"
@@ -204,6 +212,23 @@ export default function AchievementsScreen() {
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
   safe: { flex: 1 },
+  backButton: {
+    position: "absolute",
+    top: 60,
+    left: 20,
+    zIndex: 10,
+    width: 50,
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFF",
+    borderRadius: 25,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",

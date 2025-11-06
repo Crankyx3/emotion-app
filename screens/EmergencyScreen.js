@@ -13,7 +13,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import ScreenHeader from "../components/ScreenHeader";
 
-export default function EmergencyScreen() {
+export default function EmergencyScreen({ navigation }) {
   const [expandedStrategy, setExpandedStrategy] = useState(null);
 
   const callHotline = (number, name) => {
@@ -129,6 +129,13 @@ export default function EmergencyScreen() {
   return (
     <LinearGradient colors={["#FFE5E5", "#FFFFFF"]} style={styles.gradient}>
       <SafeAreaView style={styles.safe}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={28} color="#E03131" />
+        </TouchableOpacity>
+
         <ScreenHeader
           title="🆘 Notfall-Hilfe"
           subtitle="Du bist nicht allein"
@@ -257,6 +264,23 @@ export default function EmergencyScreen() {
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
   safe: { flex: 1 },
+  backButton: {
+    position: "absolute",
+    top: 60,
+    left: 20,
+    zIndex: 10,
+    width: 50,
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFF",
+    borderRadius: 25,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
   container: {
     paddingHorizontal: 20,
     paddingVertical: 16,
