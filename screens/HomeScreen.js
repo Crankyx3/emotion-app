@@ -158,14 +158,23 @@ export default function HomeScreen({ navigation }) {
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
+      // Nur nach userId filtern, dann clientseitig nach Datum
+      // (vermeidet Composite Index Requirement)
       const analysisQuery = query(
         collection(db, "entries"),
-        where("userId", "==", userId),
-        where("analysisDate", ">=", today),
-        where("analysisDate", "<", tomorrow)
+        where("userId", "==", userId)
       );
       const analysisSnapshot = await getDocs(analysisQuery);
-      setDailyAnalysisDone(analysisSnapshot.size > 0);
+
+      // Clientseitig nach heutigem Datum filtern
+      const todayAnalyses = analysisSnapshot.docs.filter(doc => {
+        const data = doc.data();
+        if (!data.analysisDate) return false;
+        const analysisDate = data.analysisDate.toDate();
+        return analysisDate >= today && analysisDate < tomorrow;
+      });
+
+      setDailyAnalysisDone(todayAnalyses.length > 0);
 
       // Wochenanalyse Check
       const sevenDaysAgo = new Date();
