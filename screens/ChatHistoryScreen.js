@@ -18,6 +18,7 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../components/AuthProvider";
 import GuestBlockModal from "../components/GuestBlockModal";
+import { getLocalEntries, getLocalWeeklyAnalyses } from "../services/localStorageService";
 
 export default function ChatHistoryScreen() {
   const navigation = useNavigation();
@@ -88,39 +89,63 @@ export default function ChatHistoryScreen() {
       const fourteenDaysAgo = new Date();
       fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
 
-      // Lade Tagesanalysen
-      const entriesQuery = query(
-        collection(db, "entries"),
-        where("userId", "==", auth.currentUser.uid)
-      );
-      const entriesSnap = await getDocs(entriesQuery);
+      // 🔒 DATENSCHUTZ: Lade Tagesanalysen aus lokalem Storage
+      const localEntries = await getLocalEntries(auth.currentUser.uid);
 
-      const daily = entriesSnap.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
+      console.log('🔍 DEBUG ChatHistory - Total entries:', localEntries?.length || 0);
+
+      const daily = (localEntries || [])
         .filter(entry => {
-          if (!entry.analysis || !entry.analysisDate) return false;
-          const analysisDate = entry.analysisDate.toDate();
-          return analysisDate >= fourteenDaysAgo;
-        })
-        .sort((a, b) => b.analysisDate.toMillis() - a.analysisDate.toMillis());
+          // Nur Einträge mit Analyse
+          if (!entry.analysis) {
+            console.log('❌ Gefiltert: Keine Analyse -', entry.localId?.substring(0, 10));
+            return false;
+          }
 
+          // Verwende analysisDate wenn vorhanden, sonst createdAt
+          const dateToCheck = entry.analysisDate || entry.createdAt;
+          if (!dateToCheck) {
+            console.log('❌ Gefiltert: Kein Datum -', entry.localId?.substring(0, 10));
+            return false;
+          }
+
+          const analysisDate = new Date(dateToCheck);
+          const isRecent = analysisDate >= fourteenDaysAgo;
+
+          if (!isRecent) {
+            console.log('❌ Gefiltert: Zu alt -', entry.localId?.substring(0, 10));
+          } else {
+            console.log('✅ Akzeptiert:', entry.localId?.substring(0, 10), 'Analyse:', entry.analysis?.substring(0, 50));
+          }
+
+          return isRecent;
+        })
+        .map(entry => ({
+          id: entry.localId,
+          ...entry,
+          analysisDate: new Date(entry.analysisDate || entry.createdAt),
+          createdAt: new Date(entry.createdAt)
+        }))
+        .sort((a, b) => b.analysisDate.getTime() - a.analysisDate.getTime());
+
+      console.log('✅ Tagesanalysen für Modal:', daily.length);
       setDailyAnalyses(daily);
 
-      // Lade Wochenanalysen
-      const weeklyQuery = query(
-        collection(db, "weeklyAnalyses"),
-        where("userId", "==", auth.currentUser.uid)
-      );
-      const weeklySnap = await getDocs(weeklyQuery);
+      // 🔒 DATENSCHUTZ: Lade Wochenanalysen aus lokalem Storage
+      const localWeeklyAnalyses = await getLocalWeeklyAnalyses(auth.currentUser.uid);
 
-      const weekly = weeklySnap.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
+      const weekly = (localWeeklyAnalyses || [])
         .filter(analysis => {
-          if (!analysis.analysisDate) return false;
-          const analysisDate = analysis.analysisDate.toDate();
+          if (!analysis.createdAt) return false;
+          const analysisDate = new Date(analysis.createdAt);
           return analysisDate >= fourteenDaysAgo;
         })
-        .sort((a, b) => b.analysisDate.toMillis() - a.analysisDate.toMillis());
+        .map(analysis => ({
+          id: analysis.localId,
+          ...analysis,
+          analysisDate: new Date(analysis.createdAt)
+        }))
+        .sort((a, b) => b.analysisDate.getTime() - a.analysisDate.getTime());
 
       setWeeklyAnalyses(weekly);
     } catch (err) {
@@ -322,8 +347,9 @@ export default function ChatHistoryScreen() {
                     <>
                       <Text style={styles.modalSectionTitle}>Wochenanalysen</Text>
                       {weeklyAnalyses.map((analysis) => {
-                        const date = analysis.analysisDate?.toDate();
-                        const dateStr = date
+                        // analysisDate ist bereits ein Date-Objekt (von mapping)
+                        const date = analysis.analysisDate;
+                        const dateStr = date instanceof Date
                           ? date.toLocaleDateString("de-DE", {
                               weekday: "short",
                               day: "2-digit",
@@ -356,8 +382,9 @@ export default function ChatHistoryScreen() {
                     <>
                       <Text style={styles.modalSectionTitle}>Tagesanalysen</Text>
                       {dailyAnalyses.slice(0, 10).map((entry) => {
-                        const date = entry.analysisDate?.toDate();
-                        const dateStr = date
+                        // analysisDate ist bereits ein Date-Objekt (von mapping)
+                        const date = entry.analysisDate;
+                        const dateStr = date instanceof Date
                           ? date.toLocaleDateString("de-DE", {
                               weekday: "short",
                               day: "2-digit",
