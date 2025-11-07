@@ -112,6 +112,7 @@ function RootNavigator() {
   const [checkingOnboarding, setCheckingOnboarding] = React.useState(true);
 
   React.useEffect(() => {
+    setCheckingOnboarding(true);
     checkOnboardingStatus();
   }, [user, isGuestMode]);
 
