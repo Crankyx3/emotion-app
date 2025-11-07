@@ -18,7 +18,7 @@ import {
 import { collection, addDoc, Timestamp, query, where, getDocs } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
 import { getAiResponse } from "../openaiService";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { saveEntryLocally, getLocalEntries, getTodaysLocalEntry } from "../services/localStorageService";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -193,39 +193,43 @@ export default function DailyEntryScreen() {
     { key: "sad", emoji: "😔", label: "Traurig", value: 25 },
   ];
 
-  // Prüfen, ob heute bereits ein Eintrag erstellt wurde
-  useEffect(() => {
-    const checkTodayEntry = async () => {
-      // Skip im Gastmodus oder wenn nicht eingeloggt
-      if (isGuestMode || !auth.currentUser) {
-        setCheckingLimit(false);
-        setCanCreateEntry(false);
-        return;
-      }
-
-      try {
-        // 🔒 DATENSCHUTZ: Prüfe lokalen Storage für heutigen Eintrag
-        const todayEntry = await getTodaysLocalEntry(auth.currentUser.uid);
-
-        if (todayEntry) {
+  // Prüfen, ob heute bereits ein Eintrag erstellt wurde (bei jedem Screen-Fokus)
+  useFocusEffect(
+    React.useCallback(() => {
+      const checkTodayEntry = async () => {
+        // Skip im Gastmodus oder wenn nicht eingeloggt
+        if (isGuestMode || !auth.currentUser) {
+          setCheckingLimit(false);
           setCanCreateEntry(false);
-          setTodayEntry(todayEntry);
-          console.log("📝 Heute bereits Eintrag erstellt (lokal)");
-        } else {
-          setCanCreateEntry(true);
-          console.log("✅ Kein Eintrag heute - kann erstellen");
+          return;
         }
-      } catch (err) {
-        console.error("Fehler beim Prüfen des Eintrags:", err);
-        // Im Fehlerfall: Erstellung erlauben
-        setCanCreateEntry(true);
-      } finally {
-        setCheckingLimit(false);
-      }
-    };
 
-    checkTodayEntry();
-  }, []);
+        try {
+          // 🔒 DATENSCHUTZ: Prüfe lokalen Storage für heutigen Eintrag
+          const todayEntry = await getTodaysLocalEntry(auth.currentUser.uid);
+
+          if (todayEntry) {
+            setCanCreateEntry(false);
+            setTodayEntry(todayEntry);
+            console.log("📝 Heute bereits Eintrag erstellt (lokal)");
+          } else {
+            setCanCreateEntry(true);
+            setTodayEntry(null);
+            console.log("✅ Kein Eintrag heute - kann erstellen");
+          }
+        } catch (err) {
+          console.error("Fehler beim Prüfen des Eintrags:", err);
+          // Im Fehlerfall: Erstellung erlauben
+          setCanCreateEntry(true);
+        } finally {
+          setCheckingLimit(false);
+        }
+      };
+
+      setCheckingLimit(true);
+      checkTodayEntry();
+    }, [isGuestMode])
+  );
 
   // Berechne Streak
   useEffect(() => {
@@ -370,6 +374,10 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
         // Hinweis: Texte & Analysen nur lokal gespeichert
         hasLocalData: true,
       });
+
+      // Sofort State aktualisieren: Heute bereits Eintrag erstellt
+      setCanCreateEntry(false);
+      setTodayEntry(localEntry);
 
       Animated.timing(progress, {
         toValue: 1,
