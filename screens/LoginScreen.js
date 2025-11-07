@@ -14,11 +14,13 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../components/AuthProvider";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "../firebaseconfig";
 
 export default function LoginScreen() {
+  const navigation = useNavigation();
   const { signIn, signUp, signInWithGoogle, googleLoading, enterGuestMode } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
