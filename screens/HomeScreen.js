@@ -24,15 +24,9 @@ export default function HomeScreen({ navigation }) {
   const [dailyAnalysisDone, setDailyAnalysisDone] = useState(false);
   const [weeklyAnalysisDone, setWeeklyAnalysisDone] = useState(false);
   const [daysUntilWeekly, setDaysUntilWeekly] = useState(0);
-  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
   // Trial Countdown Timer
   const [trialTimeRemaining, setTrialTimeRemaining] = useState(null);
-
-  // Prüfe ob neuer Nutzer und zeige Welcome Modal
-  useEffect(() => {
-    checkFirstTimeUser();
-  }, []);
 
   // Trial Timer: Aktualisiere jede Sekunde
   useEffect(() => {
@@ -51,40 +45,6 @@ export default function HomeScreen({ navigation }) {
 
     return () => clearInterval(interval);
   }, [isTrialActive, isPremium]);
-
-  const checkFirstTimeUser = async () => {
-    try {
-      if (isGuestMode || !auth.currentUser) return;
-
-      const hasSeenWelcome = await AsyncStorage.getItem(`hasSeenWelcome_${auth.currentUser.uid}`);
-
-      if (!hasSeenWelcome) {
-        // Zeige Modal nach kurzer Verzögerung (damit Screen geladen ist)
-        setTimeout(() => {
-          setShowWelcomeModal(true);
-        }, 500);
-      }
-    } catch (error) {
-      console.error('Error checking first time user:', error);
-    }
-  };
-
-  const handleCloseWelcome = async (openGuide = false) => {
-    try {
-      // Markiere als gesehen
-      await AsyncStorage.setItem(`hasSeenWelcome_${auth.currentUser.uid}`, 'true');
-      setShowWelcomeModal(false);
-
-      // Öffne Guide falls gewünscht
-      if (openGuide) {
-        setTimeout(() => {
-          navigation.navigate('AppGuide');
-        }, 300);
-      }
-    } catch (error) {
-      console.error('Error closing welcome:', error);
-    }
-  };
 
   // Aktualisiere Dashboard-Daten wenn Screen fokussiert wird
   useFocusEffect(
@@ -498,69 +458,6 @@ export default function HomeScreen({ navigation }) {
           />
         ))}
       </ScrollView>
-
-      {/* Welcome Modal für neue Nutzer */}
-      <Modal
-        visible={showWelcomeModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => handleCloseWelcome(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            {/* Modal Header */}
-            <View style={styles.modalHeader}>
-              <View style={styles.modalIconContainer}>
-                <Ionicons name="rocket" size={48} color={Colors.primary} />
-              </View>
-              <Text style={styles.modalTitle}>
-                Willkommen{userName ? `, ${userName}` : ''}! 🎉
-              </Text>
-              <Text style={styles.modalSubtitle}>
-                Schön, dass du da bist! Möchtest du eine kurze Einführung, wie die App funktioniert?
-              </Text>
-            </View>
-
-            {/* Modal Body */}
-            <View style={styles.modalBody}>
-              <View style={styles.featureItem}>
-                <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
-                <Text style={styles.featureText}>Verstehe alle Funktionen</Text>
-              </View>
-              <View style={styles.featureItem}>
-                <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
-                <Text style={styles.featureText}>Lerne Best Practices</Text>
-              </View>
-              <View style={styles.featureItem}>
-                <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
-                <Text style={styles.featureText}>Starte optimal durch</Text>
-              </View>
-            </View>
-
-            {/* Modal Actions */}
-            <View style={styles.modalActions}>
-              <Button
-                variant="primary"
-                size="large"
-                icon="book-outline"
-                fullWidth
-                onPress={() => handleCloseWelcome(true)}
-                style={styles.modalButton}
-              >
-                App-Anleitung öffnen
-              </Button>
-              <Button
-                variant="ghost"
-                size="medium"
-                fullWidth
-                onPress={() => handleCloseWelcome(false)}
-              >
-                Später ansehen
-              </Button>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </LinearGradient>
   );
 }
