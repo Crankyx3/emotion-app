@@ -36,117 +36,178 @@ export default function PrivacyPolicyScreen({ navigation, route }) {
             <Text style={styles.lastUpdated}>Stand: {new Date().toLocaleDateString("de-DE")}</Text>
 
             <Text style={styles.intro}>
-              Der Schutz deiner persönlichen und sensiblen Daten hat für uns höchste Priorität.
-              Diese Datenschutzerklärung erklärt, welche Daten wir erfassen, wie wir sie nutzen
-              und welche Rechte du hast.
+              🔐 Der Schutz deiner persönlichen und sensiblen Daten hat für uns höchste Priorität.
+              Diese App speichert alle sensiblen Daten (Texte, Analysen, Dankbarkeit) ausschließlich
+              lokal auf deinem Gerät - für maximale Privatsphäre!
             </Text>
 
             <Text style={styles.sectionTitle}>🔒 1. Verantwortlicher</Text>
             <Text style={styles.text}>
-              Verantwortlich für die Datenverarbeitung in dieser App:{"\n"}
-              KI-Stimmungshelfer{"\n"}
-              [Deine Adresse]{"\n"}
-              [Kontakt-E-Mail]
+              Verantwortlich für die Datenverarbeitung in dieser App:{"\n\n"}
+              Finn Bauermeister-Kutschker{"\n"}
+              Nadorster Str. 270{"\n"}
+              26125 Oldenburg{"\n"}
+              Deutschland{"\n\n"}
+              E-Mail: appsbycrank@gmail.com
             </Text>
 
             <Text style={styles.sectionTitle}>📊 2. Welche Daten erfassen wir?</Text>
-            <Text style={styles.subsectionTitle}>Account-Daten:</Text>
-            <Text style={styles.bulletPoint}>• E-Mail-Adresse (für Login)</Text>
-            <Text style={styles.bulletPoint}>• Dein Name (freiwillig)</Text>
-            <Text style={styles.bulletPoint}>• Passwort (verschlüsselt gespeichert)</Text>
 
-            <Text style={styles.subsectionTitle}>Tagebuch-Einträge:</Text>
-            <Text style={styles.bulletPoint}>• Emotionen und Wohlfühlscores</Text>
-            <Text style={styles.bulletPoint}>• Deine Texte und Beschreibungen</Text>
-            <Text style={styles.bulletPoint}>• Themen und Dankbarkeitsnotizen</Text>
+            <Text style={styles.subsectionTitle}>Account-Daten (in der Cloud):</Text>
+            <Text style={styles.bulletPoint}>• E-Mail-Adresse (für Login via Firebase Auth)</Text>
+            <Text style={styles.bulletPoint}>• Dein Name (freiwillig, für Begrüßung)</Text>
+            <Text style={styles.bulletPoint}>• Passwort (verschlüsselt bei Firebase)</Text>
+            <Text style={styles.bulletPoint}>• User-ID (automatisch generiert)</Text>
+
+            <Text style={styles.subsectionTitle}>Metadaten in der Cloud (Firebase):</Text>
+            <Text style={styles.bulletPoint}>• Ausgewählte Emotion (z.B. "😊 Glücklich")</Text>
+            <Text style={styles.bulletPoint}>• Wohlfühlscore (1-99)</Text>
             <Text style={styles.bulletPoint}>• Datum und Uhrzeit der Einträge</Text>
+            <Text style={styles.bulletPoint}>• User-ID (Verknüpfung zu deinem Account)</Text>
 
-            <Text style={styles.subsectionTitle}>KI-Analysen:</Text>
-            <Text style={styles.bulletPoint}>• KI-generierte Analysen deiner Einträge</Text>
-            <Text style={styles.bulletPoint}>• Chat-Verläufe mit dem KI-Assistent</Text>
-
-            <Text style={styles.sectionTitle}>🎯 3. Wofür nutzen wir deine Daten?</Text>
-            <Text style={styles.bulletPoint}>• Bereitstellung der App-Funktionen (Tagebuch, Analysen)</Text>
-            <Text style={styles.bulletPoint}>• KI-gestützte Stimmungsanalysen</Text>
-            <Text style={styles.bulletPoint}>• Personalisierte Empfehlungen</Text>
-            <Text style={styles.bulletPoint}>• Verbesserung der App</Text>
+            <Text style={styles.subsectionTitle}>🔐 NUR lokal auf deinem Gerät:</Text>
+            <Text style={styles.bulletPoint}>• ✅ Deine vollständigen Texte und Beschreibungen</Text>
+            <Text style={styles.bulletPoint}>• ✅ Dankbarkeitsnotizen</Text>
+            <Text style={styles.bulletPoint}>• ✅ KI-generierte Analysen deiner Einträge</Text>
+            <Text style={styles.bulletPoint}>• ✅ Chat-Verläufe mit dem KI-Assistent</Text>
+            <Text style={styles.bulletPoint}>• ✅ Alle persönlichen, sensiblen Inhalte</Text>
 
             <Text style={styles.important}>
-              ⚠️ Wichtig: Deine Texte und Einträge werden NIEMALS an Dritte verkauft oder
-              zu Werbezwecken genutzt!
+              🔐 WICHTIG: Deine Texte, Gedanken und KI-Analysen verlassen NIEMALS dauerhaft dein Gerät!
+              Sie werden ausschließlich lokal gespeichert. Nur anonymisierte Metadaten (Emotionen, Scores)
+              werden in der Cloud gespeichert, um Charts und Statistiken zu erstellen.
             </Text>
 
-            <Text style={styles.sectionTitle}>🤖 4. KI & OpenAI</Text>
+            <Text style={styles.sectionTitle}>🎯 3. Wofür nutzen wir deine Daten?</Text>
+
+            <Text style={styles.subsectionTitle}>Lokale Daten (auf deinem Gerät):</Text>
+            <Text style={styles.bulletPoint}>• Anzeige deiner Tagebucheinträge</Text>
+            <Text style={styles.bulletPoint}>• KI-gestützte Stimmungsanalysen</Text>
+            <Text style={styles.bulletPoint}>• Chat mit KI-Assistent</Text>
+            <Text style={styles.bulletPoint}>• Streak-Berechnung</Text>
+
+            <Text style={styles.subsectionTitle}>Cloud-Daten (Metadaten):</Text>
+            <Text style={styles.bulletPoint}>• Emotionsverlauf-Charts erstellen</Text>
+            <Text style={styles.bulletPoint}>• Statistiken über deine Stimmung</Text>
+            <Text style={styles.bulletPoint}>• Synchronisation zwischen mehreren Geräten (nur Metadaten)</Text>
+
+            <Text style={styles.important}>
+              ⚠️ Garantie: Deine Texte und Einträge werden NIEMALS an Dritte verkauft,
+              zu Werbezwecken genutzt oder dauerhaft in der Cloud gespeichert!
+            </Text>
+
+            <Text style={styles.sectionTitle}>🤖 4. KI & OpenAI (ChatGPT)</Text>
             <Text style={styles.text}>
-              Für KI-Analysen nutzen wir OpenAI (GPT-4o-mini). Dabei werden:{"\n\n"}
-              • Deine Texte temporär an OpenAI-Server gesendet{"\n"}
-              • Keine persönlichen Daten (Name, E-Mail) mitgesendet{"\n"}
-              • Daten von OpenAI für 30 Tage gespeichert, dann gelöscht{"\n"}
-              • OpenAI nutzt deine Daten NICHT für Training{"\n\n"}
-              Du kannst KI-Analysen jederzeit in den Einstellungen deaktivieren.
+              Für KI-Analysen nutzen wir OpenAI (GPT-4o-mini). Dabei gilt:{"\n\n"}
+              • ✅ Deine Texte werden temporär an OpenAI-Server gesendet (nur für Analyse){"\n"}
+              • ✅ Die KI-Antwort wird lokal auf deinem Gerät gespeichert{"\n"}
+              • ✅ Keine persönlichen Daten (Name, E-Mail) werden mitgesendet{"\n"}
+              • ✅ OpenAI speichert Daten für max. 30 Tage, dann automatische Löschung{"\n"}
+              • ✅ OpenAI nutzt deine Daten NICHT für KI-Training{"\n"}
+              • ✅ Du kannst KI-Analysen jederzeit in den Einstellungen deaktivieren{"\n\n"}
+              Mehr Infos: https://openai.com/policies/api-data-usage-policies
             </Text>
 
             <Text style={styles.sectionTitle}>🔐 5. Datensicherheit</Text>
-            <Text style={styles.bulletPoint}>• Alle Daten werden verschlüsselt übertragen (HTTPS)</Text>
-            <Text style={styles.bulletPoint}>• Passwörter werden verschlüsselt gespeichert</Text>
+            <Text style={styles.subsectionTitle}>Lokale Daten (auf deinem Gerät):</Text>
+            <Text style={styles.bulletPoint}>• Speicherung in AsyncStorage (React Native)</Text>
+            <Text style={styles.bulletPoint}>• Geschützt durch dein Geräte-Passwort/Biometrie</Text>
+            <Text style={styles.bulletPoint}>• Kein Zugriff von außen möglich</Text>
+            <Text style={styles.bulletPoint}>• Bei App-Deinstallation werden lokale Daten gelöscht</Text>
+
+            <Text style={styles.subsectionTitle}>Cloud-Daten (Metadaten):</Text>
+            <Text style={styles.bulletPoint}>• Verschlüsselte Übertragung (HTTPS/TLS)</Text>
             <Text style={styles.bulletPoint}>• Speicherung bei Firebase (Google Cloud, EU-Server)</Text>
             <Text style={styles.bulletPoint}>• Zugriff nur mit deinem Account möglich</Text>
-            <Text style={styles.bulletPoint}>• Keine Weitergabe an Dritte ohne deine Zustimmung</Text>
+            <Text style={styles.bulletPoint}>• Keine Weitergabe an Dritte</Text>
 
             <Text style={styles.sectionTitle}>🌍 6. Datenübermittlung</Text>
             <Text style={styles.text}>
-              Deine Daten werden gespeichert bei:{"\n\n"}
+              Deine Metadaten werden gespeichert bei:{"\n\n"}
               • Firebase/Google Cloud (Server in der EU){"\n"}
-              • OpenAI (USA) - nur für KI-Analysen, temporär{"\n\n"}
-              Für die Übermittlung in die USA (OpenAI) nutzen wir EU-Standardvertragsklauseln.
+              • Firebase Authentication (Account-Verwaltung){"\n"}
+              • Firestore Database (Metadaten-Speicherung){"\n\n"}
+              Temporäre Übermittlung für KI-Analysen:{"\n\n"}
+              • OpenAI (USA) - nur deine Texte für Analysen, max. 30 Tage{"\n"}
+              • Nutzung von EU-Standardvertragsklauseln{"\n"}
+              • Keine dauerhafte Speicherung
             </Text>
 
             <Text style={styles.sectionTitle}>⏱️ 7. Speicherdauer</Text>
-            <Text style={styles.bulletPoint}>• Deine Daten werden gespeichert, solange dein Account existiert</Text>
-            <Text style={styles.bulletPoint}>• Bei Account-Löschung: Sofortige, vollständige Löschung aller Daten</Text>
-            <Text style={styles.bulletPoint}>• OpenAI: Automatische Löschung nach 30 Tagen</Text>
+            <Text style={styles.subsectionTitle}>Lokale Daten:</Text>
+            <Text style={styles.bulletPoint}>• Bis zur manuellen Löschung durch dich (Einstellungen)</Text>
+            <Text style={styles.bulletPoint}>• Automatisch bei App-Deinstallation gelöscht</Text>
+
+            <Text style={styles.subsectionTitle}>Cloud-Daten (Metadaten):</Text>
+            <Text style={styles.bulletPoint}>• Solange dein Account existiert</Text>
+            <Text style={styles.bulletPoint}>• Bei Account-Löschung: Sofortige, vollständige Löschung</Text>
+
+            <Text style={styles.subsectionTitle}>OpenAI:</Text>
+            <Text style={styles.bulletPoint}>• Automatische Löschung nach 30 Tagen</Text>
 
             <Text style={styles.sectionTitle}>✅ 8. Deine Rechte (DSGVO)</Text>
-            <Text style={styles.bulletPoint}>• Auskunft: Welche Daten haben wir über dich?</Text>
-            <Text style={styles.bulletPoint}>• Berichtigung: Daten korrigieren</Text>
-            <Text style={styles.bulletPoint}>• Löschung: Account und alle Daten löschen (in Einstellungen)</Text>
-            <Text style={styles.bulletPoint}>• Datenübertragbarkeit: Daten exportieren (in Einstellungen)</Text>
-            <Text style={styles.bulletPoint}>• Widerspruch: KI-Analysen deaktivieren (in Einstellungen)</Text>
+            <Text style={styles.bulletPoint}>• ℹ️ Auskunft: Welche Daten haben wir über dich?</Text>
+            <Text style={styles.bulletPoint}>• ✏️ Berichtigung: Daten korrigieren</Text>
+            <Text style={styles.bulletPoint}>• 🗑️ Löschung: Account und alle Daten löschen (in Einstellungen)</Text>
+            <Text style={styles.bulletPoint}>• 📦 Datenübertragbarkeit: Lokale Daten exportieren (in Einstellungen)</Text>
+            <Text style={styles.bulletPoint}>• 🚫 Widerspruch: KI-Analysen deaktivieren (in Einstellungen)</Text>
+            <Text style={styles.bulletPoint}>• 🔒 Einschränkung: Verarbeitung einschränken</Text>
+
+            <Text style={styles.text}>
+              Kontakt für Datenschutzanfragen:{"\n"}
+              E-Mail: appsbycrank@gmail.com
+            </Text>
 
             <Text style={styles.sectionTitle}>🍪 9. Cookies & Tracking</Text>
             <Text style={styles.text}>
               Diese App nutzt:{"\n\n"}
-              • KEINE Werbe-Tracker{"\n"}
-              • KEINE Analyse-Tools (Google Analytics o.ä.){"\n"}
-              • Nur technisch notwendige Session-Daten{"\n\n"}
-              Wir tracken dich nicht!
+              ✅ KEINE Werbe-Tracker{"\n"}
+              ✅ KEINE Analyse-Tools (Google Analytics o.ä.){"\n"}
+              ✅ KEINE Third-Party-Cookies{"\n"}
+              ✅ Nur technisch notwendige Session-Daten (Firebase Auth){"\n\n"}
+              Wir tracken dich nicht und verkaufen keine Daten!
             </Text>
 
             <Text style={styles.sectionTitle}>👶 10. Mindestalter</Text>
             <Text style={styles.text}>
               Diese App ist für Personen ab 16 Jahren konzipiert. Wenn du jünger bist,
-              sprich bitte mit deinen Erziehungsberechtigten.
+              benötigst du die Zustimmung deiner Erziehungsberechtigten.
             </Text>
 
-            <Text style={styles.sectionTitle}>📝 11. Änderungen</Text>
+            <Text style={styles.sectionTitle}>💰 11. Premium & Zahlungen</Text>
+            <Text style={styles.text}>
+              Bei Premium-Käufen über RevenueCat/App Stores:{"\n\n"}
+              • Verarbeitung durch Apple/Google{"\n"}
+              • Wir erhalten nur: User-ID, Abo-Status, Ablaufdatum{"\n"}
+              • Keine Zahlungsdaten (diese bleiben bei Apple/Google)
+            </Text>
+
+            <Text style={styles.sectionTitle}>📝 12. Änderungen</Text>
             <Text style={styles.text}>
               Wir können diese Datenschutzerklärung aktualisieren. Bei wesentlichen Änderungen
-              informieren wir dich in der App.
+              informieren wir dich in der App. Das Datum der letzten Aktualisierung findest du oben.
             </Text>
 
-            <Text style={styles.sectionTitle}>📧 12. Kontakt</Text>
+            <Text style={styles.sectionTitle}>📧 13. Kontakt & Beschwerden</Text>
             <Text style={styles.text}>
               Fragen zum Datenschutz?{"\n"}
-              E-Mail: [datenschutz@ki-stimmungshelfer.de]{"\n\n"}
-              Du hast auch das Recht, dich bei einer Datenschutz-Aufsichtsbehörde zu beschweren.
+              E-Mail: appsbycrank@gmail.com{"\n\n"}
+              Du hast auch das Recht, dich bei einer Datenschutz-Aufsichtsbehörde zu beschweren:{"\n\n"}
+              Die Landesbeauftragte für den Datenschutz Niedersachsen{"\n"}
+              Prinzenstraße 5{"\n"}
+              30159 Hannover{"\n"}
+              www.lfd.niedersachsen.de
             </Text>
 
             <View style={styles.footer}>
-              <Ionicons name="shield-checkmark" size={24} color="#34C759" />
-              <Text style={styles.footerText}>
-                Deine Privatsphäre ist uns wichtig. Wir nehmen den Schutz deiner sensiblen
-                Daten sehr ernst.
-              </Text>
+              <Ionicons name="shield-checkmark" size={32} color="#34C759" />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.footerTitle}>🔐 Privacy First!</Text>
+                <Text style={styles.footerText}>
+                  Deine Privatsphäre ist uns wichtig. Durch die lokale Speicherung aller sensiblen
+                  Daten haben nur DU Zugriff auf deine Gedanken und Gefühle.
+                </Text>
+              </View>
             </View>
           </View>
         </ScrollView>
@@ -208,10 +269,11 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 24,
     backgroundColor: "#E3F2FD",
-    padding: 12,
-    borderRadius: 8,
-    borderLeftWidth: 3,
+    padding: 16,
+    borderRadius: 12,
+    borderLeftWidth: 4,
     borderLeftColor: "#007AFF",
+    fontWeight: "500",
   },
   sectionTitle: {
     fontSize: 18,
@@ -247,27 +309,31 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 12,
     backgroundColor: "#FFF3CD",
-    padding: 12,
-    borderRadius: 8,
-    borderLeftWidth: 3,
+    padding: 14,
+    borderRadius: 12,
+    borderLeftWidth: 4,
     borderLeftColor: "#FFB900",
-    fontWeight: "500",
+    fontWeight: "600",
   },
   footer: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     marginTop: 32,
-    padding: 16,
+    padding: 20,
     backgroundColor: "#E8F5E9",
-    borderRadius: 12,
-    borderLeftWidth: 3,
+    borderRadius: 16,
+    borderLeftWidth: 4,
     borderLeftColor: "#34C759",
+  },
+  footerTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1C1C1E",
+    marginBottom: 6,
   },
   footerText: {
     fontSize: 13,
     color: "#1C1C1E",
     lineHeight: 18,
-    marginLeft: 12,
-    flex: 1,
   },
 });
