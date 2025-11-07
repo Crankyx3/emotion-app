@@ -77,12 +77,14 @@ export default function ChatScreen({ route }) {
 
   // Lade vorhandene Chat-Nachrichten aus Firestore
   const loadChatMessages = async () => {
-    if (!chatId) return [];
+    if (!chatId || !auth.currentUser) return [];
 
     try {
+      // ✅ WICHTIG: Query muss userId enthalten für Firebase Rules!
       const messagesQuery = query(
         collection(db, "chatMessages"),
-        where("chatId", "==", chatId)
+        where("chatId", "==", chatId),
+        where("userId", "==", auth.currentUser.uid)  // ✅ Für Firebase Rules!
       );
 
       const messagesSnap = await getDocs(messagesQuery);

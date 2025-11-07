@@ -19,8 +19,11 @@ import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/fire
 import { deleteUser, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import ScreenHeader from "../components/ScreenHeader";
 import * as Sharing from "expo-sharing";
-import * as FileSystem from "expo-file-system/legacy";
+import * as FileSystem from "expo-file-system";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { deleteAllLocalEntries, deleteAllLocalWeeklyAnalyses, getLocalEntries, getLocalWeeklyAnalyses } from "../services/localStorageService";
+import { runFullTestSuite, runQuickHealthCheck } from "../services/testService";
+import NotificationSettings from "../components/NotificationSettings";
 
 export default function SettingsScreen({ navigation }) {
   const { user, signOut } = useAuth();
@@ -41,6 +44,11 @@ export default function SettingsScreen({ navigation }) {
   // Privacy Settings
   const [aiAnalysisEnabled, setAiAnalysisEnabled] = useState(true);
   const [chatHistoryEnabled, setChatHistoryEnabled] = useState(true);
+
+  // Test Suite
+  const [showTestModal, setShowTestModal] = useState(false);
+  const [testResults, setTestResults] = useState(null);
+  const [testRunning, setTestRunning] = useState(false);
 
   useEffect(() => {
     loadStats();
@@ -106,29 +114,14 @@ export default function SettingsScreen({ navigation }) {
     if (!user) return;
 
     try {
-      // Zähle alle Einträge
-      const entriesSnapshot = await getDocs(
-        query(collection(db, "entries"), where("userId", "==", user.uid))
-      );
+      // 🔒 DATENSCHUTZ: Stats aus lokalem Storage
+      const localEntries = await getLocalEntries(user.uid);
+      const localWeeklyAnalyses = await getLocalWeeklyAnalyses(user.uid);
 
-      // Filtere nach Typ
-      let totalEntries = 0;
-      let dailyAnalyses = 0;
-      let weeklyAnalyses = 0;
-
-      entriesSnapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data.type === "dailyEntry") {
-          totalEntries++;
-        } else if (data.type === "dailyAnalysis") {
-          dailyAnalyses++;
-        } else if (data.type === "weeklyAnalysis") {
-          weeklyAnalyses++;
-        } else {
-          // Falls kein type gesetzt ist, zähle als Entry
-          totalEntries++;
-        }
-      });
+      // Zähle Einträge mit Analysen
+      const totalEntries = localEntries.length;
+      const dailyAnalyses = localEntries.filter(e => e.analysis).length;
+      const weeklyAnalyses = localWeeklyAnalyses.length;
 
       setStats({
         totalEntries,
@@ -144,19 +137,14 @@ export default function SettingsScreen({ navigation }) {
     try {
       if (!user) return;
 
-      // Lade alle Einträge des Users
-      const q = query(
-        collection(db, "entries"),
-        where("userId", "==", user.uid)
-      );
-      const snapshot = await getDocs(q);
+      // 🔒 DATENSCHUTZ: Lade Einträge aus lokalem Storage
+      const localEntries = await getLocalEntries(user.uid);
 
       // Extrahiere Datum (ohne Uhrzeit) für jeden Eintrag
-      const entryDates = snapshot.docs
-        .map(doc => {
-          const data = doc.data();
-          if (!data.createdAt) return null;
-          const date = data.createdAt.toDate();
+      const entryDates = localEntries
+        .map(entry => {
+          if (!entry.createdAt) return null;
+          const date = new Date(entry.createdAt);
           // Normalisiere auf Mitternacht
           const normalized = new Date(date.getFullYear(), date.getMonth(), date.getDate());
           return normalized.getTime();
@@ -208,6 +196,37 @@ export default function SettingsScreen({ navigation }) {
     }
   };
 
+  const handleRunTests = async (fullSuite = true) => {
+    setTestRunning(true);
+    setShowTestModal(true);
+    setTestResults(null);
+
+    try {
+      let results;
+      if (fullSuite) {
+        // Full test suite (skips expensive tests by default)
+        results = await runFullTestSuite({
+          skipExpensiveTests: true, // Don't call OpenAI (costs money)
+          skipDestructiveTests: true, // Don't delete data
+          includePerformanceTests: false // Skip performance tests for faster execution
+        });
+      } else {
+        // Quick health check
+        results = await runQuickHealthCheck();
+      }
+
+      setTestResults(results);
+    } catch (error) {
+      console.error('Test suite error:', error);
+      Alert.alert(
+        'Test-Fehler',
+        'Die Tests konnten nicht vollständig ausgeführt werden.\n\n' + error.message
+      );
+    } finally {
+      setTestRunning(false);
+    }
+  };
+
   const handleResetData = () => {
     Alert.alert(
       "⚠️ Alle Daten löschen?",
@@ -226,32 +245,45 @@ export default function SettingsScreen({ navigation }) {
   const confirmResetData = async () => {
     setLoading(true);
     try {
-      // Lade nur Einträge des aktuellen Users
+      const userId = user.uid;
+
+      // 🔒 DATENSCHUTZ: Lösche ZUERST lokale Daten
+      await deleteAllLocalEntries(userId);
+      await deleteAllLocalWeeklyAnalyses(userId);
+      console.log("✅ Lokale Daten gelöscht");
+
+      // Lösche Chat-Daten aus AsyncStorage
+      const chatKeys = await AsyncStorage.getAllKeys();
+      const userChatKeys = chatKeys.filter(key => key.includes(`chatMessages_${userId}`));
+      await AsyncStorage.multiRemove(userChatKeys);
+      console.log("✅ Lokale Chat-Daten gelöscht");
+
+      // Dann Firestore Metadaten löschen
       const userEntriesQuery = query(
         collection(db, "entries"),
-        where("userId", "==", user.uid)
+        where("userId", "==", userId)
       );
       const userEntriesSnapshot = await getDocs(userEntriesQuery);
 
-      console.log(`Lösche ${userEntriesSnapshot.size} Einträge des Users...`);
+      console.log(`Lösche ${userEntriesSnapshot.size} Cloud-Metadaten...`);
 
       // Hole auch alle Wochenanalysen des Users
       const weeklyAnalysesSnapshot = await getDocs(
-        query(collection(db, "weeklyAnalyses"), where("userId", "==", user.uid))
+        query(collection(db, "weeklyAnalyses"), where("userId", "==", userId))
       );
 
-      console.log(`Lösche ${weeklyAnalysesSnapshot.size} Wochenanalysen...`);
+      console.log(`Lösche ${weeklyAnalysesSnapshot.size} Wochenanalyse-Metadaten...`);
 
       // Hole alle Chats des Users
       const chatsSnapshot = await getDocs(
-        query(collection(db, "chats"), where("userId", "==", user.uid))
+        query(collection(db, "chats"), where("userId", "==", userId))
       );
 
       console.log(`Lösche ${chatsSnapshot.size} Chats...`);
 
       // Hole alle Chat-Nachrichten des Users
       const chatMessagesSnapshot = await getDocs(
-        query(collection(db, "chatMessages"), where("userId", "==", user.uid))
+        query(collection(db, "chatMessages"), where("userId", "==", userId))
       );
 
       console.log(`Lösche ${chatMessagesSnapshot.size} Chat-Nachrichten...`);
@@ -272,7 +304,7 @@ export default function SettingsScreen({ navigation }) {
 
       Alert.alert(
         "✅ Erfolgreich gelöscht",
-        `${userEntriesSnapshot.size} Einträge, ${weeklyAnalysesSnapshot.size} Wochenanalysen und ${chatsSnapshot.size} Chat-Verläufe wurden vollständig entfernt.\n\n💡 Hinweis: Bitte starte die App neu, damit alle Änderungen vollständig übernommen werden.`,
+        `Alle Daten wurden vollständig entfernt:\n• Lokale Einträge & Analysen\n• Cloud-Metadaten\n• Chat-Verläufe\n\n💡 Hinweis: Bitte starte die App neu, damit alle Änderungen vollständig übernommen werden.`,
         [{ text: "OK", style: "default" }]
       );
     } catch (error) {
@@ -578,45 +610,62 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
         return;
       }
 
-      // 1. Lösche alle Firestore-Daten
+      const userId = currentUser.uid;
+
+      // 🔒 DATENSCHUTZ: 1. Lösche ZUERST alle lokalen Daten
+      await deleteAllLocalEntries(userId);
+      await deleteAllLocalWeeklyAnalyses(userId);
+      console.log("✅ Lokale Daten gelöscht");
+
+      // Lösche Chat-Daten aus AsyncStorage
+      const chatKeys = await AsyncStorage.getAllKeys();
+      const userChatKeys = chatKeys.filter(key => key.includes(`chatMessages_${userId}`));
+      await AsyncStorage.multiRemove(userChatKeys);
+
+      // Lösche alle anderen AsyncStorage Keys des Users
+      const allUserKeys = chatKeys.filter(key => key.includes(userId));
+      await AsyncStorage.multiRemove(allUserKeys);
+      console.log("✅ Alle lokalen Daten gelöscht");
+
+      // 2. Lösche alle Firestore-Metadaten
       const deletePromises = [];
 
       // Entries
       const entriesSnap = await getDocs(
-        query(collection(db, "entries"), where("userId", "==", currentUser.uid))
+        query(collection(db, "entries"), where("userId", "==", userId))
       );
       deletePromises.push(...entriesSnap.docs.map(d => deleteDoc(d.ref)));
 
       // Weekly Analyses
       const weeklySnap = await getDocs(
-        query(collection(db, "weeklyAnalyses"), where("userId", "==", currentUser.uid))
+        query(collection(db, "weeklyAnalyses"), where("userId", "==", userId))
       );
       deletePromises.push(...weeklySnap.docs.map(d => deleteDoc(d.ref)));
 
       // Chats
       const chatsSnap = await getDocs(
-        query(collection(db, "chats"), where("userId", "==", currentUser.uid))
+        query(collection(db, "chats"), where("userId", "==", userId))
       );
       deletePromises.push(...chatsSnap.docs.map(d => deleteDoc(d.ref)));
 
       // Chat Messages
       const messagesSnap = await getDocs(
-        query(collection(db, "chatMessages"), where("userId", "==", currentUser.uid))
+        query(collection(db, "chatMessages"), where("userId", "==", userId))
       );
       deletePromises.push(...messagesSnap.docs.map(d => deleteDoc(d.ref)));
 
       // User Profile
-      deletePromises.push(deleteDoc(doc(db, "users", currentUser.uid)));
+      deletePromises.push(deleteDoc(doc(db, "users", userId)));
 
       // Lösche alle Firestore-Daten parallel
       await Promise.all(deletePromises);
 
-      // 2. Lösche Firebase Auth Account
+      // 3. Lösche Firebase Auth Account
       await deleteUser(currentUser);
 
       Alert.alert(
         "✅ Account gelöscht",
-        "Dein Account und alle Daten wurden vollständig entfernt. Auf Wiedersehen!",
+        "Dein Account und alle Daten (lokal & cloud) wurden vollständig entfernt. Auf Wiedersehen!",
         [{ text: "OK" }]
       );
     } catch (error) {
@@ -885,6 +934,12 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
           </View>
         </View>
 
+        {/* Notifications */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🔔 Erinnerungen</Text>
+          <NotificationSettings userId={user?.uid} />
+        </View>
+
         {/* Logout */}
         <TouchableOpacity
           style={styles.logoutButton}
@@ -917,6 +972,29 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
               </>
             )}
           </TouchableOpacity>
+
+          {/* Test Suite Button (nur für Admin) */}
+          {user?.email === "finn_bauermeister@web.de" && (
+            <TouchableOpacity
+              style={styles.testButton}
+              onPress={() => handleRunTests(true)}
+              disabled={loading || testRunning}
+            >
+              {testRunning ? (
+                <ActivityIndicator color="#007AFF" />
+              ) : (
+                <>
+                  <Ionicons name="flask-outline" size={24} color="#007AFF" />
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={styles.testButtonTitle}>🧪 App-Tests durchführen</Text>
+                    <Text style={styles.testButtonSubtitle}>
+                      Teste alle Funktionen (Datenbank, Storage, APIs)
+                    </Text>
+                  </View>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
 
           {/* Link zur Datenschutzerklärung */}
           <TouchableOpacity
@@ -986,6 +1064,153 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
         {/* App Version */}
         <Text style={styles.versionText}>KI-Stimmungshelfer v1.0.0</Text>
       </ScrollView>
+
+      {/* Test Results Modal */}
+      <Modal
+        visible={showTestModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => {
+          if (!testRunning) {
+            setShowTestModal(false);
+            setTestResults(null);
+          }
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.testModalContent}>
+            <View style={styles.testModalHeader}>
+              <Text style={styles.testModalTitle}>🧪 Test-Ergebnisse</Text>
+              {!testRunning && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowTestModal(false);
+                    setTestResults(null);
+                  }}
+                >
+                  <Ionicons name="close-circle" size={32} color="#8E8E93" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <ScrollView style={styles.testModalScroll}>
+              {testRunning && !testResults && (
+                <View style={styles.testLoadingContainer}>
+                  <ActivityIndicator size="large" color="#007AFF" />
+                  <Text style={styles.testLoadingText}>Tests werden ausgeführt...</Text>
+                  <Text style={styles.testLoadingSubtext}>Dies kann einige Sekunden dauern</Text>
+                </View>
+              )}
+
+              {testResults && testResults.summary && (
+                <>
+                  {/* Summary */}
+                  <View style={styles.testSummaryCard}>
+                    <Text style={styles.testSummaryTitle}>Zusammenfassung</Text>
+                    <View style={styles.testSummaryRow}>
+                      <View style={styles.testSummaryItem}>
+                        <Text style={styles.testSummaryNumber}>{testResults.summary.total || 0}</Text>
+                        <Text style={styles.testSummaryLabel}>Tests</Text>
+                      </View>
+                      <View style={styles.testSummaryItem}>
+                        <Text style={[styles.testSummaryNumber, { color: '#34C759' }]}>
+                          {testResults.summary.passed || 0}
+                        </Text>
+                        <Text style={styles.testSummaryLabel}>Erfolg</Text>
+                      </View>
+                      <View style={styles.testSummaryItem}>
+                        <Text style={[styles.testSummaryNumber, { color: '#FF3B30' }]}>
+                          {testResults.summary.failed || 0}
+                        </Text>
+                        <Text style={styles.testSummaryLabel}>Fehler</Text>
+                      </View>
+                      <View style={styles.testSummaryItem}>
+                        <Text style={[styles.testSummaryNumber, { color: '#FF9500' }]}>
+                          {testResults.summary.warnings || 0}
+                        </Text>
+                        <Text style={styles.testSummaryLabel}>Warnung</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.testSummaryDuration}>
+                      Dauer: {((testResults.summary.duration || 0) / 1000).toFixed(2)}s
+                    </Text>
+                  </View>
+
+                  {/* Individual Results */}
+                  {testResults.results && testResults.results.map((result, index) => (
+                    <View
+                      key={index}
+                      style={[
+                        styles.testResultCard,
+                        result.status === 'success' && styles.testResultSuccess,
+                        result.status === 'error' && styles.testResultError,
+                        result.status === 'warning' && styles.testResultWarning,
+                        result.status === 'skipped' && styles.testResultSkipped,
+                      ]}
+                    >
+                      <View style={styles.testResultHeader}>
+                        <View style={styles.testResultTitleRow}>
+                          <Ionicons
+                            name={
+                              result.status === 'success'
+                                ? 'checkmark-circle'
+                                : result.status === 'error'
+                                ? 'close-circle'
+                                : result.status === 'warning'
+                                ? 'warning'
+                                : 'remove-circle'
+                            }
+                            size={20}
+                            color={
+                              result.status === 'success'
+                                ? '#34C759'
+                                : result.status === 'error'
+                                ? '#FF3B30'
+                                : result.status === 'warning'
+                                ? '#FF9500'
+                                : '#8E8E93'
+                            }
+                          />
+                          <Text style={styles.testResultName}>{result.name}</Text>
+                        </View>
+                        {result.duration && (
+                          <Text style={styles.testResultDuration}>{result.duration} ms</Text>
+                        )}
+                      </View>
+                      <Text style={styles.testResultMessage}>{result.message}</Text>
+                      {result.error && (
+                        <Text style={styles.testResultError}>{result.error}</Text>
+                      )}
+                    </View>
+                  ))}
+                </>
+              )}
+            </ScrollView>
+
+            {/* Actions */}
+            {testResults && !testRunning && (
+              <View style={styles.testModalActions}>
+                <TouchableOpacity
+                  style={styles.testModalButton}
+                  onPress={() => handleRunTests(true)}
+                >
+                  <Ionicons name="refresh" size={20} color="#007AFF" />
+                  <Text style={styles.testModalButtonText}>Neu testen</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.testModalButton, styles.testModalButtonPrimary]}
+                  onPress={() => {
+                    setShowTestModal(false);
+                    setTestResults(null);
+                  }}
+                >
+                  <Text style={[styles.testModalButtonText, { color: '#FFF' }]}>Schließen</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* Password Re-Authentication Modal */}
       <Modal
@@ -1597,5 +1822,204 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     marginRight: 10,
     flex: 1,
+  },
+  // Test Button Styles
+  testButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: "#007AFF",
+    shadowColor: "#007AFF",
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  testButtonTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1C1C1E",
+    marginBottom: 4,
+  },
+  testButtonSubtitle: {
+    fontSize: 12,
+    color: "#8E8E93",
+    lineHeight: 16,
+  },
+  // Test Modal Styles
+  testModalContent: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingBottom: 40,
+    maxHeight: "90%",
+    minHeight: "70%",
+  },
+  testModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E5EA",
+  },
+  testModalTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#1C1C1E",
+  },
+  testModalScroll: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  testLoadingContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+  },
+  testLoadingText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1C1C1E",
+    marginTop: 16,
+  },
+  testLoadingSubtext: {
+    fontSize: 14,
+    color: "#8E8E93",
+    marginTop: 8,
+  },
+  testSummaryCard: {
+    backgroundColor: "#F7F9FC",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#E5E5EA",
+  },
+  testSummaryTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1C1C1E",
+    marginBottom: 16,
+  },
+  testSummaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: 12,
+  },
+  testSummaryItem: {
+    alignItems: "center",
+  },
+  testSummaryNumber: {
+    fontSize: 32,
+    fontWeight: "800",
+    color: "#007AFF",
+  },
+  testSummaryLabel: {
+    fontSize: 12,
+    color: "#8E8E93",
+    marginTop: 4,
+    fontWeight: "600",
+  },
+  testSummaryDuration: {
+    fontSize: 14,
+    color: "#8E8E93",
+    textAlign: "center",
+    marginTop: 8,
+  },
+  testResultCard: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: "#E5E5EA",
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  testResultSuccess: {
+    borderLeftColor: "#34C759",
+    backgroundColor: "#F0FFF4",
+  },
+  testResultError: {
+    borderLeftColor: "#FF3B30",
+    backgroundColor: "#FFF5F5",
+  },
+  testResultWarning: {
+    borderLeftColor: "#FF9500",
+    backgroundColor: "#FFF9F0",
+  },
+  testResultSkipped: {
+    borderLeftColor: "#8E8E93",
+    backgroundColor: "#F9F9F9",
+  },
+  testResultHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  testResultTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  testResultName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1C1C1E",
+    marginLeft: 8,
+    flex: 1,
+  },
+  testResultDuration: {
+    fontSize: 12,
+    color: "#8E8E93",
+  },
+  testResultMessage: {
+    fontSize: 13,
+    color: "#3C3C43",
+    lineHeight: 18,
+  },
+  testResultError: {
+    fontSize: 12,
+    color: "#FF3B30",
+    marginTop: 6,
+    fontFamily: "monospace",
+  },
+  testModalActions: {
+    flexDirection: "row",
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#E5E5EA",
+    gap: 12,
+  },
+  testModalButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#007AFF",
+    backgroundColor: "#fff",
+  },
+  testModalButtonPrimary: {
+    backgroundColor: "#007AFF",
+    borderColor: "#007AFF",
+  },
+  testModalButtonText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#007AFF",
+    marginLeft: 6,
   },
 });

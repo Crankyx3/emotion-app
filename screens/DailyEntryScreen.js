@@ -13,15 +13,19 @@ import {
   SafeAreaView,
   Animated,
   ActivityIndicator,
+  Modal,
 } from "react-native";
-import { collection, addDoc, Timestamp, updateDoc, query, where, getDocs } from "firebase/firestore";
+import { collection, addDoc, Timestamp, query, where, getDocs } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
 import { getAiResponse } from "../openaiService";
 import { useNavigation } from "@react-navigation/native";
+import { saveEntryLocally, getLocalEntries, getTodaysLocalEntry } from "../services/localStorageService";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../components/AuthProvider";
 import GuestBlockModal from "../components/GuestBlockModal";
+import { startRecording, stopRecording, cancelRecording, getRecordingDuration } from "../services/audioRecordingService";
+import { transcribeAudioWithRetry } from "../services/whisperService";
 
 export default function DailyEntryScreen() {
   const navigation = useNavigation();
@@ -47,6 +51,139 @@ export default function DailyEntryScreen() {
   // Guest Mode
   const [showGuestModal, setShowGuestModal] = useState(false);
 
+  // Smart Input Helper
+  const [showInputHelper, setShowInputHelper] = useState(false);
+
+  // Voice Recording
+  const [isRecordingAudio, setIsRecordingAudio] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const recordingInterval = useRef(null);
+
+  const quickPhrases = [
+    { category: "Gefühle", phrases: [
+      "Ich fühle mich heute...",
+      "Es beschäftigt mich, dass...",
+      "Ich bin froh über...",
+      "Mir macht Sorgen, dass...",
+      "Ich habe bemerkt, dass...",
+    ]},
+    { category: "Tag", phrases: [
+      "Heute war ein guter Tag, weil...",
+      "Mein Tag war herausfordernd, weil...",
+      "Ich habe heute erreicht, dass...",
+      "Was mir heute wichtig war...",
+      "Ein besonderer Moment heute war...",
+    ]},
+    { category: "Gedanken", phrases: [
+      "Ich denke oft darüber nach, wie...",
+      "Mir ist klar geworden, dass...",
+      "Ich frage mich, ob...",
+      "Es fällt mir schwer zu...",
+      "Ich möchte gerne...",
+    ]},
+  ];
+
+  const addPhrase = (phrase) => {
+    const separator = text.length > 0 && !text.endsWith(" ") ? " " : "";
+    setText(text + separator + phrase);
+    setShowInputHelper(false);
+  };
+
+  // Voice Recording Functions
+  const handleStartRecording = async () => {
+    try {
+      await startRecording();
+      setIsRecordingAudio(true);
+      setRecordingDuration(0);
+
+      // Update duration every second
+      recordingInterval.current = setInterval(async () => {
+        const duration = await getRecordingDuration();
+        setRecordingDuration(Math.floor(duration / 1000));
+      }, 1000);
+    } catch (error) {
+      console.error('Recording error:', error);
+      Alert.alert(
+        'Fehler',
+        'Mikrofonzugriff konnte nicht gestartet werden. Bitte erlaube den Mikrofonzugriff in den Einstellungen.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const handleStopRecording = async () => {
+    try {
+      // Clear interval
+      if (recordingInterval.current) {
+        clearInterval(recordingInterval.current);
+        recordingInterval.current = null;
+      }
+
+      const audioUri = await stopRecording();
+      setIsRecordingAudio(false);
+      setIsTranscribing(true);
+
+      // Transcribe audio
+      try {
+        const transcription = await transcribeAudioWithRetry(audioUri);
+
+        // Add transcription to text
+        const separator = text.length > 0 && !text.endsWith(" ") ? " " : "";
+        setText(text + separator + transcription);
+
+        Alert.alert(
+          'Erfolgreich!',
+          'Deine Aufnahme wurde in Text umgewandelt.',
+          [{ text: 'OK' }]
+        );
+      } catch (transcriptionError) {
+        console.error('Transcription error:', transcriptionError);
+        Alert.alert(
+          'Fehler bei der Umwandlung',
+          'Die Spracherkennung ist fehlgeschlagen. Bitte versuche es erneut.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Stop recording error:', error);
+      Alert.alert(
+        'Fehler',
+        'Die Aufnahme konnte nicht gestoppt werden.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
+  const handleCancelRecording = async () => {
+    try {
+      if (recordingInterval.current) {
+        clearInterval(recordingInterval.current);
+        recordingInterval.current = null;
+      }
+
+      await cancelRecording();
+      setIsRecordingAudio(false);
+      setRecordingDuration(0);
+    } catch (error) {
+      console.error('Cancel recording error:', error);
+    }
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (recordingInterval.current) {
+        clearInterval(recordingInterval.current);
+      }
+      if (isRecordingAudio) {
+        cancelRecording();
+      }
+    };
+  }, []);
+
   const emotions = [
     { key: "happy", emoji: "😊", label: "Glücklich", value: 85 },
     { key: "content", emoji: "😌", label: "Zufrieden", value: 75 },
@@ -67,34 +204,21 @@ export default function DailyEntryScreen() {
       }
 
       try {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
+        // 🔒 DATENSCHUTZ: Prüfe lokalen Storage für heutigen Eintrag
+        const todayEntry = await getTodaysLocalEntry(auth.currentUser.uid);
 
-        const q = query(
-          collection(db, "entries"),
-          where("userId", "==", auth.currentUser.uid)
-        );
-
-        const snapshot = await getDocs(q);
-
-        const todayEntries = snapshot.docs.filter((doc) => {
-          const data = doc.data();
-          if (!data.createdAt) return false;
-          const entryDate = data.createdAt.toDate();
-          return entryDate >= today && entryDate < tomorrow;
-        });
-
-        if (todayEntries.length > 0) {
-          const entry = todayEntries[0].data();
+        if (todayEntry) {
           setCanCreateEntry(false);
-          setTodayEntry(entry);
+          setTodayEntry(todayEntry);
+          console.log("📝 Heute bereits Eintrag erstellt (lokal)");
         } else {
           setCanCreateEntry(true);
+          console.log("✅ Kein Eintrag heute - kann erstellen");
         }
       } catch (err) {
         console.error("Fehler beim Prüfen des Eintrags:", err);
+        // Im Fehlerfall: Erstellung erlauben
+        setCanCreateEntry(true);
       } finally {
         setCheckingLimit(false);
       }
@@ -109,17 +233,13 @@ export default function DailyEntryScreen() {
       try {
         if (!auth.currentUser) return;
 
-        const q = query(
-          collection(db, "entries"),
-          where("userId", "==", auth.currentUser.uid)
-        );
-        const snapshot = await getDocs(q);
+        // 🔒 DATENSCHUTZ: Lade Einträge aus lokalem Storage
+        const localEntries = await getLocalEntries(auth.currentUser.uid);
 
-        const entryDates = snapshot.docs
-          .map(doc => {
-            const data = doc.data();
-            if (!data.createdAt) return null;
-            const date = data.createdAt.toDate();
+        const entryDates = localEntries
+          .map(entry => {
+            if (!entry.createdAt) return null;
+            const date = new Date(entry.createdAt);
             const normalized = new Date(date.getFullYear(), date.getMonth(), date.getDate());
             return normalized.getTime();
           })
@@ -228,18 +348,28 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
 `;
       const aiReply = await getAiResponse(selectedEmotion, fullInput);
 
-      const docRef = await addDoc(collection(db, "entries"), {
-        userId: auth.currentUser?.uid,
+      const userId = auth.currentUser?.uid;
+
+      // 1. LOKAL SPEICHERN (vollständige Daten inkl. Text & KI-Analyse)
+      const localEntry = await saveEntryLocally(userId, {
         emotion: selectedEmotion,
         feelScore: feelScore,
-        theme: text.substring(0, 50), // Erste 50 Zeichen als "Thema"
+        theme: text.substring(0, 50),
         text,
         gratitude: gratitude.trim() || null,
         analysis: aiReply || null,
-        createdAt: Timestamp.now(),
       });
 
-      await updateDoc(docRef, { id: docRef.id });
+      // 2. NUR METADATEN in Cloud (für Charts & Statistiken)
+      // KEIN Text, KEINE KI-Analyse - Datenschutz!
+      await addDoc(collection(db, "entries"), {
+        userId: userId,
+        emotion: selectedEmotion,
+        feelScore: feelScore,
+        createdAt: Timestamp.now(),
+        // Hinweis: Texte & Analysen nur lokal gespeichert
+        hasLocalData: true,
+      });
 
       Animated.timing(progress, {
         toValue: 1,
@@ -252,6 +382,7 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
 
           navigation.navigate("DailyAnalysis", {
             aiReply,
+            localEntryId: localEntry.localId,  // Für lokales Laden
             emotion: selectedEmotion,
             text,
             theme: text.substring(0, 50),
@@ -379,7 +510,64 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
                 numberOfLines={8}
                 textAlignVertical="top"
               />
-              <Text style={styles.charCount}>{text.length} Zeichen</Text>
+              <View style={styles.inputHelperRow}>
+                <Text style={styles.charCount}>{text.length} Zeichen</Text>
+                <View style={styles.inputButtonsRow}>
+                  {/* Voice Recording Button */}
+                  {!isRecordingAudio && !isTranscribing && (
+                    <TouchableOpacity
+                      style={[styles.inputHelperButton, styles.voiceButton]}
+                      onPress={handleStartRecording}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="mic" size={18} color="#E03131" />
+                      <Text style={[styles.inputHelperText, { color: "#E03131" }]}>Sprechen</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Recording in Progress */}
+                  {isRecordingAudio && (
+                    <View style={styles.recordingContainer}>
+                      <TouchableOpacity
+                        style={styles.recordingStopButton}
+                        onPress={handleStopRecording}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.recordingPulse} />
+                        <Ionicons name="stop-circle" size={24} color="#E03131" />
+                        <Text style={styles.recordingTime}>
+                          {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.recordingCancelButton}
+                        onPress={handleCancelRecording}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="close-circle" size={20} color="#8E8E93" />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {/* Transcribing */}
+                  {isTranscribing && (
+                    <View style={styles.transcribingContainer}>
+                      <ActivityIndicator size="small" color="#007AFF" />
+                      <Text style={styles.transcribingText}>Wird umgewandelt...</Text>
+                    </View>
+                  )}
+
+                  {/* Quick Input Helper */}
+                  <TouchableOpacity
+                    style={styles.inputHelperButton}
+                    onPress={() => setShowInputHelper(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="bulb" size={18} color="#007AFF" />
+                    <Text style={styles.inputHelperText}>Schnell</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
             </View>
 
             {/* Dankbarkeit (optional) */}
@@ -444,6 +632,49 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
+
+      {/* Smart Input Helper Modal */}
+      <Modal
+        visible={showInputHelper}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowInputHelper(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Ionicons name="bulb" size={28} color="#007AFF" />
+              <Text style={styles.modalTitle}>Schnell-Eingaben</Text>
+              <TouchableOpacity onPress={() => setShowInputHelper(false)}>
+                <Ionicons name="close-circle" size={32} color="#8E8E93" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalSubtitle}>
+              Wähle einen Satzanfang zum schnellen Eintragen:
+            </Text>
+
+            <ScrollView style={styles.modalScroll}>
+              {quickPhrases.map((group, idx) => (
+                <View key={idx} style={styles.phraseGroup}>
+                  <Text style={styles.phraseCategory}>{group.category}</Text>
+                  {group.phrases.map((phrase, pIdx) => (
+                    <TouchableOpacity
+                      key={pIdx}
+                      style={styles.phraseButton}
+                      onPress={() => addPhrase(phrase)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="add-circle-outline" size={20} color="#007AFF" />
+                      <Text style={styles.phraseText}>{phrase}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* Guest Mode Block Modal */}
       <GuestBlockModal
@@ -708,5 +939,144 @@ const styles = StyleSheet.create({
     color: "#8B5E3C",
     fontWeight: "700",
     marginLeft: 4,
+  },
+
+  // Smart Input Helper
+  inputHelperRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 8,
+  },
+  inputButtonsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  inputHelperButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E3F2FD",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 6,
+  },
+  voiceButton: {
+    backgroundColor: "#FFE5E5",
+  },
+  inputHelperText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#007AFF",
+  },
+
+  // Voice Recording Styles
+  recordingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  recordingStopButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFE5E5",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 6,
+  },
+  recordingPulse: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#E03131",
+    opacity: 0.8,
+  },
+  recordingTime: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#E03131",
+  },
+  recordingCancelButton: {
+    padding: 6,
+  },
+  transcribingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E3F2FD",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 8,
+  },
+  transcribingText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#007AFF",
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#FFF",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingBottom: 40,
+    maxHeight: "70%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E5EA",
+  },
+  modalTitle: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#1C1C1E",
+    marginLeft: 12,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: "#8E8E93",
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 12,
+  },
+  modalScroll: {
+    paddingHorizontal: 20,
+  },
+  phraseGroup: {
+    marginBottom: 24,
+  },
+  phraseCategory: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1C1C1E",
+    marginBottom: 12,
+  },
+  phraseButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F7F9FC",
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 10,
+    gap: 12,
+  },
+  phraseText: {
+    flex: 1,
+    fontSize: 15,
+    color: "#3C3C43",
   },
 });

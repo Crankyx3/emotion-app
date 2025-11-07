@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
 import { useNavigation } from "@react-navigation/native";
+import { getLocalEntries, getLocalWeeklyAnalyses } from "../services/localStorageService";
 
 export default function ChatSelectionScreen() {
   const navigation = useNavigation();
@@ -32,43 +33,53 @@ export default function ChatSelectionScreen() {
       const fourteenDaysAgo = new Date();
       fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
 
-      // Lade Tagesanalysen (entries mit analysis)
-      const entriesQuery = query(
-        collection(db, "entries"),
-        where("userId", "==", auth.currentUser.uid)
-      );
-      const entriesSnap = await getDocs(entriesQuery);
+      // 🔒 DATENSCHUTZ: Lade Tagesanalysen aus lokalem Storage
+      const localEntries = await getLocalEntries(auth.currentUser.uid);
 
-      const daily = entriesSnap.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
+      const daily = (localEntries || [])
         .filter(entry => {
-          if (!entry.analysis || !entry.analysisDate) return false;
-          const analysisDate = entry.analysisDate.toDate();
+          // Nur Einträge mit Analyse
+          if (!entry.analysis) return false;
+
+          // Verwende analysisDate wenn vorhanden, sonst createdAt
+          const dateToCheck = entry.analysisDate || entry.createdAt;
+          if (!dateToCheck) return false;
+
+          const analysisDate = new Date(dateToCheck);
           return analysisDate >= fourteenDaysAgo;
         })
-        .sort((a, b) => b.analysisDate.toMillis() - a.analysisDate.toMillis());
+        .map(entry => ({
+          id: entry.localId,
+          ...entry,
+          analysisDate: new Date(entry.analysisDate || entry.createdAt),
+          createdAt: new Date(entry.createdAt)
+        }))
+        .sort((a, b) => b.analysisDate.getTime() - a.analysisDate.getTime());
 
       setDailyAnalyses(daily);
 
-      // Lade Wochenanalysen
-      const weeklyQuery = query(
-        collection(db, "weeklyAnalyses"),
-        where("userId", "==", auth.currentUser.uid)
-      );
-      const weeklySnap = await getDocs(weeklyQuery);
+      // 🔒 DATENSCHUTZ: Lade Wochenanalysen aus lokalem Storage
+      const localWeeklyAnalyses = await getLocalWeeklyAnalyses(auth.currentUser.uid);
 
-      const weekly = weeklySnap.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
+      const weekly = (localWeeklyAnalyses || [])
         .filter(analysis => {
-          if (!analysis.analysisDate) return false;
-          const analysisDate = analysis.analysisDate.toDate();
+          if (!analysis.createdAt) return false;
+          const analysisDate = new Date(analysis.createdAt);
           return analysisDate >= fourteenDaysAgo;
         })
-        .sort((a, b) => b.analysisDate.toMillis() - a.analysisDate.toMillis());
+        .map(analysis => ({
+          id: analysis.localId,
+          ...analysis,
+          analysisDate: new Date(analysis.createdAt)
+        }))
+        .sort((a, b) => b.analysisDate.getTime() - a.analysisDate.getTime());
 
       setWeeklyAnalyses(weekly);
     } catch (err) {
       console.error("Fehler beim Laden der Analysen:", err);
+      // Defensive: Setze leere Arrays bei Fehler
+      setDailyAnalyses([]);
+      setWeeklyAnalyses([]);
     } finally {
       setLoading(false);
     }
@@ -121,8 +132,9 @@ export default function ChatSelectionScreen() {
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>📊 Wochenanalysen</Text>
                 {weeklyAnalyses.map((analysis) => {
-                  const date = analysis.analysisDate?.toDate();
-                  const dateStr = date
+                  // analysisDate ist bereits ein Date-Objekt (von filter mapping)
+                  const date = analysis.analysisDate;
+                  const dateStr = date instanceof Date
                     ? date.toLocaleDateString("de-DE", {
                         weekday: "short",
                         day: "2-digit",
@@ -192,8 +204,9 @@ export default function ChatSelectionScreen() {
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>📝 Tagesanalysen</Text>
                 {dailyAnalyses.slice(0, 10).map((entry) => {
-                  const date = entry.analysisDate?.toDate();
-                  const dateStr = date
+                  // analysisDate ist bereits ein Date-Objekt (von filter mapping)
+                  const date = entry.analysisDate;
+                  const dateStr = date instanceof Date
                     ? date.toLocaleDateString("de-DE", {
                         weekday: "short",
                         day: "2-digit",

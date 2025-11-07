@@ -12,6 +12,7 @@ import { useAuth } from "../components/AuthProvider";
 import { usePremium } from "../components/PremiumProvider";
 import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getLocalEntries, getTodaysLocalEntry } from "../services/localStorageService";
 
 export default function HomeScreen({ navigation }) {
   const { userName, isGuestMode, exitGuestMode } = useAuth();
@@ -99,18 +100,15 @@ export default function HomeScreen({ navigation }) {
     }
 
     try {
-      // Streak berechnen
-      const entriesQuery = query(
-        collection(db, "entries"),
-        where("userId", "==", auth.currentUser.uid)
-      );
-      const entriesSnapshot = await getDocs(entriesQuery);
+      const userId = auth.currentUser.uid;
 
-      const entryDates = entriesSnapshot.docs
-        .map(doc => {
-          const data = doc.data();
-          if (!data.createdAt) return null;
-          const date = data.createdAt.toDate();
+      // 🔒 DATENSCHUTZ: Streak aus lokalen Einträgen berechnen
+      const localEntries = await getLocalEntries(userId);
+
+      const entryDates = localEntries
+        .map(entry => {
+          if (!entry.createdAt) return null;
+          const date = new Date(entry.createdAt);
           const normalized = new Date(date.getFullYear(), date.getMonth(), date.getDate());
           return normalized.getTime();
         })
@@ -150,23 +148,26 @@ export default function HomeScreen({ navigation }) {
         setLongestStreak(Math.max(longest, current));
       }
 
-      // Heutiger Eintrag Check
+      // 🔒 DATENSCHUTZ: Heutiger Eintrag aus lokalem Storage
+      const todayEntry = await getTodaysLocalEntry(userId);
+      setDailyEntryDone(!!todayEntry);
+
+      // Tagesanalyse Check (aus Firestore Metadaten)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
-      const todayEntries = entriesSnapshot.docs.filter((doc) => {
-        const data = doc.data();
-        if (!data.createdAt) return false;
-        const createdDate = data.createdAt.toDate();
-        return createdDate >= today && createdDate < tomorrow;
-      });
+      // Nur nach userId filtern, dann clientseitig nach Datum
+      // (vermeidet Composite Index Requirement)
+      const analysisQuery = query(
+        collection(db, "entries"),
+        where("userId", "==", userId)
+      );
+      const analysisSnapshot = await getDocs(analysisQuery);
 
-      setDailyEntryDone(todayEntries.length > 0);
-
-      // Tagesanalyse Check
-      const todayAnalyses = entriesSnapshot.docs.filter((doc) => {
+      // Clientseitig nach heutigem Datum filtern
+      const todayAnalyses = analysisSnapshot.docs.filter(doc => {
         const data = doc.data();
         if (!data.analysisDate) return false;
         const analysisDate = data.analysisDate.toDate();
@@ -343,6 +344,14 @@ export default function HomeScreen({ navigation }) {
       >
         <Ionicons name="settings-outline" size={28} color="#007AFF" />
       </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.sosButton}
+        onPress={() => navigation.navigate("Emergency")}
+      >
+        <Ionicons name="medical" size={28} color="#FFF" />
+      </TouchableOpacity>
+
       <ScrollView contentContainerStyle={styles.container}>
         <ScreenHeader title="KI-Stimmungshelfer" subtitle="Dein persönliches Stimmungs-Dashboard" />
 
@@ -389,6 +398,33 @@ export default function HomeScreen({ navigation }) {
             )}
           </View>
         </View>
+
+        {/* Achievements Button */}
+        {!isGuestMode && (
+          <TouchableOpacity
+            style={styles.achievementsButton}
+            onPress={() => navigation.navigate("Achievements")}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={['#FFB900', '#FF9500']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.achievementsGradient}
+            >
+              <View style={styles.achievementsContent}>
+                <Ionicons name="trophy" size={28} color="#FFF" />
+                <View style={styles.achievementsText}>
+                  <Text style={styles.achievementsTitle}>Deine Erfolge</Text>
+                  <Text style={styles.achievementsSubtitle}>
+                    Sieh dir deine Fortschritte an
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={24} color="#FFF" />
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
 
         {/* Guest Mode Banner */}
         {isGuestMode && (
@@ -622,6 +658,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.round,
+    ...Shadows.medium,
+  },
+  sosButton: {
+    position: "absolute",
+    top: 120,
+    right: 20,
+    zIndex: 10,
+    width: 50,
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#E03131",
     borderRadius: BorderRadius.round,
     ...Shadows.medium,
   },
@@ -1012,5 +1061,40 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     marginBottom: Spacing.sm,
+  },
+
+  // Achievements Button
+  achievementsButton: {
+    marginHorizontal: 20,
+    marginTop: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
+  },
+  achievementsGradient: {
+    padding: 20,
+  },
+  achievementsContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  achievementsText: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  achievementsTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFF',
+    marginBottom: 4,
+  },
+  achievementsSubtitle: {
+    fontSize: 14,
+    color: '#FFF',
+    opacity: 0.9,
   },
 });

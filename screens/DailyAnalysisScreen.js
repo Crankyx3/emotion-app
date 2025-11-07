@@ -18,18 +18,16 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { getAiResponse } from "../openaiService";
 import {
-  doc,
-  updateDoc,
   collection,
   addDoc,
+  Timestamp,
   query,
   where,
   getDocs,
-  Timestamp,
-  orderBy,
-  limit,
+  updateDoc,
 } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
+import { getTodaysLocalEntry, saveEntryLocally, getLocalEntryById, updateLocalEntry } from "../services/localStorageService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { usePremium } from "../components/PremiumProvider";
 import { useAuth } from "../components/AuthProvider";
@@ -98,88 +96,38 @@ export default function DailyAnalysisScreen({ route, navigation }) {
       return;
     }
 
-    try{
-      // Hole heutiges Datum (Start des Tages)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+    try {
+      const userId = auth.currentUser.uid;
 
-      // Hole morgiges Datum (Ende des Tages)
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
+      // 🔒 DATENSCHUTZ: Lade lokalen Eintrag (enthält sensible Daten)
+      const localEntry = await getTodaysLocalEntry(userId);
 
-      // Erst nach userId filtern, dann clientseitig nach Datum
-      const q = query(
-        collection(db, "entries"),
-        where("userId", "==", auth.currentUser.uid)
-      );
+      if (localEntry) {
+        console.log("📝 Lokaler Eintrag heute gefunden");
 
-      const snapshot = await getDocs(q);
+        // Setze Werte aus lokalem Eintrag
+        if (localEntry.feelScore != null) setFeelScore(localEntry.feelScore);
+        if (localEntry.emotion) setEmotion(localEntry.emotion);
+        if (localEntry.text) setText(localEntry.text);
+        if (localEntry.theme) setTheme(localEntry.theme);
 
-      console.log(`📊 Gefunden: ${snapshot.size} Einträge für User`);
+        setTodayEntry(localEntry);
 
-      // Clientseitig nach heutigem Datum filtern
-      const todayAnalyses = snapshot.docs.filter((doc) => {
-        const data = doc.data();
-        if (!data.analysisDate) return false;
-        const analysisDate = data.analysisDate.toDate();
-        const isToday = analysisDate >= today && analysisDate < tomorrow;
-        if (isToday) console.log("📅 Analyse heute gefunden:", data);
-        return isToday;
-      });
-
-      // Suche nach heutigem Eintrag (mit createdAt heute)
-      const todayEntries = snapshot.docs.filter((doc) => {
-        const data = doc.data();
-        if (!data.createdAt) return false;
-        const createdDate = data.createdAt.toDate();
-        const isToday = createdDate >= today && createdDate < tomorrow;
-        if (isToday) {
-          console.log("📝 Eintrag heute gefunden:", {
-            emotion: data.emotion,
-            feelScore: data.feelScore,
-            hasAnalysis: !!data.analysis,
-            hasAnalysisDate: !!data.analysisDate,
-          });
+        // Prüfe ob bereits eine Analyse vorhanden ist
+        if (localEntry.analysis) {
+          // Analyse existiert bereits lokal
+          setAiText(localEntry.analysis);
+          setAnalysisValid(true);
+          setCanAnalyze(false);
+          setTodayAnalysis(localEntry);
+          console.log("✅ Analyse bereits vorhanden (lokal)");
+        } else {
+          // Eintrag vorhanden, aber noch keine Analyse
+          setCanAnalyze(true);
+          console.log("✅ Eintrag vorhanden, Analyse verfügbar");
         }
-        return isToday;
-      });
-
-      console.log(`✅ Heute: ${todayAnalyses.length} Analysen, ${todayEntries.length} Einträge`);
-
-      if (todayAnalyses.length > 0) {
-        // Heute wurde bereits analysiert
-        const data = todayAnalyses[0].data();
-        setTodayAnalysis(data);
-        setTodayEntry(data); // Eintrag existiert
-        setAiText(data.analysis);
-        setAnalysisValid(true);
-        setCanAnalyze(false);
-
-        // Lade alle Werte aus Firestore
-        if (data.feelScore != null) setFeelScore(data.feelScore);
-        if (data.emotion) setEmotion(data.emotion);
-        if (data.text) setText(data.text);
-        if (data.theme) setTheme(data.theme);
-
-        console.log("✅ Heute bereits analysiert");
-      } else if (todayEntries.length > 0) {
-        // Eintrag vorhanden, aber noch keine Analyse
-        const data = todayEntries[0].data();
-        setTodayEntry(data);
-        setCanAnalyze(true);
-
-        // Lade Werte aus Eintrag
-        if (data.feelScore != null) setFeelScore(data.feelScore);
-        if (data.emotion) setEmotion(data.emotion);
-        if (data.text) setText(data.text);
-        if (data.theme) setTheme(data.theme);
-
-        console.log("✅ Eintrag vorhanden, Analyse verfügbar", {
-          canAnalyze: true,
-          todayEntry: !!data
-        });
       } else {
-        // Weder Eintrag noch Analyse vorhanden
+        // Kein lokaler Eintrag vorhanden
         setCanAnalyze(false);
         setTodayEntry(null);
         console.log("❌ Kein Eintrag heute gefunden");
@@ -377,54 +325,54 @@ Die Vorschläge sollen sofort umsetzbar sein (5-15 Minuten) und zur aktuellen Em
         setActionSuggestions([]);
       }
 
+      // Entferne Markdown-Formatierungen (###, **, etc.)
+      cleanedText = cleanedText
+        .replace(/###\s*/g, '') // Entferne ###
+        .replace(/##\s*/g, '')  // Entferne ##
+        .replace(/\*\*(.*?)\*\*/g, '$1') // Entferne **bold**
+        .replace(/\*(.*?)\*/g, '$1')     // Entferne *italic*
+        .trim();
+
       setAiText(cleanedText);
       // Prüfung, ob die Antwort plausibel ist (kein Fehler-Text)
       const ok = typeof reply === "string" && reply.trim().length > 20 && !/fehler/i.test(reply);
       setAnalysisValid(ok);
 
-      // Speichere mit analysisDate für das Daily Limit
-      const analysisDate = Timestamp.now();
+      const userId = auth.currentUser?.uid;
+      const now = new Date();
 
-      // Nur wenn Werte gültig sind, Query ausführen
-      const q = query(
-        collection(db, "entries"),
-        where("feelScore", "==", feelScore),
-        where("theme", "==", theme)
-      );
+      // 🔒 DATENSCHUTZ: Hole heutigen lokalen Eintrag
+      const localEntry = await getTodaysLocalEntry(userId);
 
-      const snap = await getDocs(q);
-
-      if (!snap.empty) {
-        const entryDoc = snap.docs[0].ref;
-        await updateDoc(entryDoc, {
-          analysis: reply,
-          analysisDate: analysisDate
+      if (localEntry) {
+        // Update bestehender lokaler Eintrag mit Analyse
+        const updatedEntry = await updateLocalEntry(userId, localEntry.localId, {
+          analysis: reply, // ✅ NUR LOKAL
+          analysisDate: now.toISOString(),
         });
-        console.log("✅ Analyse in Firestore gespeichert.");
+
+        if (updatedEntry) {
+          console.log("✅ Analyse lokal gespeichert");
+
+          // Nur Metadaten in Firestore (für Daily-Limit-Prüfung)
+          await addDoc(collection(db, "entries"), {
+            userId: userId,
+            emotion: emotion,
+            feelScore: feelScore,
+            analysisDate: Timestamp.now(),
+            createdAt: Timestamp.fromDate(new Date(localEntry.createdAt)),
+            hasLocalData: true,
+            // KEIN text, KEINE analysis - Datenschutz!
+          });
+          console.log("✅ Analyse-Metadaten in Cloud gespeichert");
+
+          // Markiere als heute bereits verwendet
+          setCanAnalyze(false);
+          setTodayAnalysis(updatedEntry);
+        }
       } else {
-        await addDoc(collection(db, "entries"), {
-          userId: auth.currentUser?.uid,
-          emotion,
-          feelScore,
-          theme,
-          text,
-          analysis: reply,
-          analysisDate: analysisDate,
-          createdAt: Timestamp.now(),
-        });
-        console.log("📄 Neuer Eintrag mit Analyse erstellt.");
+        console.error("❌ Kein lokaler Eintrag gefunden - kann Analyse nicht speichern");
       }
-
-      // Markiere als heute bereits verwendet
-      setCanAnalyze(false);
-      setTodayAnalysis({
-        emotion,
-        feelScore,
-        theme,
-        text,
-        analysis: reply,
-        analysisDate: analysisDate.toDate(),
-      });
 
     } catch (error) {
       setAiText("Fehler bei der Analyse 😕");
@@ -538,8 +486,8 @@ Die Vorschläge sollen sofort umsetzbar sein (5-15 Minuten) und zur aktuellen Em
           {/* Score-Kreis */}
           <Animated.View style={[styles.circleWrapper, { transform: [{ scale: pulseAnim }] }]}>
             <AnimatedCircularProgress
-              size={220}
-              width={18}
+              size={180}
+              width={14}
               fill={(displayedScore / 99) * 100}
               tintColor="#007aff"
               backgroundColor="#eef3fb"
@@ -654,33 +602,67 @@ Die Vorschläge sollen sofort umsetzbar sein (5-15 Minuten) und zur aktuellen Em
 
           {aiText && (
             <View style={styles.resultCard}>
-              <View style={styles.resultHeader}>
-                <Ionicons name="bulb" size={24} color="#fbbc05" />
-                <Text style={styles.resultTitle}>Deine persönliche Analyse</Text>
-              </View>
+              {/* Gradient Header */}
+              <LinearGradient
+                colors={['#667eea', '#764ba2']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.analysisGradientHeader}
+              >
+                <Ionicons name="sparkles" size={28} color="#fff" />
+                <Text style={styles.analysisHeaderTitle}>Deine KI-Analyse</Text>
+              </LinearGradient>
 
-              {/* Absätze mit Whitespace und fetten Überschriften */}
+              {/* Absätze mit Icons und unterschiedlichen Farben */}
               {aiText.split('\n\n').filter(para => para.trim()).map((paragraph, index) => {
                 const trimmedPara = paragraph.trim();
-                // Prüfe ob der Absatz mit "Überschrift:" beginnt
                 const headingMatch = trimmedPara.match(/^([^:]+):\s*(.*)$/s);
 
                 if (headingMatch) {
                   const heading = headingMatch[1];
                   const content = headingMatch[2];
+
+                  // Bestimme Icon und Farbe basierend auf Überschrift
+                  let icon = "information-circle";
+                  let iconColor = "#007AFF";
+                  let borderColor = "#007AFF";
+                  let bgColor = "#F0F7FF";
+
+                  if (heading.toLowerCase().includes("emotional") || heading.toLowerCase().includes("gefühl")) {
+                    icon = "heart";
+                    iconColor = "#FF6B9D";
+                    borderColor = "#FF6B9D";
+                    bgColor = "#FFF0F6";
+                  } else if (heading.toLowerCase().includes("psycholog")) {
+                    icon = "school";
+                    iconColor = "#667eea";
+                    borderColor = "#667eea";
+                    bgColor = "#F5F7FF";
+                  } else if (heading.toLowerCase().includes("perspektiv")) {
+                    icon = "eye";
+                    iconColor = "#34C759";
+                    borderColor = "#34C759";
+                    bgColor = "#F0FFF4";
+                  }
+
                   return (
-                    <View key={index} style={styles.paragraphContainer}>
-                      <Text style={styles.resultText}>
-                        <Text style={styles.headingText}>{heading}:</Text>
-                        {' ' + content}
-                      </Text>
+                    <View key={index} style={[styles.analysisSectionCard, { backgroundColor: bgColor, borderLeftColor: borderColor }]}>
+                      <View style={styles.analysisSectionHeader}>
+                        <View style={[styles.analysisSectionIconBg, { backgroundColor: iconColor + '20' }]}>
+                          <Ionicons name={icon} size={20} color={iconColor} />
+                        </View>
+                        <Text style={[styles.analysisSectionTitle, { color: iconColor }]}>
+                          {heading}
+                        </Text>
+                      </View>
+                      <Text style={styles.analysisSectionContent}>{content}</Text>
                     </View>
                   );
                 }
 
                 return (
-                  <View key={index} style={styles.paragraphContainer}>
-                    <Text style={styles.resultText}>{trimmedPara}</Text>
+                  <View key={index} style={styles.analysisSectionCard}>
+                    <Text style={styles.analysisSectionContent}>{trimmedPara}</Text>
                   </View>
                 );
               })}
@@ -694,71 +676,86 @@ Die Vorschläge sollen sofort umsetzbar sein (5-15 Minuten) und zur aktuellen Em
                 </View>
               )}
 
-              {/* Handlungsvorschläge */}
+              {/* Handlungsvorschläge mit verbessertem Design */}
               {actionSuggestions.length > 0 && (
                 <View style={styles.suggestionsSection}>
-                  <View style={styles.suggestionsHeader}>
-                    <Ionicons name="fitness" size={22} color="#007AFF" />
-                    <Text style={styles.suggestionsTitle}>💪 Was du jetzt tun kannst</Text>
-                  </View>
+                  <LinearGradient
+                    colors={['#FF9500', '#FF6B00']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.suggestionsGradientHeader}
+                  >
+                    <Ionicons name="rocket" size={24} color="#fff" />
+                    <Text style={styles.suggestionsGradientTitle}>Handlungsvorschläge</Text>
+                  </LinearGradient>
+
                   <Text style={styles.suggestionsSubtitle}>
-                    Probier eine dieser Strategien aus:
+                    Wähle eine Strategie, die zu dir passt:
                   </Text>
 
-                  {actionSuggestions.map((suggestion, index) => (
-                    <View key={index} style={styles.suggestionCard}>
-                      <View style={styles.suggestionNumber}>
-                        <Text style={styles.suggestionNumberText}>{index + 1}</Text>
-                      </View>
-                      <View style={styles.suggestionContent}>
-                        <Text style={styles.suggestionTitle}>{suggestion.title}</Text>
-                        <Text style={styles.suggestionAction}>{suggestion.action}</Text>
+                  {actionSuggestions.map((suggestion, index) => {
+                    const colors = [
+                      { bg: '#E8F5E9', border: '#34C759', icon: '#34C759' },
+                      { bg: '#FFF3E0', border: '#FF9500', icon: '#FF9500' },
+                      { bg: '#F3E5F5', border: '#9C27B0', icon: '#9C27B0' },
+                    ];
+                    const color = colors[index % 3];
 
-                        {/* Feedback Buttons */}
-                        <View style={styles.feedbackButtons}>
-                          <TouchableOpacity
-                            style={[
-                              styles.feedbackButton,
-                              suggestionFeedback[index] === "helpful" && styles.feedbackButtonActive
-                            ]}
-                            onPress={() => handleSuggestionFeedback(index, "helpful")}
-                          >
-                            <Ionicons
-                              name="checkmark-circle"
-                              size={18}
-                              color={suggestionFeedback[index] === "helpful" ? "#37B24D" : "#8E8E93"}
-                            />
-                            <Text style={[
-                              styles.feedbackButtonText,
-                              suggestionFeedback[index] === "helpful" && styles.feedbackButtonTextActive
-                            ]}>
-                              Hat geholfen
-                            </Text>
-                          </TouchableOpacity>
+                    return (
+                      <View key={index} style={[styles.suggestionCard, { backgroundColor: color.bg, borderLeftColor: color.border }]}>
+                        <View style={[styles.suggestionNumber, { backgroundColor: color.icon }]}>
+                          <Text style={styles.suggestionNumberText}>{index + 1}</Text>
+                        </View>
+                        <View style={styles.suggestionContent}>
+                          <Text style={[styles.suggestionTitle, { color: color.icon }]}>{suggestion.title}</Text>
+                          <Text style={styles.suggestionAction}>{suggestion.action}</Text>
 
-                          <TouchableOpacity
-                            style={[
-                              styles.feedbackButton,
-                              suggestionFeedback[index] === "not_helpful" && styles.feedbackButtonActive
-                            ]}
-                            onPress={() => handleSuggestionFeedback(index, "not_helpful")}
-                          >
-                            <Ionicons
-                              name="close-circle"
-                              size={18}
-                              color={suggestionFeedback[index] === "not_helpful" ? "#E03131" : "#8E8E93"}
-                            />
-                            <Text style={[
-                              styles.feedbackButtonText,
-                              suggestionFeedback[index] === "not_helpful" && styles.feedbackButtonTextActive
-                            ]}>
-                              Nicht hilfreich
-                            </Text>
-                          </TouchableOpacity>
+                          {/* Feedback Buttons */}
+                          <View style={styles.feedbackButtons}>
+                            <TouchableOpacity
+                              style={[
+                                styles.feedbackButton,
+                                suggestionFeedback[index] === "helpful" && styles.feedbackButtonActive
+                              ]}
+                              onPress={() => handleSuggestionFeedback(index, "helpful")}
+                            >
+                              <Ionicons
+                                name="thumbs-up"
+                                size={16}
+                                color={suggestionFeedback[index] === "helpful" ? "#37B24D" : "#8E8E93"}
+                              />
+                              <Text style={[
+                                styles.feedbackButtonText,
+                                suggestionFeedback[index] === "helpful" && styles.feedbackButtonTextActive
+                              ]}>
+                                Hilfreich
+                              </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              style={[
+                                styles.feedbackButton,
+                                suggestionFeedback[index] === "not_helpful" && styles.feedbackButtonActive
+                              ]}
+                              onPress={() => handleSuggestionFeedback(index, "not_helpful")}
+                            >
+                              <Ionicons
+                                name="thumbs-down"
+                                size={16}
+                                color={suggestionFeedback[index] === "not_helpful" ? "#E03131" : "#8E8E93"}
+                              />
+                              <Text style={[
+                                styles.feedbackButtonText,
+                                suggestionFeedback[index] === "not_helpful" && styles.feedbackButtonTextActive
+                              ]}>
+                                Nicht hilfreich
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
                         </View>
                       </View>
-                    </View>
-                  ))}
+                    );
+                  })}
                 </View>
               )}
             </View>
@@ -949,17 +946,19 @@ const styles = StyleSheet.create({
     color: "#D32F2F",
   },
   circleWrapper: {
-    marginVertical: 30,
+    marginVertical: 24,
   },
   scoreNumber: {
-    fontSize: 64,
+    fontSize: 48,
     fontWeight: "800",
     color: "#007aff",
+    letterSpacing: -1,
   },
   scoreLabel: {
-    fontSize: 16,
+    fontSize: 14,
     color: "#8E8E93",
-    marginTop: 4,
+    marginTop: 2,
+    fontWeight: "500",
   },
   emotionBadge: {
     backgroundColor: "#fff",
@@ -1031,15 +1030,68 @@ const styles = StyleSheet.create({
   },
   resultCard: {
     backgroundColor: "#fff",
-    borderRadius: 18,
-    padding: 24,
+    borderRadius: 20,
     width: "100%",
     shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
     marginTop: 20,
+    overflow: 'hidden',
   },
+  analysisGradientHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    marginBottom: 8,
+  },
+  analysisHeaderTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#fff",
+    marginLeft: 12,
+    letterSpacing: 0.5,
+  },
+  analysisSectionCard: {
+    backgroundColor: "#F7F9FC",
+    borderRadius: 16,
+    padding: 18,
+    marginVertical: 10,
+    width: "100%",
+    borderLeftWidth: 4,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  analysisSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  analysisSectionIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+  },
+  analysisSectionTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+  analysisSectionContent: {
+    fontSize: 15,
+    lineHeight: 24,
+    color: "#2C3E50",
+    letterSpacing: 0.2,
+  },
+  // Alte Styles als Fallback behalten
   resultHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -1083,10 +1135,23 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   suggestionsSection: {
-    marginTop: 24,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: "#E5E5EA",
+    marginTop: 20,
+    width: "100%",
+  },
+  suggestionsGradientHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    marginBottom: 12,
+    borderRadius: 16,
+  },
+  suggestionsGradientTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#fff",
+    marginLeft: 10,
+    letterSpacing: 0.5,
   },
   suggestionsHeader: {
     flexDirection: "row",
@@ -1108,11 +1173,16 @@ const styles = StyleSheet.create({
   suggestionCard: {
     flexDirection: "row",
     backgroundColor: "#F7F9FC",
-    borderRadius: 12,
-    padding: 14,
+    borderRadius: 16,
+    padding: 16,
     marginBottom: 12,
-    borderLeftWidth: 3,
-    borderLeftColor: "#007AFF",
+    width: "100%",
+    borderLeftWidth: 4,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   suggestionNumber: {
     width: 32,
@@ -1132,44 +1202,46 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   suggestionTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "700",
-    color: "#1C1C1E",
-    marginBottom: 4,
+    marginBottom: 6,
   },
   suggestionAction: {
     fontSize: 14,
     color: "#3C3C43",
-    lineHeight: 20,
+    lineHeight: 22,
     marginBottom: 12,
   },
   feedbackButtons: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 8,
+    marginTop: 10,
+    gap: 10,
   },
   feedbackButton: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: "#F2F2F7",
-    marginHorizontal: 4,
+    borderRadius: 10,
+    backgroundColor: "#fff",
+    borderWidth: 1.5,
+    borderColor: "#E5E5EA",
   },
   feedbackButtonActive: {
     backgroundColor: "#E8F5E9",
+    borderColor: "#34C759",
   },
   feedbackButtonText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "600",
     color: "#8E8E93",
-    marginLeft: 4,
+    marginLeft: 6,
   },
   feedbackButtonTextActive: {
-    color: "#2E7D32",
+    color: "#34C759",
   },
   // Krisen-Erkennung
   crisisCard: {

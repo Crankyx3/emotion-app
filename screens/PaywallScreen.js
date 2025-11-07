@@ -8,9 +8,10 @@ import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../theme';
 import { usePremium } from '../components/PremiumProvider';
 
 export default function PaywallScreen({ navigation }) {
-  const { purchasePremium, isTrialActive, trialDaysLeft } = usePremium();
+  const { purchasePremium, restorePurchases, isTrialActive, trialDaysLeft } = usePremium();
   const [selectedPlan, setSelectedPlan] = useState('yearly'); // 'monthly' oder 'yearly'
   const [purchasing, setPurchasing] = useState(false);
+  const [restoring, setRestoring] = useState(false);
 
   const plans = {
     monthly: {
@@ -211,12 +212,39 @@ export default function PaywallScreen({ navigation }) {
 
           <TouchableOpacity
             style={styles.restoreButton}
-            onPress={() => {
-              // TODO: Implement restore
-              Alert.alert('Hinweis', 'Käufe wiederherstellen ist noch nicht implementiert.');
+            disabled={restoring}
+            onPress={async () => {
+              setRestoring(true);
+              try {
+                const result = await restorePurchases();
+
+                if (result.success && result.restored) {
+                  Alert.alert(
+                    'Erfolgreich! ✅',
+                    'Deine Käufe wurden wiederhergestellt.',
+                    [{ text: 'OK', onPress: () => navigation.goBack() }]
+                  );
+                } else if (result.success && result.restored === false) {
+                  Alert.alert(
+                    'Keine Käufe gefunden',
+                    'Es wurden keine früheren Käufe auf diesem Konto gefunden.'
+                  );
+                } else {
+                  Alert.alert(
+                    'Fehler',
+                    result.error || 'Käufe konnten nicht wiederhergestellt werden.'
+                  );
+                }
+              } catch (error) {
+                Alert.alert('Fehler', 'Ein Fehler ist aufgetreten.');
+              } finally {
+                setRestoring(false);
+              }
             }}
           >
-            <Text style={styles.restoreText}>Käufe wiederherstellen</Text>
+            <Text style={styles.restoreText}>
+              {restoring ? 'Wiederherstellen...' : 'Käufe wiederherstellen'}
+            </Text>
           </TouchableOpacity>
         </View>
 

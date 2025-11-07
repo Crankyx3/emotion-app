@@ -11,7 +11,6 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { MotiView } from "moti";
 import ScreenHeader from "../components/ScreenHeader";
 import { usePremium } from "../components/PremiumProvider";
 
@@ -263,7 +262,7 @@ export default function MeditationScreen({ navigation }) {
           <Text style={styles.sectionSubtitle}>2-5 Minuten für mehr Achtsamkeit</Text>
 
           {guidedMeditations.map((meditation, index) => (
-            <MotiView
+            <View
               key={meditation.id}
               from={{ opacity: 0, translateY: 20 }}
               animate={{ opacity: 1, translateY: 0 }}
@@ -284,7 +283,7 @@ export default function MeditationScreen({ navigation }) {
                 </View>
                 <Ionicons name="play-circle" size={32} color={meditation.color} />
               </TouchableOpacity>
-            </MotiView>
+            </View>
           ))}
         </View>
 
@@ -294,7 +293,7 @@ export default function MeditationScreen({ navigation }) {
           <Text style={styles.sectionSubtitle}>Bei Stress und Angst</Text>
 
           {breathingExercises.map((exercise, index) => (
-            <MotiView
+            <View
               key={exercise.id}
               from={{ opacity: 0, translateY: 20 }}
               animate={{ opacity: 1, translateY: 0 }}
@@ -314,12 +313,12 @@ export default function MeditationScreen({ navigation }) {
                 </View>
                 <Ionicons name="play-circle" size={32} color={exercise.color} />
               </TouchableOpacity>
-            </MotiView>
+            </View>
           ))}
         </View>
 
         {/* Tips Card */}
-        <MotiView
+        <View
           from={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 800, type: "timing", duration: 600 }}
@@ -330,7 +329,7 @@ export default function MeditationScreen({ navigation }) {
             Tipp: Übe täglich 5-10 Minuten Meditation für beste Ergebnisse. Finde einen ruhigen
             Ort und schalte Ablenkungen aus.
           </Text>
-        </MotiView>
+        </View>
       </ScrollView>
 
       {/* Meditation/Breathing Modal */}
@@ -358,7 +357,7 @@ export default function MeditationScreen({ navigation }) {
             {/* For breathing exercises */}
             {selectedMeditation?.pattern && (
               <View style={styles.breathingContainer}>
-                <MotiView
+                <View
                   from={{ scale: 0.8 }}
                   animate={{ scale: breathPhase.includes("Einatmen") ? 1.3 : 0.8 }}
                   transition={{ type: "timing", duration: timeRemaining * 1000, loop: false }}

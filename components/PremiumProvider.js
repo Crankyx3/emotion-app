@@ -2,7 +2,9 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { auth } from '../firebaseconfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Application from 'expo-application';
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
+import Purchases from 'react-native-purchases';
+import REVENUECAT_CONFIG from '../revenuecat.config';
 
 const PremiumContext = createContext();
 
@@ -40,6 +42,12 @@ export const PremiumProvider = ({ children }) => {
   const [isTrialActive, setIsTrialActive] = useState(false);
   const [trialDaysLeft, setTrialDaysLeft] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isRevenueCatConfigured, setIsRevenueCatConfigured] = useState(false);
+
+  // RevenueCat initialisieren
+  useEffect(() => {
+    initializeRevenueCat();
+  }, []);
 
   useEffect(() => {
     // Check trial beim App-Start (auch ohne Login)
@@ -58,6 +66,55 @@ export const PremiumProvider = ({ children }) => {
 
     return () => unsubscribe();
   }, []);
+
+  const initializeRevenueCat = async () => {
+    try {
+      // Prüfe ob API Keys konfiguriert sind
+      const apiKey = Platform.OS === 'ios'
+        ? REVENUECAT_CONFIG.iosApiKey
+        : REVENUECAT_CONFIG.androidApiKey;
+
+      if (!apiKey || apiKey.includes('YOUR_')) {
+        console.warn('⚠️ RevenueCat API Key nicht konfiguriert. Siehe revenuecat.config.js');
+        setIsRevenueCatConfigured(false);
+        return;
+      }
+
+      // RevenueCat konfigurieren
+      Purchases.configure({ apiKey });
+
+      console.log('✅ RevenueCat initialisiert');
+      setIsRevenueCatConfigured(true);
+
+      // Listener für Käufe
+      Purchases.addCustomerInfoUpdateListener((customerInfo) => {
+        updatePremiumStatusFromRevenueCat(customerInfo);
+      });
+
+    } catch (error) {
+      console.error('❌ RevenueCat Initialisierung fehlgeschlagen:', error);
+      setIsRevenueCatConfigured(false);
+    }
+  };
+
+  const updatePremiumStatusFromRevenueCat = (customerInfo) => {
+    try {
+      // Prüfe ob User aktives Entitlement hat
+      const hasActiveEntitlement =
+        typeof customerInfo.entitlements.active['premium'] !== 'undefined';
+
+      if (hasActiveEntitlement) {
+        console.log('✅ Premium Entitlement aktiv');
+        setIsPremium(true);
+        setIsTrialActive(false);
+      } else {
+        console.log('❌ Kein aktives Premium Entitlement');
+        setIsPremium(false);
+      }
+    } catch (error) {
+      console.error('Fehler beim Prüfen der Entitlements:', error);
+    }
+  };
 
   // Prüfe Trial-Status (Device-gebunden)
   const checkTrialStatus = async () => {
@@ -111,11 +168,29 @@ export const PremiumProvider = ({ children }) => {
       const userId = auth.currentUser.uid;
       console.log('🔍 Checking premium status for user:', userId);
 
-      // Prüfe Premium-Status (Account-gebunden)
+      // Falls RevenueCat konfiguriert ist, prüfe dort
+      if (isRevenueCatConfigured) {
+        try {
+          // User ID mit RevenueCat verknüpfen
+          await Purchases.logIn(userId);
+
+          // Customer Info abrufen
+          const customerInfo = await Purchases.getCustomerInfo();
+          updatePremiumStatusFromRevenueCat(customerInfo);
+
+          setLoading(false);
+          return;
+        } catch (error) {
+          console.error('RevenueCat Fehler:', error);
+          // Fallback zu AsyncStorage
+        }
+      }
+
+      // Fallback: Prüfe AsyncStorage (für Entwicklung ohne RevenueCat)
       const premiumStatus = await AsyncStorage.getItem(`isPremium_${userId}`);
 
       if (premiumStatus === 'true') {
-        console.log('✅ User has Premium');
+        console.log('✅ User has Premium (AsyncStorage)');
         setIsPremium(true);
         setIsTrialActive(false);
         setTrialDaysLeft(0);
@@ -129,15 +204,79 @@ export const PremiumProvider = ({ children }) => {
     }
   };
 
-  // Simuliere Premium-Kauf (später durch echte Zahlungs-API ersetzen)
+  // Premium kaufen mit RevenueCat
   const purchasePremium = async (plan) => {
     try {
+      if (!auth.currentUser) {
+        return { success: false, error: 'Bitte zuerst einloggen' };
+      }
+
       const userId = auth.currentUser.uid;
 
-      // TODO: Später echte Zahlung über RevenueCat/Stripe
-      console.log(`User would purchase: ${plan}`);
+      // Falls RevenueCat konfiguriert ist, nutze echten Purchase Flow
+      if (isRevenueCatConfigured) {
+        try {
+          // Hole verfügbare Offerings
+          const offerings = await Purchases.getOfferings();
 
-      // Für jetzt: Setze Premium-Status
+          if (offerings.current === null || offerings.current.availablePackages.length === 0) {
+            throw new Error('Keine Packages verfügbar');
+          }
+
+          // Finde das richtige Package (monthly oder yearly)
+          const selectedPackage = offerings.current.availablePackages.find(
+            (pkg) => {
+              if (plan === 'monthly') {
+                return pkg.identifier === '$rc_monthly' || pkg.product.identifier === REVENUECAT_CONFIG.products.monthly;
+              } else {
+                return pkg.identifier === '$rc_annual' || pkg.product.identifier === REVENUECAT_CONFIG.products.yearly;
+              }
+            }
+          );
+
+          if (!selectedPackage) {
+            throw new Error(`Package für Plan "${plan}" nicht gefunden`);
+          }
+
+          console.log(`🛒 Kaufe Package: ${selectedPackage.identifier}`);
+
+          // Führe Purchase durch
+          const purchaseResult = await Purchases.purchasePackage(selectedPackage);
+
+          // Prüfe ob erfolgreich
+          const hasActiveEntitlement =
+            typeof purchaseResult.customerInfo.entitlements.active['premium'] !== 'undefined';
+
+          if (hasActiveEntitlement) {
+            console.log('✅ Kauf erfolgreich!');
+            setIsPremium(true);
+            setIsTrialActive(false);
+
+            // Speichere auch in AsyncStorage als Backup
+            await AsyncStorage.setItem(`isPremium_${userId}`, 'true');
+            await AsyncStorage.setItem(`premiumPlan_${userId}`, plan);
+            await AsyncStorage.setItem(`premiumStartDate_${userId}`, new Date().toISOString());
+
+            return { success: true };
+          } else {
+            throw new Error('Entitlement nicht aktiv nach Kauf');
+          }
+
+        } catch (error) {
+          // User hat abgebrochen?
+          if (error.userCancelled) {
+            console.log('❌ Kauf abgebrochen');
+            return { success: false, cancelled: true };
+          }
+
+          console.error('RevenueCat Purchase Fehler:', error);
+          throw error;
+        }
+      }
+
+      // Fallback: Simulierter Kauf (für Entwicklung ohne RevenueCat)
+      console.log(`⚠️ Simuliere Kauf: ${plan} (RevenueCat nicht konfiguriert)`);
+
       await AsyncStorage.setItem(`isPremium_${userId}`, 'true');
       await AsyncStorage.setItem(`premiumPlan_${userId}`, plan);
       await AsyncStorage.setItem(`premiumStartDate_${userId}`, new Date().toISOString());
@@ -145,22 +284,61 @@ export const PremiumProvider = ({ children }) => {
       setIsPremium(true);
       setIsTrialActive(false);
 
-      return { success: true };
+      return { success: true, simulated: true };
+
     } catch (error) {
       console.error('Error purchasing premium:', error);
-      return { success: false, error };
+      return { success: false, error: error.message || 'Unbekannter Fehler' };
     }
   };
 
   // Restore Purchases
   const restorePurchases = async () => {
     try {
-      // TODO: Später mit RevenueCat implementieren
+      if (!auth.currentUser) {
+        return { success: false, error: 'Bitte zuerst einloggen' };
+      }
+
+      // Falls RevenueCat konfiguriert ist, nutze Restore-Funktion
+      if (isRevenueCatConfigured) {
+        try {
+          console.log('🔄 Stelle Käufe wieder her...');
+
+          // RevenueCat Restore
+          const customerInfo = await Purchases.restorePurchases();
+
+          // Prüfe ob Premium aktiv ist
+          updatePremiumStatusFromRevenueCat(customerInfo);
+
+          const hasActiveEntitlement =
+            typeof customerInfo.entitlements.active['premium'] !== 'undefined';
+
+          if (hasActiveEntitlement) {
+            console.log('✅ Käufe wiederhergestellt!');
+
+            // Speichere auch in AsyncStorage
+            const userId = auth.currentUser.uid;
+            await AsyncStorage.setItem(`isPremium_${userId}`, 'true');
+
+            return { success: true, restored: true };
+          } else {
+            console.log('ℹ️ Keine Premium-Käufe gefunden');
+            return { success: true, restored: false, message: 'Keine Premium-Käufe gefunden' };
+          }
+
+        } catch (error) {
+          console.error('RevenueCat Restore Fehler:', error);
+          throw error;
+        }
+      }
+
+      // Fallback: Prüfe nur den Status
       await checkPremiumStatus();
-      return { success: true };
+      return { success: true, message: 'RevenueCat nicht konfiguriert' };
+
     } catch (error) {
       console.error('Error restoring purchases:', error);
-      return { success: false, error };
+      return { success: false, error: error.message || 'Unbekannter Fehler' };
     }
   };
 

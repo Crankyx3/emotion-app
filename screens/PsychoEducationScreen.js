@@ -10,7 +10,6 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { MotiView } from "moti";
 import ScreenHeader from "../components/ScreenHeader";
 
 const { width } = Dimensions.get("window");
@@ -753,12 +752,7 @@ Starte klein: Setze HEUTE eine kleine Grenze. Du hast das Recht dazu! 🌟`,
           <Text style={styles.sectionSubtitle}>Kurze Artikel zu wichtigen Themen</Text>
 
           {educationCards.map((card, index) => (
-            <MotiView
-              key={card.id}
-              from={{ opacity: 0, translateY: 20 }}
-              animate={{ opacity: 1, translateY: 0 }}
-              transition={{ delay: index * 100, type: "timing", duration: 500 }}
-            >
+            <View key={card.id}>
               <TouchableOpacity
                 style={styles.card}
                 activeOpacity={0.9}
@@ -781,23 +775,18 @@ Starte klein: Setze HEUTE eine kleine Grenze. Du hast das Recht dazu! 🌟`,
                 </View>
                 <Ionicons name="chevron-forward" size={22} color="#ccc" />
               </TouchableOpacity>
-            </MotiView>
+            </View>
           ))}
         </View>
 
         {/* Info Box */}
-        <MotiView
-          from={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 700, type: "timing", duration: 600 }}
-          style={styles.infoBox}
-        >
+        <View style={styles.infoBox}>
           <MaterialCommunityIcons name="information-outline" size={24} color="#007aff" />
           <Text style={styles.infoText}>
             Diese Inhalte basieren auf wissenschaftlichen Erkenntnissen der Psychologie und
             Psychotherapie. Sie ersetzen keine professionelle Beratung oder Therapie.
           </Text>
-        </MotiView>
+        </View>
       </ScrollView>
 
       {/* Article Modal */}

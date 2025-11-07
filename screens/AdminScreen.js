@@ -21,6 +21,8 @@ import {
   updateDoc,
   query,
   orderBy,
+  setDoc,
+  getDoc,
 } from "firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import ScreenHeader from "../components/ScreenHeader";
@@ -46,8 +48,44 @@ export default function AdminScreen({ navigation }) {
       return;
     }
 
-    loadUsers();
+    // Stelle sicher, dass Admin-Flag in Firestore gesetzt ist
+    setupAdminFlag();
   }, []);
+
+  const setupAdminFlag = async () => {
+    try {
+      if (!user?.uid) return;
+
+      const userDocRef = doc(db, "users", user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        // Erstelle User-Dokument mit Admin-Flag
+        await setDoc(userDocRef, {
+          email: user.email,
+          isAdmin: true,
+          createdAt: new Date(),
+        });
+        console.log("✅ Admin-Dokument erstellt");
+      } else if (!userDoc.data().isAdmin) {
+        // Update bestehendes Dokument mit Admin-Flag
+        await updateDoc(userDocRef, {
+          isAdmin: true,
+        });
+        console.log("✅ Admin-Flag hinzugefügt");
+      }
+
+      // Jetzt User laden
+      loadUsers();
+    } catch (error) {
+      console.error("Error setting up admin flag:", error);
+      Alert.alert(
+        "Setup Fehler",
+        "Konnte Admin-Flag nicht setzen. Bitte stelle sicher, dass du als " + ADMIN_EMAIL + " angemeldet bist."
+      );
+      navigation.goBack();
+    }
+  };
 
   const loadUsers = async () => {
     try {
@@ -69,7 +107,11 @@ export default function AdminScreen({ navigation }) {
       setUsers(userList);
     } catch (error) {
       console.error("Error loading users:", error);
-      Alert.alert("Fehler", "Konnte User nicht laden: " + error.message);
+      setUsers([]); // Stelle sicher, dass users ein Array bleibt
+      Alert.alert(
+        "Fehler beim Laden",
+        "Konnte User nicht laden. Bitte stelle sicher, dass die Firebase Rules deployed sind.\n\nFehler: " + error.message
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -280,18 +322,18 @@ export default function AdminScreen({ navigation }) {
         {/* Stats */}
         <View style={styles.statsContainer}>
           <View style={styles.statBox}>
-            <Text style={styles.statNumber}>{users.length}</Text>
+            <Text style={styles.statNumber}>{users?.length || 0}</Text>
             <Text style={styles.statLabel}>Gesamt User</Text>
           </View>
           <View style={styles.statBox}>
             <Text style={styles.statNumber}>
-              {users.filter((u) => u.isPremium).length}
+              {users?.filter((u) => u.isPremium).length || 0}
             </Text>
             <Text style={styles.statLabel}>Premium User</Text>
           </View>
           <View style={styles.statBox}>
             <Text style={styles.statNumber}>
-              {users.filter((u) => !u.isPremium).length}
+              {users?.filter((u) => !u.isPremium).length || 0}
             </Text>
             <Text style={styles.statLabel}>Free User</Text>
           </View>
@@ -300,7 +342,7 @@ export default function AdminScreen({ navigation }) {
         {/* User List */}
         <Text style={styles.sectionTitle}>Alle User</Text>
 
-        {users.length === 0 ? (
+        {!users || users.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="people-outline" size={64} color="#ccc" />
             <Text style={styles.emptyText}>Keine User gefunden</Text>
