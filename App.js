@@ -19,6 +19,7 @@ import PaywallScreen from "./screens/PaywallScreen";
 import LoginScreen from "./screens/LoginScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 import PrivacyPolicyScreen from "./screens/PrivacyPolicyScreen";
+import ImpressumScreen from "./screens/ImpressumScreen";
 import AdminScreen from "./screens/AdminScreen";
 import EmergencyScreen from "./screens/EmergencyScreen";
 import AchievementsScreen from "./screens/AchievementsScreen";
@@ -167,6 +168,7 @@ function RootNavigator() {
             <Stack.Screen name="Paywall" component={PaywallScreen} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+            <Stack.Screen name="Impressum" component={ImpressumScreen} />
             <Stack.Screen name="Admin" component={AdminScreen} />
             <Stack.Screen name="Achievements" component={AchievementsScreen} />
             <Stack.Screen name="Emergency" component={EmergencyScreen} />
