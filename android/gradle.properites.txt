@@ -1,4 +1,0 @@
-MYAPP_UPLOAD_STORE_FILE=ki-stimmungshelfer-upload.keystore
-MYAPP_UPLOAD_KEY_ALIAS=ki-stimmungshelfer
-MYAPP_UPLOAD_STORE_PASSWORD=Anouki234
-MYAPP_UPLOAD_KEY_PASSWORD=Anouki234
