@@ -22,6 +22,9 @@ web-build/
 *.mobileprovision
 *.hprof
 
+# Gradle properties with sensitive data (keystore passwords)
+android/gradle.properties
+
 # Metro
 .metro-health-check*
 
