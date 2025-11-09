@@ -397,9 +397,16 @@ Antworte empathisch und duze den Nutzer konsequent.
     }
   };
 
+  // Nur scrollen wenn neue Nachricht hinzugefügt wurde (nicht bei jedem Re-render)
+  const prevMessageCountRef = useRef(0);
   useEffect(() => {
-    // immer ans Ende scrollen, wenn Messages sich ändern
-    scrollRef.current?.scrollToEnd({ animated: true });
+    if (messages.length > prevMessageCountRef.current) {
+      // Kurze Verzögerung für Android, damit Keyboard bereits offen ist
+      setTimeout(() => {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }, Platform.OS === 'android' ? 100 : 0);
+    }
+    prevMessageCountRef.current = messages.length;
   }, [messages]);
 
   return (
@@ -450,14 +457,15 @@ Antworte empathisch und duze den Nutzer konsequent.
 
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
         >
           <ScrollView
             ref={scrollRef}
             contentContainerStyle={styles.chatContainer}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            removeClippedSubviews={Platform.OS === 'android'}
           >
             {messages.map((msg, i) => (
               <View

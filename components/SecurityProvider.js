@@ -24,7 +24,23 @@ export const SecurityProvider = ({ children }) => {
   // Check biometric availability
   useEffect(() => {
     checkBiometricAvailability();
-    loadSecuritySettings();
+  }, []);
+
+  // Load security settings when auth user is available
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        loadSecuritySettings();
+      } else {
+        // Kein User - deaktiviere Security
+        setSecurityEnabled(false);
+        setIsLocked(false);
+        setPin(null);
+        setBiometricEnabled(false);
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   // Lock app when going to background
