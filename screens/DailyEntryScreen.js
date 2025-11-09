@@ -53,12 +53,19 @@ export default function DailyEntryScreen() {
 
   // Smart Input Helper
   const [showInputHelper, setShowInputHelper] = useState(false);
+  const [showGratitudeHelper, setShowGratitudeHelper] = useState(false);
 
-  // Voice Recording
+  // Voice Recording (Main Text)
   const [isRecordingAudio, setIsRecordingAudio] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const recordingInterval = useRef(null);
+
+  // Voice Recording (Gratitude)
+  const [isRecordingGratitude, setIsRecordingGratitude] = useState(false);
+  const [gratitudeRecordingDuration, setGratitudeRecordingDuration] = useState(0);
+  const [isTranscribingGratitude, setIsTranscribingGratitude] = useState(false);
+  const gratitudeRecordingInterval = useRef(null);
 
   const quickPhrases = [
     { category: "Gefühle", phrases: [
@@ -84,10 +91,40 @@ export default function DailyEntryScreen() {
     ]},
   ];
 
+  const quickGratitudePhrases = [
+    { category: "Personen", phrases: [
+      "Meine Familie und Freunde",
+      "Die Unterstützung von...",
+      "Zeit mit...",
+      "Ein nettes Gespräch mit...",
+      "Die Hilfe von...",
+    ]},
+    { category: "Alltag", phrases: [
+      "Ein gemütliches Zuhause",
+      "Gutes Essen heute",
+      "Schönes Wetter",
+      "Ruhe und Entspannung",
+      "Zeit für mich selbst",
+    ]},
+    { category: "Momente", phrases: [
+      "Ein Lächeln heute",
+      "Ein besonderer Moment",
+      "Sonnenschein am Morgen",
+      "Einen Erfolg heute",
+      "Etwas Neues gelernt",
+    ]},
+  ];
+
   const addPhrase = (phrase) => {
     const separator = text.length > 0 && !text.endsWith(" ") ? " " : "";
     setText(text + separator + phrase);
     setShowInputHelper(false);
+  };
+
+  const addGratitudePhrase = (phrase) => {
+    const separator = gratitude.length > 0 && !gratitude.endsWith(" ") ? ", " : "";
+    setGratitude(gratitude + separator + phrase);
+    setShowGratitudeHelper(false);
   };
 
   // Voice Recording Functions
@@ -172,13 +209,101 @@ export default function DailyEntryScreen() {
     }
   };
 
+  // Gratitude Voice Recording Functions
+  const handleStartGratitudeRecording = async () => {
+    try {
+      await startRecording();
+      setIsRecordingGratitude(true);
+      setGratitudeRecordingDuration(0);
+
+      // Update duration every second
+      gratitudeRecordingInterval.current = setInterval(async () => {
+        const duration = await getRecordingDuration();
+        setGratitudeRecordingDuration(Math.floor(duration / 1000));
+      }, 1000);
+    } catch (error) {
+      console.error('Recording error:', error);
+      Alert.alert(
+        'Fehler',
+        'Mikrofonzugriff konnte nicht gestartet werden. Bitte erlaube den Mikrofonzugriff in den Einstellungen.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const handleStopGratitudeRecording = async () => {
+    try {
+      // Clear interval
+      if (gratitudeRecordingInterval.current) {
+        clearInterval(gratitudeRecordingInterval.current);
+        gratitudeRecordingInterval.current = null;
+      }
+
+      const audioUri = await stopRecording();
+      setIsRecordingGratitude(false);
+      setIsTranscribingGratitude(true);
+
+      // Transcribe audio
+      try {
+        const transcription = await transcribeAudioWithRetry(audioUri);
+
+        // Add transcription to gratitude
+        const separator = gratitude.length > 0 && !gratitude.endsWith(" ") ? ", " : "";
+        setGratitude(gratitude + separator + transcription);
+
+        Alert.alert(
+          'Erfolgreich!',
+          'Deine Aufnahme wurde in Text umgewandelt.',
+          [{ text: 'OK' }]
+        );
+      } catch (transcriptionError) {
+        console.error('Transcription error:', transcriptionError);
+        Alert.alert(
+          'Fehler bei der Umwandlung',
+          'Die Spracherkennung ist fehlgeschlagen. Bitte versuche es erneut.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Stop recording error:', error);
+      Alert.alert(
+        'Fehler',
+        'Die Aufnahme konnte nicht gestoppt werden.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsTranscribingGratitude(false);
+    }
+  };
+
+  const handleCancelGratitudeRecording = async () => {
+    try {
+      if (gratitudeRecordingInterval.current) {
+        clearInterval(gratitudeRecordingInterval.current);
+        gratitudeRecordingInterval.current = null;
+      }
+
+      await cancelRecording();
+      setIsRecordingGratitude(false);
+      setGratitudeRecordingDuration(0);
+    } catch (error) {
+      console.error('Cancel recording error:', error);
+    }
+  };
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (recordingInterval.current) {
         clearInterval(recordingInterval.current);
       }
+      if (gratitudeRecordingInterval.current) {
+        clearInterval(gratitudeRecordingInterval.current);
+      }
       if (isRecordingAudio) {
+        cancelRecording();
+      }
+      if (isRecordingGratitude) {
         cancelRecording();
       }
     };
@@ -596,6 +721,64 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
                 numberOfLines={3}
                 textAlignVertical="top"
               />
+              <View style={styles.inputHelperRow}>
+                <Text style={styles.charCount}>{gratitude.length} Zeichen</Text>
+                <View style={styles.inputButtonsRow}>
+                  {/* Voice Recording Button */}
+                  {!isRecordingGratitude && !isTranscribingGratitude && (
+                    <TouchableOpacity
+                      style={[styles.inputHelperButton, styles.voiceButton]}
+                      onPress={handleStartGratitudeRecording}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="mic" size={18} color="#E03131" />
+                      <Text style={[styles.inputHelperText, { color: "#E03131" }]}>Sprechen</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Recording in Progress */}
+                  {isRecordingGratitude && (
+                    <View style={styles.recordingContainer}>
+                      <TouchableOpacity
+                        style={styles.recordingStopButton}
+                        onPress={handleStopGratitudeRecording}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.recordingPulse} />
+                        <Ionicons name="stop-circle" size={24} color="#E03131" />
+                        <Text style={styles.recordingTime}>
+                          {Math.floor(gratitudeRecordingDuration / 60)}:{(gratitudeRecordingDuration % 60).toString().padStart(2, '0')}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.recordingCancelButton}
+                        onPress={handleCancelGratitudeRecording}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="close-circle" size={20} color="#8E8E93" />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {/* Transcribing */}
+                  {isTranscribingGratitude && (
+                    <View style={styles.transcribingContainer}>
+                      <ActivityIndicator size="small" color="#007AFF" />
+                      <Text style={styles.transcribingText}>Wird umgewandelt...</Text>
+                    </View>
+                  )}
+
+                  {/* Quick Input Helper */}
+                  <TouchableOpacity
+                    style={styles.inputHelperButton}
+                    onPress={() => setShowGratitudeHelper(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="bulb" size={18} color="#007AFF" />
+                    <Text style={styles.inputHelperText}>Schnell</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
             </View>
 
             {/* Speichern-Button */}
@@ -674,6 +857,49 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
                       activeOpacity={0.7}
                     >
                       <Ionicons name="add-circle-outline" size={20} color="#007AFF" />
+                      <Text style={styles.phraseText}>{phrase}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Gratitude Quick Input Helper Modal */}
+      <Modal
+        visible={showGratitudeHelper}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowGratitudeHelper(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Ionicons name="heart" size={28} color="#37B24D" />
+              <Text style={styles.modalTitle}>Dankbarkeit - Schnell-Eingaben</Text>
+              <TouchableOpacity onPress={() => setShowGratitudeHelper(false)}>
+                <Ionicons name="close-circle" size={32} color="#8E8E93" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalSubtitle}>
+              Wähle eine Dankbarkeit zum schnellen Eintragen:
+            </Text>
+
+            <ScrollView style={styles.modalScroll}>
+              {quickGratitudePhrases.map((group, idx) => (
+                <View key={idx} style={styles.phraseGroup}>
+                  <Text style={styles.phraseCategory}>{group.category}</Text>
+                  {group.phrases.map((phrase, pIdx) => (
+                    <TouchableOpacity
+                      key={pIdx}
+                      style={styles.phraseButton}
+                      onPress={() => addGratitudePhrase(phrase)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="add-circle-outline" size={20} color="#37B24D" />
                       <Text style={styles.phraseText}>{phrase}</Text>
                     </TouchableOpacity>
                   ))}

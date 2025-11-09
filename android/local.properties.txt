@@ -1,0 +1,1 @@
+sdk.dir=C:\\Users\\finn_\\AppData\\Local\\Android\\Sdk

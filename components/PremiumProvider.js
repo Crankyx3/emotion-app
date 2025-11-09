@@ -274,17 +274,14 @@ export const PremiumProvider = ({ children }) => {
         }
       }
 
-      // Fallback: Simulierter Kauf (für Entwicklung ohne RevenueCat)
-      console.log(`⚠️ Simuliere Kauf: ${plan} (RevenueCat nicht konfiguriert)`);
+      // FEHLER: RevenueCat nicht konfiguriert oder Products nicht verfügbar
+      console.error('❌ RevenueCat nicht konfiguriert oder Products nicht verfügbar!');
+      console.error('Bitte Service Account in RevenueCat einrichten oder Products importieren.');
 
-      await AsyncStorage.setItem(`isPremium_${userId}`, 'true');
-      await AsyncStorage.setItem(`premiumPlan_${userId}`, plan);
-      await AsyncStorage.setItem(`premiumStartDate_${userId}`, new Date().toISOString());
-
-      setIsPremium(true);
-      setIsTrialActive(false);
-
-      return { success: true, simulated: true };
+      return {
+        success: false,
+        error: 'In-App-Käufe sind momentan nicht verfügbar. Bitte versuche es später erneut oder kontaktiere den Support.'
+      };
 
     } catch (error) {
       console.error('Error purchasing premium:', error);

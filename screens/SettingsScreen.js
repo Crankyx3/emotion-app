@@ -1011,6 +1011,21 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
             <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
           </TouchableOpacity>
 
+          {/* Link zum Impressum */}
+          <TouchableOpacity
+            style={styles.privacyLink}
+            onPress={() => navigation.navigate("Impressum")}
+          >
+            <Ionicons name="information-circle-outline" size={24} color="#007AFF" />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.privacyLinkTitle}>Impressum</Text>
+              <Text style={styles.privacyLinkSubtitle}>
+                Angaben gemäß § 5 TMG
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.dangerButton}
             onPress={handleResetData}

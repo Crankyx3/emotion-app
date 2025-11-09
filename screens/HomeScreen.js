@@ -24,15 +24,9 @@ export default function HomeScreen({ navigation }) {
   const [dailyAnalysisDone, setDailyAnalysisDone] = useState(false);
   const [weeklyAnalysisDone, setWeeklyAnalysisDone] = useState(false);
   const [daysUntilWeekly, setDaysUntilWeekly] = useState(0);
-  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
   // Trial Countdown Timer
   const [trialTimeRemaining, setTrialTimeRemaining] = useState(null);
-
-  // Prüfe ob neuer Nutzer und zeige Welcome Modal
-  useEffect(() => {
-    checkFirstTimeUser();
-  }, []);
 
   // Trial Timer: Aktualisiere jede Sekunde
   useEffect(() => {
@@ -51,40 +45,6 @@ export default function HomeScreen({ navigation }) {
 
     return () => clearInterval(interval);
   }, [isTrialActive, isPremium]);
-
-  const checkFirstTimeUser = async () => {
-    try {
-      if (isGuestMode || !auth.currentUser) return;
-
-      const hasSeenWelcome = await AsyncStorage.getItem(`hasSeenWelcome_${auth.currentUser.uid}`);
-
-      if (!hasSeenWelcome) {
-        // Zeige Modal nach kurzer Verzögerung (damit Screen geladen ist)
-        setTimeout(() => {
-          setShowWelcomeModal(true);
-        }, 500);
-      }
-    } catch (error) {
-      console.error('Error checking first time user:', error);
-    }
-  };
-
-  const handleCloseWelcome = async (openGuide = false) => {
-    try {
-      // Markiere als gesehen
-      await AsyncStorage.setItem(`hasSeenWelcome_${auth.currentUser.uid}`, 'true');
-      setShowWelcomeModal(false);
-
-      // Öffne Guide falls gewünscht
-      if (openGuide) {
-        setTimeout(() => {
-          navigation.navigate('AppGuide');
-        }, 300);
-      }
-    } catch (error) {
-      console.error('Error closing welcome:', error);
-    }
-  };
 
   // Aktualisiere Dashboard-Daten wenn Screen fokussiert wird
   useFocusEffect(
@@ -352,78 +312,70 @@ export default function HomeScreen({ navigation }) {
         <Ionicons name="medical" size={28} color="#FFF" />
       </TouchableOpacity>
 
+      {!isGuestMode && (
+        <TouchableOpacity
+          style={styles.achievementsButtonTop}
+          onPress={() => navigation.navigate("Achievements")}
+        >
+          <Ionicons name="trophy" size={28} color="#FFF" />
+        </TouchableOpacity>
+      )}
+
       <ScrollView contentContainerStyle={styles.container}>
         <ScreenHeader title="KI-Stimmungshelfer" subtitle="Dein persönliches Stimmungs-Dashboard" />
 
-        {/* Streak/Welcome Card */}
-        <View style={styles.streakCard}>
-          <View style={styles.streakContent}>
-            {currentStreak > 0 ? (
-              <>
-                <View style={styles.streakMain}>
-                  <Text style={styles.streakEmoji}>🔥</Text>
-                  <View style={styles.streakInfo}>
-                    <Text style={styles.streakNumber}>{currentStreak}</Text>
-                    <Text style={styles.streakLabel}>
-                      {currentStreak === 1 ? "Tag" : "Tage"} Streak
-                    </Text>
-                  </View>
+        {/* Kompakte Info-Leiste: Streak + Premium Status */}
+        <View style={styles.compactInfoRow}>
+          {/* Streak Badge */}
+          {currentStreak > 0 && (
+            <View style={styles.streakBadge}>
+              <Text style={styles.streakBadgeEmoji}>🔥</Text>
+              <Text style={styles.streakBadgeText}>{currentStreak} Tage</Text>
+              {longestStreak > currentStreak && (
+                <View style={styles.recordIndicator}>
+                  <Ionicons name="trophy" size={12} color="#FFB900" />
+                  <Text style={styles.recordText}>{longestStreak}</Text>
                 </View>
-                <View style={styles.streakRight}>
-                  {userName && (
-                    <Text style={styles.greetingText}>Hey {userName}! 👋</Text>
-                  )}
-                  {longestStreak > currentStreak && (
-                    <View style={styles.longestBadge}>
-                      <Ionicons name="trophy" size={14} color="#FFB900" />
-                      <Text style={styles.longestText}>
-                        Rekord: {longestStreak}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </>
-            ) : (
-              <View style={styles.welcomeContent}>
-                <Text style={styles.welcomeEmoji}>👋</Text>
-                <View style={styles.welcomeInfo}>
-                  <Text style={styles.welcomeTitle}>
-                    {userName ? `Hey ${userName}!` : "Willkommen!"}
+              )}
+            </View>
+          )}
+
+          {/* Premium/Trial Status Badge */}
+          {!isGuestMode && (
+            <>
+              {isTrialActive && trialTimeRemaining && !trialTimeRemaining.expired ? (
+                <TouchableOpacity
+                  style={styles.trialBadgeCompact}
+                  onPress={() => navigation.navigate('Paywall')}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="rocket" size={16} color="#996A13" />
+                  <Text style={styles.trialBadgeTextCompact}>
+                    Trial: {trialTimeRemaining.days}d {trialTimeRemaining.hours}h
                   </Text>
-                  <Text style={styles.welcomeSubtitle}>
-                    Erstelle deinen ersten Eintrag um eine Streak zu starten
-                  </Text>
+                </TouchableOpacity>
+              ) : isPremium ? (
+                <View style={styles.premiumBadgeCompact}>
+                  <Ionicons name="checkmark-circle" size={16} color="#34C759" />
+                  <Text style={styles.premiumBadgeTextCompact}>Premium</Text>
                 </View>
-              </View>
-            )}
-          </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.upgradeBadgeCompact}
+                  onPress={() => navigation.navigate('Paywall')}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="diamond" size={16} color="#007AFF" />
+                  <Text style={styles.upgradeBadgeTextCompact}>Upgrade</Text>
+                </TouchableOpacity>
+              )}
+            </>
+          )}
         </View>
 
-        {/* Achievements Button */}
-        {!isGuestMode && (
-          <TouchableOpacity
-            style={styles.achievementsButton}
-            onPress={() => navigation.navigate("Achievements")}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={['#FFB900', '#FF9500']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.achievementsGradient}
-            >
-              <View style={styles.achievementsContent}>
-                <Ionicons name="trophy" size={28} color="#FFF" />
-                <View style={styles.achievementsText}>
-                  <Text style={styles.achievementsTitle}>Deine Erfolge</Text>
-                  <Text style={styles.achievementsSubtitle}>
-                    Sieh dir deine Fortschritte an
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={24} color="#FFF" />
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
+        {/* Begrüßung nur wenn kein Streak */}
+        {currentStreak === 0 && userName && (
+          <Text style={styles.compactGreeting}>Hey {userName}! 👋</Text>
         )}
 
         {/* Guest Mode Banner */}
@@ -453,77 +405,6 @@ export default function HomeScreen({ navigation }) {
             </LinearGradient>
           </View>
         )}
-
-        {/* Premium/Trial Status Card */}
-        {!isGuestMode && isTrialActive && trialTimeRemaining && !trialTimeRemaining.expired ? (
-          <View style={styles.trialCountdownCard}>
-            <LinearGradient
-              colors={['#FFE066', '#FFF9E6']}
-              style={styles.trialCountdownGradient}
-            >
-              <View style={styles.trialCountdownHeader}>
-                <Ionicons name="rocket" size={32} color="#996A13" />
-                <View style={styles.trialCountdownHeaderText}>
-                  <Text style={styles.trialCountdownTitle}>Premium Trial aktiv 🎉</Text>
-                  <Text style={styles.trialCountdownSubtitle}>Teste alle Features kostenlos</Text>
-                </View>
-              </View>
-
-              {/* Countdown Timer */}
-              <View style={styles.trialTimerContainer}>
-                <View style={styles.timerSegment}>
-                  <Text style={styles.timerNumber}>{trialTimeRemaining.days}</Text>
-                  <Text style={styles.timerLabel}>Tag{trialTimeRemaining.days !== 1 ? 'e' : ''}</Text>
-                </View>
-                <Text style={styles.timerSeparator}>:</Text>
-                <View style={styles.timerSegment}>
-                  <Text style={styles.timerNumber}>{String(trialTimeRemaining.hours).padStart(2, '0')}</Text>
-                  <Text style={styles.timerLabel}>Std</Text>
-                </View>
-                <Text style={styles.timerSeparator}>:</Text>
-                <View style={styles.timerSegment}>
-                  <Text style={styles.timerNumber}>{String(trialTimeRemaining.minutes).padStart(2, '0')}</Text>
-                  <Text style={styles.timerLabel}>Min</Text>
-                </View>
-              </View>
-
-              {/* CTA Button */}
-              <TouchableOpacity
-                style={styles.trialUpgradeButton}
-                onPress={() => navigation.navigate('Paywall')}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="diamond" size={18} color="#007AFF" />
-                <Text style={styles.trialUpgradeText}>Jetzt Premium sichern</Text>
-                <Ionicons name="arrow-forward" size={18} color="#007AFF" />
-              </TouchableOpacity>
-            </LinearGradient>
-          </View>
-        ) : !isGuestMode && !isPremium ? (
-          <InfoCard
-            type="info"
-            icon="diamond"
-            title="Teste Premium kostenlos"
-            message="Schalte alle Features frei: Unbegrenzte Analysen, KI-Chat, Meditationen & mehr."
-          >
-            <Button
-              variant="primary"
-              size="small"
-              icon="diamond"
-              onPress={() => navigation.navigate('Paywall')}
-              style={{ marginTop: Spacing.sm }}
-            >
-              Jetzt upgraden
-            </Button>
-          </InfoCard>
-        ) : !isGuestMode && isPremium ? (
-          <InfoCard
-            type="success"
-            icon="checkmark-circle"
-            title="Premium aktiv"
-            message="Du hast Zugriff auf alle Features. Vielen Dank für deine Unterstützung!"
-          />
-        ) : null}
 
         {/* Haupt-Menü */}
         {mainMenuItems.map((item, index) => (
@@ -577,69 +458,6 @@ export default function HomeScreen({ navigation }) {
           />
         ))}
       </ScrollView>
-
-      {/* Welcome Modal für neue Nutzer */}
-      <Modal
-        visible={showWelcomeModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => handleCloseWelcome(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            {/* Modal Header */}
-            <View style={styles.modalHeader}>
-              <View style={styles.modalIconContainer}>
-                <Ionicons name="rocket" size={48} color={Colors.primary} />
-              </View>
-              <Text style={styles.modalTitle}>
-                Willkommen{userName ? `, ${userName}` : ''}! 🎉
-              </Text>
-              <Text style={styles.modalSubtitle}>
-                Schön, dass du da bist! Möchtest du eine kurze Einführung, wie die App funktioniert?
-              </Text>
-            </View>
-
-            {/* Modal Body */}
-            <View style={styles.modalBody}>
-              <View style={styles.featureItem}>
-                <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
-                <Text style={styles.featureText}>Verstehe alle Funktionen</Text>
-              </View>
-              <View style={styles.featureItem}>
-                <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
-                <Text style={styles.featureText}>Lerne Best Practices</Text>
-              </View>
-              <View style={styles.featureItem}>
-                <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
-                <Text style={styles.featureText}>Starte optimal durch</Text>
-              </View>
-            </View>
-
-            {/* Modal Actions */}
-            <View style={styles.modalActions}>
-              <Button
-                variant="primary"
-                size="large"
-                icon="book-outline"
-                fullWidth
-                onPress={() => handleCloseWelcome(true)}
-                style={styles.modalButton}
-              >
-                App-Anleitung öffnen
-              </Button>
-              <Button
-                variant="ghost"
-                size="medium"
-                fullWidth
-                onPress={() => handleCloseWelcome(false)}
-              >
-                Später ansehen
-              </Button>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </LinearGradient>
   );
 }
@@ -674,6 +492,19 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.round,
     ...Shadows.medium,
   },
+  achievementsButtonTop: {
+    position: "absolute",
+    top: 180,
+    right: 20,
+    zIndex: 10,
+    width: 50,
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFB900",
+    borderRadius: BorderRadius.round,
+    ...Shadows.medium,
+  },
   container: {
     alignItems: "center",
     paddingVertical: Spacing.xxxl,
@@ -684,90 +515,104 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  streakCard: {
-    width: "100%",
-    backgroundColor: Colors.streakLight,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    marginBottom: Spacing.lg,
-    borderWidth: 2,
-    borderColor: Colors.streakBorder,
-    ...Shadows.small,
-  },
-  streakContent: {
+  // Kompakte Info Row
+  compactInfoRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-  },
-  streakMain: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  streakEmoji: {
-    fontSize: 36,
-    marginRight: 12,
-  },
-  streakInfo: {
-    justifyContent: "center",
-  },
-  streakNumber: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#FF6B35",
-    lineHeight: 28,
-  },
-  streakLabel: {
-    fontSize: 12,
-    color: "#8B5E3C",
-    fontWeight: "600",
-  },
-  streakRight: {
-    alignItems: "flex-end",
+    justifyContent: "flex-start",
     gap: 8,
+    marginBottom: Spacing.md,
+    paddingHorizontal: 4,
   },
-  greetingText: {
-    ...Typography.bodyMedium,
-    color: Colors.streak,
-    marginBottom: 4,
-  },
-  longestBadge: {
+  // Streak Badge (kompakt)
+  streakBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.surface,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 6,
+    backgroundColor: Colors.streakLight,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: BorderRadius.md,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: Colors.streakBorder,
+    gap: 6,
   },
-  longestText: {
-    ...Typography.small,
-    color: "#8B5E3C",
+  streakBadgeEmoji: {
+    fontSize: 18,
+  },
+  streakBadgeText: {
+    fontSize: 14,
     fontWeight: "700",
-    marginLeft: 4,
+    color: "#FF6B35",
   },
-  // Welcome Card Styles
-  welcomeContent: {
+  recordIndicator: {
     flexDirection: "row",
     alignItems: "center",
-    flex: 1,
+    marginLeft: 4,
+    gap: 2,
   },
-  welcomeEmoji: {
-    fontSize: 40,
-    marginRight: Spacing.md,
-  },
-  welcomeInfo: {
-    flex: 1,
-  },
-  welcomeTitle: {
-    ...Typography.h4,
-    color: Colors.streak,
-    marginBottom: 4,
-  },
-  welcomeSubtitle: {
-    ...Typography.caption,
+  recordText: {
+    fontSize: 11,
+    fontWeight: "600",
     color: "#8B5E3C",
-    lineHeight: 18,
+  },
+  // Trial Badge (kompakt)
+  trialBadgeCompact: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF9E6",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1.5,
+    borderColor: "#FFE066",
+    gap: 6,
+  },
+  trialBadgeTextCompact: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#996A13",
+  },
+  // Premium Badge (kompakt)
+  premiumBadgeCompact: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E8F5E9",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1.5,
+    borderColor: "#C8E6C9",
+    gap: 6,
+  },
+  premiumBadgeTextCompact: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#2E7D32",
+  },
+  // Upgrade Badge (kompakt)
+  upgradeBadgeCompact: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E3F2FD",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1.5,
+    borderColor: "#90CAF9",
+    gap: 6,
+  },
+  upgradeBadgeTextCompact: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#007AFF",
+  },
+  // Kompakte Begrüßung
+  compactGreeting: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: Colors.textPrimary,
+    marginBottom: Spacing.md,
+    paddingHorizontal: 4,
   },
   statusBadge: {
     flexDirection: "row",
@@ -823,89 +668,6 @@ const styles = StyleSheet.create({
     color: Colors.warning,
     fontWeight: "700",
     marginLeft: 4,
-  },
-  // Trial Countdown Timer Styles
-  trialCountdownCard: {
-    width: "100%",
-    marginBottom: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-    overflow: "hidden",
-    ...Shadows.medium,
-  },
-  trialCountdownGradient: {
-    padding: Spacing.lg,
-    borderWidth: 2,
-    borderColor: "#FFE066",
-    borderRadius: BorderRadius.lg,
-  },
-  trialCountdownHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: Spacing.md,
-  },
-  trialCountdownHeaderText: {
-    marginLeft: Spacing.sm,
-    flex: 1,
-  },
-  trialCountdownTitle: {
-    ...Typography.h4,
-    color: "#996A13",
-    marginBottom: 2,
-  },
-  trialCountdownSubtitle: {
-    ...Typography.caption,
-    color: "#8B5E3C",
-  },
-  trialTimerContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.7)",
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    marginVertical: Spacing.md,
-    borderWidth: 1,
-    borderColor: "rgba(153, 106, 19, 0.2)",
-  },
-  timerSegment: {
-    alignItems: "center",
-    paddingHorizontal: Spacing.sm,
-  },
-  timerNumber: {
-    fontSize: 32,
-    fontWeight: "800",
-    color: "#996A13",
-    lineHeight: 36,
-  },
-  timerLabel: {
-    ...Typography.small,
-    color: "#8B5E3C",
-    fontWeight: "600",
-    marginTop: 2,
-  },
-  timerSeparator: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#996A13",
-    marginHorizontal: 4,
-  },
-  trialUpgradeButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: Colors.surface,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.md,
-    borderWidth: 2,
-    borderColor: "#007AFF",
-    marginTop: Spacing.sm,
-  },
-  trialUpgradeText: {
-    ...Typography.bodyMedium,
-    color: "#007AFF",
-    fontWeight: "700",
-    marginHorizontal: Spacing.xs,
   },
   // Guest Mode Banner Styles
   guestBanner: {
@@ -1061,40 +823,5 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     marginBottom: Spacing.sm,
-  },
-
-  // Achievements Button
-  achievementsButton: {
-    marginHorizontal: 20,
-    marginTop: 16,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 5,
-  },
-  achievementsGradient: {
-    padding: 20,
-  },
-  achievementsContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  achievementsText: {
-    flex: 1,
-    marginLeft: 16,
-  },
-  achievementsTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFF',
-    marginBottom: 4,
-  },
-  achievementsSubtitle: {
-    fontSize: 14,
-    color: '#FFF',
-    opacity: 0.9,
   },
 });
