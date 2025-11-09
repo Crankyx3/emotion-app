@@ -15,7 +15,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../components/AuthProvider";
 import { usePremium } from "../components/PremiumProvider";
-import { useSecurity } from "../components/SecurityProvider";
 import { db, auth } from "../firebaseconfig";
 import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { deleteUser, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
@@ -30,15 +29,6 @@ import NotificationSettings from "../components/NotificationSettings";
 export default function SettingsScreen({ navigation }) {
   const { user, signOut } = useAuth();
   const { isPremium, isTrialActive, trialDaysLeft, getTrialTimeRemaining } = usePremium();
-  const {
-    securityEnabled,
-    biometricAvailable,
-    biometricEnabled,
-    enableSecurity,
-    disableSecurity,
-    enableBiometric,
-    disableBiometric,
-  } = useSecurity();
   const [loading, setLoading] = useState(false);
   const [trialTimeRemaining, setTrialTimeRemaining] = useState(null);
   const [stats, setStats] = useState({
@@ -894,117 +884,6 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
               </View>
             </View>
           )}
-        </View>
-
-        {/* Security & App-Sperre */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🔐 Sicherheit</Text>
-
-          <View style={styles.card}>
-            {/* PIN/App Lock */}
-            <View style={styles.settingRow}>
-              <View style={styles.settingInfo}>
-                <Text style={styles.settingLabel}>App-Sperre (PIN)</Text>
-                <Text style={styles.settingDescription}>
-                  Schütze deine Daten mit einem 4-stelligen PIN
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={[
-                  styles.toggle,
-                  securityEnabled && styles.toggleActive,
-                ]}
-                onPress={async () => {
-                  if (securityEnabled) {
-                    // Disable security
-                    const result = await disableSecurity();
-                    if (!result.success) {
-                      Alert.alert('Fehler', result.error);
-                    }
-                  } else {
-                    // Show PIN setup dialog
-                    Alert.prompt(
-                      'PIN einrichten',
-                      'Gib einen 4-stelligen PIN ein:',
-                      [
-                        { text: 'Abbrechen', style: 'cancel' },
-                        {
-                          text: 'Speichern',
-                          onPress: async (pin) => {
-                            if (!pin || pin.length !== 4 || !/^\d{4}$/.test(pin)) {
-                              Alert.alert('Fehler', 'Bitte gib einen 4-stelligen PIN ein (nur Zahlen)');
-                              return;
-                            }
-                            const result = await enableSecurity(pin);
-                            if (!result.success) {
-                              Alert.alert('Fehler', result.error);
-                            } else {
-                              Alert.alert('Erfolg', 'App-Sperre aktiviert! 🔐');
-                            }
-                          },
-                        },
-                      ],
-                      'plain-text',
-                      '',
-                      'numeric'
-                    );
-                  }
-                }}
-              >
-                <View
-                  style={[
-                    styles.toggleCircle,
-                    securityEnabled && styles.toggleCircleActive,
-                  ]}
-                />
-              </TouchableOpacity>
-            </View>
-
-            {/* Biometric / Face ID */}
-            {securityEnabled && biometricAvailable && (
-              <>
-                <View style={styles.divider} />
-                <View style={styles.settingRow}>
-                  <View style={styles.settingInfo}>
-                    <Text style={styles.settingLabel}>
-                      {Platform.OS === 'ios' ? 'Face ID / Touch ID' : 'Fingerabdruck'}
-                    </Text>
-                    <Text style={styles.settingDescription}>
-                      Schnelleres Entsperren mit Biometrie
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    style={[
-                      styles.toggle,
-                      biometricEnabled && styles.toggleActive,
-                    ]}
-                    onPress={async () => {
-                      if (biometricEnabled) {
-                        const result = await disableBiometric();
-                        if (!result.success) {
-                          Alert.alert('Fehler', result.error);
-                        }
-                      } else {
-                        const result = await enableBiometric();
-                        if (!result.success) {
-                          Alert.alert('Fehler', result.error);
-                        } else {
-                          Alert.alert('Erfolg', 'Biometrische Authentifizierung aktiviert! 👆');
-                        }
-                      }
-                    }}
-                  >
-                    <View
-                      style={[
-                        styles.toggleCircle,
-                        biometricEnabled && styles.toggleCircleActive,
-                      ]}
-                    />
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
-          </View>
         </View>
 
         {/* Privacy & Datenschutz */}
