@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { getAiResponse, getAiResponseStreaming } from "../openaiService";
@@ -23,6 +24,7 @@ import { usePremium } from "../components/PremiumProvider";
 
 export default function ChatScreen({ route }) {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const { canUseFeature, getTrialText, isPremium, isTrialActive } = usePremium();
   const { chatId, context, type, date } = route.params || {};
   // chatId = ID des gespeicherten Chats (falls vorhanden)
@@ -448,7 +450,8 @@ Antworte empathisch und duze den Nutzer konsequent.
 
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
         >
           <ScrollView
             ref={scrollRef}
@@ -484,7 +487,7 @@ Antworte empathisch und duze den Nutzer konsequent.
             ))}
           </ScrollView>
 
-          <View style={styles.inputContainer}>
+          <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 10) }]}>
             <TextInput
               style={styles.input}
               placeholder="Schreib deine Gedanken..."

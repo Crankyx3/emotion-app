@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import ScreenHeader from "../components/ScreenHeader";
 import {
   View,
@@ -32,47 +33,62 @@ export default function EmotionChartScreen({ navigation }) {
   const [aiLoading, setAiLoading] = useState(false);
   const [timeframe, setTimeframe] = useState(7); // 7, 14, 30, 90
 
-  useEffect(() => {
-    (async () => {
-      try {
-        if (isGuestMode || !auth.currentUser) {
-          setLoading(false);
-          setEntries([]);
-          setAllEntries([]);
-          return;
+  // Lade Daten wenn Screen fokussiert wird (z.B. nach Tageseintrag)
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      (async () => {
+        try {
+          if (isGuestMode || !auth.currentUser) {
+            setLoading(false);
+            setEntries([]);
+            setAllEntries([]);
+            return;
+          }
+
+          // 🔒 DATENSCHUTZ: Lade alle Einträge aus lokalem Storage
+          const localEntries = await getLocalEntries(auth.currentUser.uid);
+
+          if (!isActive) return; // Verhindere State-Update nach Unmount
+
+          // Mappe alle Einträge und sortiere nach Datum
+          const all = (localEntries || [])
+            .map((e) => {
+              const ts = e.createdAt ? new Date(e.createdAt) : new Date();
+              return {
+                id: e.localId,
+                ...e,
+                date: ts.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }),
+                timestamp: ts.getTime(),
+              };
+            })
+            .sort((a, b) => b.timestamp - a.timestamp); // Neueste zuerst
+
+          setAllEntries(all);
+
+          // Filtere nach gewähltem Zeitraum
+          const filtered = all.slice(0, timeframe).reverse(); // Umdrehen für Chart (älteste -> neueste)
+          setEntries(filtered);
+        } catch (err) {
+          console.error("Fehler beim Laden:", err);
+          if (isActive) {
+            // Defensive: Setze leere Arrays bei Fehler
+            setEntries([]);
+            setAllEntries([]);
+          }
+        } finally {
+          if (isActive) {
+            setLoading(false);
+          }
         }
+      })();
 
-        // 🔒 DATENSCHUTZ: Lade alle Einträge aus lokalem Storage
-        const localEntries = await getLocalEntries(auth.currentUser.uid);
-
-        // Mappe alle Einträge und sortiere nach Datum
-        const all = (localEntries || [])
-          .map((e) => {
-            const ts = e.createdAt ? new Date(e.createdAt) : new Date();
-            return {
-              id: e.localId,
-              ...e,
-              date: ts.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }),
-              timestamp: ts.getTime(),
-            };
-          })
-          .sort((a, b) => b.timestamp - a.timestamp); // Neueste zuerst
-
-        setAllEntries(all);
-
-        // Filtere nach gewähltem Zeitraum
-        const filtered = all.slice(0, timeframe).reverse(); // Umdrehen für Chart (älteste -> neueste)
-        setEntries(filtered);
-      } catch (err) {
-        console.error("Fehler beim Laden:", err);
-        // Defensive: Setze leere Arrays bei Fehler
-        setEntries([]);
-        setAllEntries([]);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [timeframe]);
+      return () => {
+        isActive = false; // Cleanup: Verhindere State-Updates nach Unmount
+      };
+    }, [timeframe, isGuestMode])
+  );
 
   // Trend-Berechnung: Aktueller Zeitraum vs. vorheriger Zeitraum
   const calculateTrend = () => {
