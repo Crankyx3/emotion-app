@@ -1,6 +1,6 @@
 # Datenschutzerklärung für KI-Stimmungshelfer
 
-**Stand:** 2. November 2024
+**Stand:** 9. November 2025
 
 ## 1. Verantwortlicher
 
@@ -118,19 +118,15 @@ Wir geben Ihre Daten **NICHT** an Dritte weiter, außer:
 ❌ Wir verkaufen **KEINE** Daten
 ❌ Wir erstellen **KEINE** Nutzerprofile für Werbezwecke
 
-## 9. Minderjährige
-
-Die App ist für Nutzer ab **16 Jahren** konzipiert.
-
-## 10. Änderungen dieser Datenschutzerklärung
+## 9. Änderungen dieser Datenschutzerklärung
 
 Wir behalten uns vor, diese Datenschutzerklärung zu aktualisieren. Bei wesentlichen Änderungen werden Sie in der App informiert.
 
-## 11. Kontakt
+## 10. Kontakt
 
 Bei Fragen zum Datenschutz:
 📧 E-Mail: finnbauermeister@googlemail.com
 
 ---
 
-**Letzte Aktualisierung:** 2. November 2024
+**Letzte Aktualisierung:** 9. November 2025
