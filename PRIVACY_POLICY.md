@@ -67,6 +67,36 @@ Sie haben das Recht auf:
 
 Kontakt: finnbauermeister@googlemail.com
 
+### 5.1 Konto und Daten löschen
+
+Sie können Ihr Konto und alle zugehörigen Daten jederzeit vollständig löschen:
+
+**In der App:**
+1. Öffnen Sie die App
+2. Navigieren Sie zu **Einstellungen** (unten rechts)
+3. Scrollen Sie zu **"Datenverwaltung"**
+4. Tippen Sie auf **"Account löschen"**
+5. Bestätigen Sie die Löschung
+
+**Was wird gelöscht:**
+- ✅ Ihr Benutzerkonto (E-Mail & Authentifizierung)
+- ✅ Alle Tagebucheinträge
+- ✅ Alle Tages- und Wochenanalysen
+- ✅ Alle Chat-Verläufe
+- ✅ Alle Statistiken und Fortschritte
+- ✅ Premium-Subscription-Status
+
+**Wichtig:**
+- Die Löschung ist **permanent** und kann nicht rückgängig gemacht werden
+- Bereits abgeschlossene Subscriptions bei Google Play bleiben bis zum Ende der Laufzeit aktiv, werden aber nicht verlängert
+- Die Löschung erfolgt **sofort** und vollständig
+
+**Bei Problemen:**
+Falls Sie Ihr Konto nicht in der App löschen können, kontaktieren Sie uns direkt:
+📧 finnbauermeister@googlemail.com
+
+Wir löschen Ihre Daten innerhalb von 7 Werktagen nach Ihrer Anfrage.
+
 ## 6. Datensicherheit
 
 Wir setzen technische und organisatorische Sicherheitsmaßnahmen ein:
