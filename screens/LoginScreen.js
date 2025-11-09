@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -167,9 +168,10 @@ export default function LoginScreen() {
           >
             {/* Header */}
             <View style={styles.header}>
-              <View style={styles.iconCircle}>
-                <Ionicons name="happy-outline" size={40} color="#007AFF" />
-              </View>
+              <Image
+                source={require('../assets/icon.png')}
+                style={styles.appIcon}
+              />
               <Text style={styles.title}>KI-Stimmungshelfer</Text>
               <Text style={styles.subtitle}>
                 {mode === "login"
@@ -401,17 +403,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 40,
   },
-  iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
+  appIcon: {
+    width: 100,
+    height: 100,
+    borderRadius: 22,
     marginBottom: 16,
     shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
     elevation: 5,
   },
   title: {
