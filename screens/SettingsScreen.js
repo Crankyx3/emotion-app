@@ -10,7 +10,9 @@ import {
   Modal,
   TextInput,
   Platform,
+  StatusBar,
 } from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../components/AuthProvider";
@@ -39,6 +41,7 @@ export default function SettingsScreen({ navigation }) {
     enableBiometric,
     disableBiometric,
   } = useSecurity();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const [trialTimeRemaining, setTrialTimeRemaining] = useState(null);
   const [stats, setStats] = useState({
@@ -702,8 +705,9 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
 
   return (
     <LinearGradient colors={["#EAF4FF", "#FFFFFF"]} style={styles.gradient}>
+      <StatusBar barStyle="dark-content" backgroundColor="#EAF4FF" />
       <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.topRow}>
+        <View style={[styles.topRow, { marginTop: insets.top }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Ionicons name="chevron-back" size={32} color="#007AFF" />
           </TouchableOpacity>

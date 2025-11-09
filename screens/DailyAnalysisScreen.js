@@ -12,7 +12,9 @@ import {
   SafeAreaView,
   Modal,
   Linking,
+  StatusBar,
 } from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedCircularProgress } from "react-native-circular-progress";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -35,6 +37,7 @@ import { useAuth } from "../components/AuthProvider";
 export default function DailyAnalysisScreen({ route, navigation }) {
   const { canUseFeature, getTrialText, isTrialActive, trialDaysLeft } = usePremium();
   const { isGuestMode } = useAuth();
+  const insets = useSafeAreaInsets();
   const paramsData = route.params || {};
 
   // Lokale States für alle Werte (aus route.params oder Firestore)
@@ -436,8 +439,9 @@ Die Vorschläge sollen sofort umsetzbar sein (5-15 Minuten) und zur aktuellen Em
 
   return (
     <LinearGradient colors={["#f0f4ff", "#ffffff"]} style={styles.gradient}>
+      <StatusBar barStyle="dark-content" backgroundColor="#f0f4ff" />
       <TouchableOpacity
-        style={styles.settingsButton}
+        style={[styles.settingsButton, { top: insets.top + 10 }]}
         onPress={() => navigation.navigate("Settings")}
       >
         <Ionicons name="settings-outline" size={28} color="#007AFF" />

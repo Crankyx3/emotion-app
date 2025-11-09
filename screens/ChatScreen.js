@@ -11,6 +11,7 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Alert,
+  StatusBar,
 } from "react-native";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from "expo-linear-gradient";
@@ -411,9 +412,10 @@ Antworte empathisch und duze den Nutzer konsequent.
 
   return (
     <LinearGradient colors={["#EAF4FF", "#FFFFFF"]} style={styles.gradient}>
+      <StatusBar barStyle="dark-content" backgroundColor="#EAF4FF" />
       <SafeAreaView style={{ flex: 1 }}>
         {/* Topbar mit Zurück-Button */}
-        <View style={styles.topBar}>
+        <View style={[styles.topBar, { paddingTop: insets.top }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Ionicons name="chevron-back" size={24} color="#007AFF" />
           </TouchableOpacity>

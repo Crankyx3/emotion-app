@@ -14,7 +14,9 @@ import {
   Animated,
   ActivityIndicator,
   Modal,
+  StatusBar,
 } from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { collection, addDoc, Timestamp, query, where, getDocs } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
 import { getAiResponse } from "../openaiService";
@@ -30,6 +32,7 @@ import { transcribeAudioWithRetry } from "../services/whisperService";
 export default function DailyEntryScreen() {
   const navigation = useNavigation();
   const { isGuestMode, exitGuestMode } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const [selectedEmotion, setSelectedEmotion] = useState(null);
   const [text, setText] = useState("");
@@ -548,8 +551,9 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
 
   return (
     <LinearGradient colors={["#F6FBFF", "#FFFFFF"]} style={styles.background}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F6FBFF" />
       <TouchableOpacity
-        style={styles.settingsButton}
+        style={[styles.settingsButton, { top: insets.top + 10 }]}
         onPress={() => navigation.navigate("Settings")}
       >
         <Ionicons name="settings-outline" size={28} color="#007AFF" />

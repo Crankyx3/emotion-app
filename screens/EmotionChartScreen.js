@@ -11,7 +11,9 @@ import {
   TouchableOpacity,
   Modal,
   Alert,
+  StatusBar,
 } from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { collection, getDocs, orderBy, query, limit, doc, updateDoc, where } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
 import { LineChart } from "react-native-chart-kit";
@@ -26,6 +28,7 @@ const screenWidth = Dimensions.get("window").width;
 
 export default function EmotionChartScreen({ navigation }) {
   const { isGuestMode } = useAuth();
+  const insets = useSafeAreaInsets();
   const [entries, setEntries] = useState([]);
   const [allEntries, setAllEntries] = useState([]); // Für Trend & Insights
   const [loading, setLoading] = useState(true);
@@ -253,8 +256,9 @@ Sei empathisch, validierend und spezifisch. Nutze psychologische Konzepte (CBT, 
 
   return (
     <LinearGradient colors={["#F6FBFF", "#FFFFFF"]} style={styles.background}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F6FBFF" />
       <TouchableOpacity
-        style={styles.settingsButton}
+        style={[styles.settingsButton, { top: insets.top + 10 }]}
         onPress={() => navigation.navigate("Settings")}
       >
         <Ionicons name="settings-outline" size={28} color="#007AFF" />
