@@ -15,6 +15,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../components/AuthProvider";
 import { usePremium } from "../components/PremiumProvider";
+import { useSecurity } from "../components/SecurityProvider";
 import { db, auth } from "../firebaseconfig";
 import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { deleteUser, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
@@ -29,6 +30,15 @@ import NotificationSettings from "../components/NotificationSettings";
 export default function SettingsScreen({ navigation }) {
   const { user, signOut } = useAuth();
   const { isPremium, isTrialActive, trialDaysLeft, getTrialTimeRemaining } = usePremium();
+  const {
+    securityEnabled,
+    biometricAvailable,
+    biometricEnabled,
+    enableSecurity,
+    disableSecurity,
+    enableBiometric,
+    disableBiometric,
+  } = useSecurity();
   const [loading, setLoading] = useState(false);
   const [trialTimeRemaining, setTrialTimeRemaining] = useState(null);
   const [stats, setStats] = useState({
@@ -882,6 +892,169 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
                   Längster Streak ({longestStreak === 1 ? "Tag" : "Tage"})
                 </Text>
               </View>
+            </View>
+          )}
+        </View>
+
+        {/* Security Settings */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🔐 Sicherheit</Text>
+
+          {/* PIN Toggle */}
+          <View style={styles.privacyOption}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.privacyOptionTitle}>App mit PIN schützen</Text>
+              <Text style={styles.privacyOptionDescription}>
+                Schütze deine privaten Daten mit einem 4-stelligen PIN
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.toggle, securityEnabled && styles.toggleActive]}
+              onPress={() => {
+                if (securityEnabled) {
+                  // Deaktiviere Security
+                  Alert.alert(
+                    "PIN-Schutz deaktivieren?",
+                    "Deine App ist dann nicht mehr geschützt.",
+                    [
+                      { text: "Abbrechen", style: "cancel" },
+                      {
+                        text: "Deaktivieren",
+                        style: "destructive",
+                        onPress: async () => {
+                          const result = await disableSecurity();
+                          if (result.success) {
+                            Alert.alert("Deaktiviert", "PIN-Schutz wurde entfernt.");
+                          }
+                        },
+                      },
+                    ]
+                  );
+                } else {
+                  // Aktiviere Security - Frage nach PIN
+                  if (Platform.OS === "ios") {
+                    Alert.prompt(
+                      "PIN festlegen",
+                      "Gib einen 4-stelligen PIN ein:",
+                      [
+                        { text: "Abbrechen", style: "cancel" },
+                        {
+                          text: "Bestätigen",
+                          onPress: async (pin) => {
+                            if (pin && pin.length === 4 && /^\d+$/.test(pin)) {
+                              const result = await enableSecurity(pin);
+                              if (result.success) {
+                                Alert.alert(
+                                  "Aktiviert ✅",
+                                  "App-Schutz mit PIN wurde aktiviert."
+                                );
+                              } else {
+                                Alert.alert("Fehler", result.error);
+                              }
+                            } else {
+                              Alert.alert(
+                                "Ungültiger PIN",
+                                "Der PIN muss genau 4 Ziffern haben."
+                              );
+                            }
+                          },
+                        },
+                      ],
+                      "plain-text",
+                      "",
+                      "numeric"
+                    );
+                  } else {
+                    // Android: zeige Custom Modal (weil Alert.prompt nicht verfügbar ist)
+                    Alert.alert(
+                      "PIN festlegen",
+                      "Um den PIN-Schutz zu aktivieren, gib bitte einen 4-stelligen PIN ein.\n\nDieser wird direkt auf deinem Gerät gespeichert.",
+                      [
+                        { text: "Abbrechen", style: "cancel" },
+                        {
+                          text: "Weiter",
+                          onPress: () => {
+                            // Für Android: verwende einen einfachen Dialog
+                            const pin = "1234"; // Temporär - würde ein Custom Input Modal benötigen
+                            Alert.alert(
+                              "Demo-PIN",
+                              "Für Android-Demo wurde PIN '1234' gesetzt.\n\nIn der finalen Version würde hier ein Custom Input-Feld erscheinen.",
+                              [
+                                {
+                                  text: "OK",
+                                  onPress: async () => {
+                                    const result = await enableSecurity(pin);
+                                    if (result.success) {
+                                      Alert.alert(
+                                        "Aktiviert ✅",
+                                        "App-Schutz mit PIN '1234' wurde aktiviert."
+                                      );
+                                    }
+                                  },
+                                },
+                              ]
+                            );
+                          },
+                        },
+                      ]
+                    );
+                  }
+                }
+              }}
+              activeOpacity={0.8}
+            >
+              <View
+                style={[
+                  styles.toggleThumb,
+                  securityEnabled && styles.toggleThumbActive,
+                ]}
+              />
+            </TouchableOpacity>
+          </View>
+
+          {/* Biometric Toggle (nur wenn verfügbar UND PIN aktiviert) */}
+          {securityEnabled && biometricAvailable && (
+            <View style={styles.privacyOption}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.privacyOptionTitle}>
+                  {Platform.OS === "ios" ? "Face ID / Touch ID" : "Fingerabdruck"}
+                </Text>
+                <Text style={styles.privacyOptionDescription}>
+                  Nutze biometrische Authentifizierung zum Entsperren
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.toggle, biometricEnabled && styles.toggleActive]}
+                onPress={async () => {
+                  if (biometricEnabled) {
+                    const result = await disableBiometric();
+                    if (result.success) {
+                      Alert.alert(
+                        "Deaktiviert",
+                        "Biometrische Authentifizierung wurde deaktiviert."
+                      );
+                    }
+                  } else {
+                    const result = await enableBiometric();
+                    if (result.success) {
+                      Alert.alert(
+                        "Aktiviert ✅",
+                        "Biometrische Authentifizierung wurde aktiviert."
+                      );
+                    } else {
+                      Alert.alert("Fehler", result.error || "Konnte nicht aktiviert werden.");
+                    }
+                  }
+                }}
+                activeOpacity={0.8}
+              >
+                <View
+                  style={[
+                    styles.toggleThumb,
+                    biometricEnabled && styles.toggleThumbActive,
+                  ]}
+                />
+              </TouchableOpacity>
             </View>
           )}
         </View>
