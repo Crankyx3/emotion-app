@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as LocalAuthentication from 'expo-local-authentication';
 import { AppState } from 'react-native';
 import { auth } from '../firebaseconfig';
 
@@ -18,13 +17,6 @@ export const SecurityProvider = ({ children }) => {
   const [isLocked, setIsLocked] = useState(true);
   const [securityEnabled, setSecurityEnabled] = useState(false);
   const [pin, setPin] = useState(null);
-  const [biometricAvailable, setBiometricAvailable] = useState(false);
-  const [biometricEnabled, setBiometricEnabled] = useState(false);
-
-  // Check biometric availability
-  useEffect(() => {
-    checkBiometricAvailability();
-  }, []);
 
   // Load security settings when auth user is available
   useEffect(() => {
@@ -36,7 +28,6 @@ export const SecurityProvider = ({ children }) => {
         setSecurityEnabled(false);
         setIsLocked(false);
         setPin(null);
-        setBiometricEnabled(false);
       }
     });
 
@@ -56,17 +47,6 @@ export const SecurityProvider = ({ children }) => {
     };
   }, [securityEnabled]);
 
-  const checkBiometricAvailability = async () => {
-    try {
-      const compatible = await LocalAuthentication.hasHardwareAsync();
-      const enrolled = await LocalAuthentication.isEnrolledAsync();
-      setBiometricAvailable(compatible && enrolled);
-    } catch (error) {
-      console.error('Error checking biometric:', error);
-      setBiometricAvailable(false);
-    }
-  };
-
   const loadSecuritySettings = async () => {
     try {
       if (!auth.currentUser) return;
@@ -74,11 +54,9 @@ export const SecurityProvider = ({ children }) => {
       const userId = auth.currentUser.uid;
       const enabled = await AsyncStorage.getItem(`securityEnabled_${userId}`);
       const storedPin = await AsyncStorage.getItem(`securityPin_${userId}`);
-      const bioEnabled = await AsyncStorage.getItem(`biometricEnabled_${userId}`);
 
       setSecurityEnabled(enabled === 'true');
       setPin(storedPin);
-      setBiometricEnabled(bioEnabled === 'true');
 
       // Lock app if security is enabled
       if (enabled === 'true') {
@@ -117,67 +95,14 @@ export const SecurityProvider = ({ children }) => {
       const userId = auth.currentUser.uid;
       await AsyncStorage.removeItem(`securityEnabled_${userId}`);
       await AsyncStorage.removeItem(`securityPin_${userId}`);
-      await AsyncStorage.removeItem(`biometricEnabled_${userId}`);
 
       setSecurityEnabled(false);
       setPin(null);
-      setBiometricEnabled(false);
       setIsLocked(false);
 
       return { success: true };
     } catch (error) {
       console.error('Error disabling security:', error);
-      return { success: false, error: error.message };
-    }
-  };
-
-  const enableBiometric = async () => {
-    try {
-      if (!auth.currentUser) return { success: false, error: 'Not logged in' };
-      if (!biometricAvailable) return { success: false, error: 'Biometric not available' };
-
-      const userId = auth.currentUser.uid;
-      await AsyncStorage.setItem(`biometricEnabled_${userId}`, 'true');
-      setBiometricEnabled(true);
-
-      return { success: true };
-    } catch (error) {
-      console.error('Error enabling biometric:', error);
-      return { success: false, error: error.message };
-    }
-  };
-
-  const disableBiometric = async () => {
-    try {
-      if (!auth.currentUser) return { success: false, error: 'Not logged in' };
-
-      const userId = auth.currentUser.uid;
-      await AsyncStorage.removeItem(`biometricEnabled_${userId}`);
-      setBiometricEnabled(false);
-
-      return { success: true };
-    } catch (error) {
-      console.error('Error disabling biometric:', error);
-      return { success: false, error: error.message };
-    }
-  };
-
-  const authenticateWithBiometric = async () => {
-    try {
-      const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'App entsperren',
-        fallbackLabel: 'PIN verwenden',
-        cancelLabel: 'Abbrechen',
-      });
-
-      if (result.success) {
-        setIsLocked(false);
-        return { success: true };
-      } else {
-        return { success: false, error: 'Authentication failed' };
-      }
-    } catch (error) {
-      console.error('Biometric auth error:', error);
       return { success: false, error: error.message };
     }
   };
@@ -210,13 +135,8 @@ export const SecurityProvider = ({ children }) => {
   const value = {
     isLocked,
     securityEnabled,
-    biometricAvailable,
-    biometricEnabled,
     enableSecurity,
     disableSecurity,
-    enableBiometric,
-    disableBiometric,
-    authenticateWithBiometric,
     authenticateWithPin,
     changePin,
     refreshSettings: loadSecuritySettings,

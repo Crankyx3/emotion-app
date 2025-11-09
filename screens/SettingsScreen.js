@@ -34,12 +34,8 @@ export default function SettingsScreen({ navigation }) {
   const { isPremium, isTrialActive, trialDaysLeft, getTrialTimeRemaining } = usePremium();
   const {
     securityEnabled,
-    biometricAvailable,
-    biometricEnabled,
     enableSecurity,
     disableSecurity,
-    enableBiometric,
-    disableBiometric,
   } = useSecurity();
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
@@ -1015,52 +1011,6 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
               />
             </TouchableOpacity>
           </View>
-
-          {/* Biometric Toggle (nur wenn verfügbar UND PIN aktiviert) */}
-          {securityEnabled && biometricAvailable && (
-            <View style={styles.privacyOption}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.privacyOptionTitle}>
-                  {Platform.OS === "ios" ? "Face ID / Touch ID" : "Fingerabdruck"}
-                </Text>
-                <Text style={styles.privacyOptionDescription}>
-                  Nutze biometrische Authentifizierung zum Entsperren
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={[styles.toggle, biometricEnabled && styles.toggleActive]}
-                onPress={async () => {
-                  if (biometricEnabled) {
-                    const result = await disableBiometric();
-                    if (result.success) {
-                      Alert.alert(
-                        "Deaktiviert",
-                        "Biometrische Authentifizierung wurde deaktiviert."
-                      );
-                    }
-                  } else {
-                    const result = await enableBiometric();
-                    if (result.success) {
-                      Alert.alert(
-                        "Aktiviert ✅",
-                        "Biometrische Authentifizierung wurde aktiviert."
-                      );
-                    } else {
-                      Alert.alert("Fehler", result.error || "Konnte nicht aktiviert werden.");
-                    }
-                  }
-                }}
-                activeOpacity={0.8}
-              >
-                <View
-                  style={[
-                    styles.toggleThumb,
-                    biometricEnabled && styles.toggleThumbActive,
-                  ]}
-                />
-              </TouchableOpacity>
-            </View>
-          )}
         </View>
 
         {/* Privacy & Datenschutz */}

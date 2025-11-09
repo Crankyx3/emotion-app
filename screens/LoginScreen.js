@@ -21,7 +21,7 @@ import { auth } from "../firebaseconfig";
 
 export default function LoginScreen() {
   const navigation = useNavigation();
-  const { signIn, signUp, signInWithGoogle, googleLoading, enterGuestMode } = useAuth();
+  const { signIn, signUp, enterGuestMode } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -332,29 +332,6 @@ export default function LoginScreen() {
                     {mode === "login" ? "Anmelden" : "Registrieren"}
                   </Text>
                 )}
-              </TouchableOpacity>
-
-              {/* Divider */}
-              <View style={styles.dividerContainer}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>oder</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              {/* Google Sign-In Button */}
-              <TouchableOpacity
-                style={[
-                  styles.googleButton,
-                  googleLoading && styles.buttonDisabled,
-                ]}
-                onPress={signInWithGoogle}
-                disabled={googleLoading || loading}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="logo-google" size={20} color="#DB4437" />
-                <Text style={styles.googleButtonText}>
-                  Mit Google anmelden
-                </Text>
               </TouchableOpacity>
 
               {/* Mode Switch */}

@@ -14,28 +14,10 @@ import { useSecurity } from '../components/SecurityProvider';
 export default function LockScreen() {
   const {
     authenticateWithPin,
-    authenticateWithBiometric,
-    biometricAvailable,
-    biometricEnabled,
   } = useSecurity();
 
   const [pin, setPin] = useState('');
   const [error, setError] = useState(false);
-
-  // Try biometric auth on mount
-  useEffect(() => {
-    if (biometricEnabled && biometricAvailable) {
-      tryBiometric();
-    }
-  }, []);
-
-  const tryBiometric = async () => {
-    const result = await authenticateWithBiometric();
-    if (!result.success) {
-      // User can still use PIN
-      console.log('Biometric failed, use PIN');
-    }
-  };
 
   const handleNumberPress = (num) => {
     if (pin.length < 4) {
@@ -114,18 +96,8 @@ export default function LockScreen() {
             </TouchableOpacity>
           ))}
 
-          {/* Biometric button */}
-          {biometricEnabled && biometricAvailable ? (
-            <TouchableOpacity
-              style={styles.numButton}
-              onPress={tryBiometric}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="finger-print" size={32} color="#fff" />
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.numButton} />
-          )}
+          {/* Empty space */}
+          <View style={styles.numButton} />
 
           {/* 0 */}
           <TouchableOpacity
