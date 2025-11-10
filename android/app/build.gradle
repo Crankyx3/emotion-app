@@ -81,11 +81,7 @@ def enableMinifyInReleaseBuilds = (findProperty('android.enableMinifyInReleaseBu
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
-/**
- * Use Hermes Engine (recommended for production)
- * Hermes is faster and uses less memory
- */
-def hermesEnabled = (findProperty('expo.jsEngine') ?: 'hermes') == 'hermes'
+// hermesEnabled is now defined in root build.gradle as rootProject.ext.hermesEnabled
 
 android {
     ndkVersion rootProject.ext.ndkVersion
@@ -195,7 +191,7 @@ dependencies {
         }
     }
 
-    if (hermesEnabled.toBoolean()) {
+    if (rootProject.ext.hermesEnabled) {
         implementation("com.facebook.react:hermes-android")
     } else {
         implementation jscFlavor
