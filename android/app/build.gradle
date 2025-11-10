@@ -105,10 +105,18 @@ android {
             keyPassword 'android'
         }
         release {
-            storeFile file('ki-stimmungshelfer-upload.keystore')
-            storePassword System.getenv('KEYSTORE_PASSWORD') ?: 'android'
-            keyAlias System.getenv('KEY_ALIAS') ?: 'upload'
-            keyPassword System.getenv('KEY_PASSWORD') ?: 'android'
+            if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE')) {
+                storeFile file(MYAPP_UPLOAD_STORE_FILE)
+                storePassword MYAPP_UPLOAD_STORE_PASSWORD
+                keyAlias MYAPP_UPLOAD_KEY_ALIAS
+                keyPassword MYAPP_UPLOAD_KEY_PASSWORD
+            } else {
+                // Fallback to default keystore location
+                storeFile file("${projectDir}/ki-stimmungshelfer-upload.keystore")
+                storePassword System.getenv('KEYSTORE_PASSWORD') ?: 'android'
+                keyAlias System.getenv('KEY_ALIAS') ?: 'upload'
+                keyPassword System.getenv('KEY_PASSWORD') ?: 'android'
+            }
         }
     }
     buildTypes {
