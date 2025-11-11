@@ -74,8 +74,9 @@ export const PremiumProvider = ({ children }) => {
         ? REVENUECAT_CONFIG.iosApiKey
         : REVENUECAT_CONFIG.androidApiKey;
 
-      if (!apiKey || apiKey.includes('YOUR_')) {
-        console.warn('⚠️ RevenueCat API Key nicht konfiguriert. Siehe revenuecat.config.js');
+      if (!apiKey || apiKey.includes('YOUR_') || apiKey.startsWith('test_')) {
+        console.warn('⚠️ RevenueCat API Key nicht konfiguriert oder Test-Key verwendet. Siehe revenuecat.config.js');
+        console.warn('ℹ️  App läuft im Fallback-Modus: Trial funktioniert, aber keine echten In-App-Käufe möglich.');
         setIsRevenueCatConfigured(false);
         return;
       }
