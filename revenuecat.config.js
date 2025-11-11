@@ -12,9 +12,13 @@
 
 const REVENUECAT_CONFIG = {
   // Android Public API Key (NICHT Secret Key!)
-  // WICHTIG: Trage hier deinen PRODUCTION Key ein von: https://app.revenuecat.com/
-  // Project Settings → API Keys → "Google Play Public API Key"
-  androidApiKey: 'YOUR_PRODUCTION_API_KEY_HERE',  // ← Ersetze mit deinem echten Key!
+  //
+  // FÜR LOKALE ENTWICKLUNG: Test-Key verwenden (unten)
+  // FÜR PRODUCTION BUILD: Echten Key eintragen von https://app.revenuecat.com/
+  //                       Project Settings → API Keys → "Google Play Public API Key"
+  //
+  androidApiKey: 'test_IjrjYiLROwkENkSZeERxRZMTJwW',  // Test-Key für Entwicklung
+  // androidApiKey: 'YOUR_PRODUCTION_API_KEY_HERE',  // ← Für Production: Kommentiere diese Zeile ein!
 
   // iOS Public API Key (falls später benötigt)
   iosApiKey: 'YOUR_IOS_API_KEY_HERE',
