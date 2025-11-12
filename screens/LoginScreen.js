@@ -172,7 +172,7 @@ export default function LoginScreen() {
                 source={require('../assets/icon.png')}
                 style={styles.appIcon}
               />
-              <Text style={styles.title}>KI-Stimmungshelfer</Text>
+              <Text style={styles.title}>Zwangsgedanken Helfer</Text>
               <Text style={styles.subtitle}>
                 {mode === "login"
                   ? "Willkommen zurück!"
