@@ -220,8 +220,8 @@ export default function EmotionChartScreen({ navigation }) {
 Du bist ein einfühlsamer psychologischer Berater. Gib eine kurze, aber tiefgehende Analyse dieses Tageseintrags.
 
 📊 MESSWERTE:
-• Emotion: ${emotion}
-• Wohlfühlscore: ${feelScore}/99
+• Intensität: ${emotion}
+• Intensitäts-Score: ${feelScore}/99 (niedriger = besser)
 
 📝 WAS DIE PERSON BESCHRIEBEN HAT:
 ${theme ? `Thema: "${theme}"` : 'Kein Thema'}
@@ -264,7 +264,7 @@ Sei empathisch, validierend und spezifisch. Nutze psychologische Konzepte (CBT, 
         <Ionicons name="settings-outline" size={28} color="#007AFF" />
       </TouchableOpacity>
       <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
-        <ScreenHeader title="📈 Dein Wohlfühlverlauf" subtitle={`Durchschnitt: ${avg.toFixed(1)}/99`} />
+        <ScreenHeader title="📊 Zwangsgedanken-Intensität" subtitle={`Durchschnitt: ${avg.toFixed(1)}/99`} />
 
         {/* Zeitfilter-Buttons */}
         <View style={styles.filterContainer}>
@@ -396,11 +396,23 @@ Sei empathisch, validierend und spezifisch. Nutze psychologische Konzepte (CBT, 
               </View>
 
               <View style={styles.modalBody}>
-                <Text style={styles.modalLine}>💙 Wohlfühlscore: {selectedEntry?.feelScore}/99</Text>
+                <Text style={styles.modalLine}>📊 Intensitäts-Score: {selectedEntry?.feelScore}/99</Text>
 
                 {selectedEntry?.theme ? <Text style={[styles.modalLine, { marginTop: 8 }]}>🧩 Thema: {selectedEntry?.theme}</Text> : null}
-                {selectedEntry?.text ? <Text style={[styles.modalText, { marginTop: 8 }]}>💭 {selectedEntry?.text}</Text> : null}
-                {selectedEntry?.gratitude ? <Text style={[styles.modalText, { marginTop: 8 }]}>💚 Dankbarkeit: {selectedEntry?.gratitude}</Text> : null}
+                {selectedEntry?.text ? <Text style={[styles.modalText, { marginTop: 8 }]}>💭 Zwangsgedanken: {selectedEntry?.text}</Text> : null}
+                {selectedEntry?.gratitude ? <Text style={[styles.modalText, { marginTop: 8 }]}>🏆 Fortschritte: {selectedEntry?.gratitude}</Text> : null}
+
+                {/* OCD-spezifische Tracking-Daten */}
+                {typeof selectedEntry?.compulsionPerformed === 'boolean' ? (
+                  <Text style={[styles.modalLine, { marginTop: 8 }]}>
+                    {selectedEntry.compulsionPerformed ? '⚠️ Kompulsion durchgeführt' : '✅ Keine Kompulsion durchgeführt'}
+                  </Text>
+                ) : null}
+                {selectedEntry?.resistanceMinutes ? (
+                  <Text style={[styles.modalLine, { marginTop: 8 }]}>
+                    ⏱️ Widerstanden: {selectedEntry.resistanceMinutes} Min.
+                  </Text>
+                ) : null}
 
                 {selectedEntry?.analysis ? (
                   <>
