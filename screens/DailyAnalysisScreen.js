@@ -56,6 +56,7 @@ export default function DailyAnalysisScreen({ route, navigation }) {
   const [actionSuggestions, setActionSuggestions] = useState([]); // Konkrete Handlungsvorschläge
   const [showCrisisModal, setShowCrisisModal] = useState(false); // Modal für Notfall-Strategien
   const [suggestionFeedback, setSuggestionFeedback] = useState({}); // Feedback für jeden Vorschlag: {0: "helpful", 1: "not_helpful", ...}
+  const [expandedSections, setExpandedSections] = useState({}); // Welche Sektionen sind aufgeklappt: {0: true, 1: false, ...}
 
   // progress für Ladebalken
   const progress = useRef(new Animated.Value(0)).current;
@@ -617,7 +618,7 @@ Die Vorschläge sollen sofort umsetzbar sein (5-15 Minuten) und zur aktuellen Em
                 <Text style={styles.analysisHeaderTitle}>Deine KI-Analyse</Text>
               </LinearGradient>
 
-              {/* Absätze mit Icons und unterschiedlichen Farben */}
+              {/* Aufklappbare Sektionen */}
               {aiText.split('\n\n').filter(para => para.trim()).map((paragraph, index) => {
                 const trimmedPara = paragraph.trim();
                 const headingMatch = trimmedPara.match(/^([^:]+):\s*(.*)$/s);
@@ -625,6 +626,7 @@ Die Vorschläge sollen sofort umsetzbar sein (5-15 Minuten) und zur aktuellen Em
                 if (headingMatch) {
                   const heading = headingMatch[1];
                   const content = headingMatch[2];
+                  const isExpanded = expandedSections[index];
 
                   // Bestimme Icon und Farbe basierend auf Überschrift
                   let icon = "information-circle";
@@ -632,7 +634,7 @@ Die Vorschläge sollen sofort umsetzbar sein (5-15 Minuten) und zur aktuellen Em
                   let borderColor = "#007AFF";
                   let bgColor = "#F0F7FF";
 
-                  if (heading.toLowerCase().includes("emotional") || heading.toLowerCase().includes("gefühl")) {
+                  if (heading.toLowerCase().includes("emotional") || heading.toLowerCase().includes("gefühl") || heading.toLowerCase().includes("lage")) {
                     icon = "heart";
                     iconColor = "#FF6B9D";
                     borderColor = "#FF6B9D";
@@ -650,17 +652,29 @@ Die Vorschläge sollen sofort umsetzbar sein (5-15 Minuten) und zur aktuellen Em
                   }
 
                   return (
-                    <View key={index} style={[styles.analysisSectionCard, { backgroundColor: bgColor, borderLeftColor: borderColor }]}>
+                    <TouchableOpacity
+                      key={index}
+                      style={[styles.analysisSectionCard, { backgroundColor: bgColor, borderLeftColor: borderColor }]}
+                      onPress={() => setExpandedSections(prev => ({ ...prev, [index]: !prev[index] }))}
+                      activeOpacity={0.7}
+                    >
                       <View style={styles.analysisSectionHeader}>
                         <View style={[styles.analysisSectionIconBg, { backgroundColor: iconColor + '20' }]}>
                           <Ionicons name={icon} size={20} color={iconColor} />
                         </View>
-                        <Text style={[styles.analysisSectionTitle, { color: iconColor }]}>
+                        <Text style={[styles.analysisSectionTitle, { color: iconColor, flex: 1 }]}>
                           {heading}
                         </Text>
+                        <Ionicons
+                          name={isExpanded ? "chevron-up" : "chevron-down"}
+                          size={24}
+                          color={iconColor}
+                        />
                       </View>
-                      <Text style={styles.analysisSectionContent}>{content}</Text>
-                    </View>
+                      {isExpanded && (
+                        <Text style={[styles.analysisSectionContent, { marginTop: 12 }]}>{content}</Text>
+                      )}
+                    </TouchableOpacity>
                   );
                 }
 

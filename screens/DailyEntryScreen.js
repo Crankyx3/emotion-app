@@ -40,7 +40,6 @@ export default function DailyEntryScreen() {
 
   // OCD-spezifische Felder
   const [compulsionPerformed, setCompulsionPerformed] = useState(false);
-  const [resistanceMinutes, setResistanceMinutes] = useState("");
 
   // Ladezustand + progress für Ladebalken
   const [loading, setLoading] = useState(false);
@@ -498,7 +497,6 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
         analysis: aiReply || null,
         // OCD-spezifische Felder
         compulsionPerformed: compulsionPerformed,
-        resistanceMinutes: resistanceMinutes ? parseInt(resistanceMinutes) : null,
       });
 
       // 2. NUR METADATEN in Cloud (für Charts & Statistiken)
@@ -815,25 +813,6 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
                     {compulsionPerformed ? "✅ Ja" : "Nein"}
                   </Text>
                 </TouchableOpacity>
-              </View>
-
-              {/* Wie lange widerstanden? */}
-              <View style={[styles.ocdTrackingRow, { marginTop: 20 }]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.ocdLabel}>Wie lange dem Drang widerstanden?</Text>
-                  <Text style={styles.ocdSubLabel}>
-                    (In Minuten - falls du widerstehen konntest)
-                  </Text>
-                </View>
-                <TextInput
-                  style={styles.ocdInput}
-                  placeholder="Min"
-                  placeholderTextColor="#999"
-                  value={resistanceMinutes}
-                  onChangeText={setResistanceMinutes}
-                  keyboardType="numeric"
-                  maxLength={4}
-                />
               </View>
             </View>
 
