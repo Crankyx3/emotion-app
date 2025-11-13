@@ -13,12 +13,11 @@
 const REVENUECAT_CONFIG = {
   // Android Public API Key (NICHT Secret Key!)
   //
-  // FÜR LOKALE ENTWICKLUNG: Test-Key verwenden (unten)
-  // FÜR PRODUCTION BUILD: Echten Key eintragen von https://app.revenuecat.com/
-  //                       Project Settings → API Keys → "Google Play Public API Key"
+  // FÜR LOKALE ENTWICKLUNG mit Expo Go: Test-Key verwenden (aktiv)
+  // FÜR PRODUCTION BUILD: Echten Key eintragen (auskommentiert unten)
   //
-  // androidApiKey: 'test_IjrjYiLROwkENkSZeERxRZMTJwW',  // Test-Key nur für Entwicklung
-  androidApiKey: 'YOUR_PRODUCTION_API_KEY_HERE',  // ← PRODUCTION KEY HIER EINTRAGEN!
+  androidApiKey: 'test_IjrjYiLROwkENkSZeERxRZMTJwW',  // Test-Key für Expo Go Development
+  // androidApiKey: 'YOUR_PRODUCTION_KEY_HERE',  // ← VOR RELEASE BUILD: Production Key eintragen & aktivieren!
 
   // iOS Public API Key (falls später benötigt)
   iosApiKey: 'YOUR_IOS_API_KEY_HERE',
