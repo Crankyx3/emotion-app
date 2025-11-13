@@ -18,7 +18,7 @@ const REVENUECAT_CONFIG = {
   //                       Project Settings → API Keys → "Google Play Public API Key"
   //
   // androidApiKey: 'test_IjrjYiLROwkENkSZeERxRZMTJwW',  // Test-Key nur für Entwicklung
-  androidApiKey: 'YOUR_PRODUCTION_API_KEY_HERE',  // ← PRODUCTION KEY HIER EINTRAGEN!
+  androidApiKey: 'goog_HUKpbgYqweutwSTgFvNHOOdZQNR',  // ← PRODUCTION KEY HIER EINTRAGEN!
 
   // iOS Public API Key (falls später benötigt)
   iosApiKey: 'YOUR_IOS_API_KEY_HERE',
