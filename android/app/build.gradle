@@ -81,6 +81,9 @@ def enableMinifyInReleaseBuilds = (findProperty('android.enableMinifyInReleaseBu
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
+// Define hermesEnabled with a default value
+def hermesEnabled = (findProperty('hermesEnabled') ?: 'true')
+
 android {
     ndkVersion rootProject.ext.ndkVersion
 
@@ -92,8 +95,8 @@ android {
         applicationId 'com.ki.stimmungshelfer'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0.0"
+        versionCode 4
+        versionName "1.0.1"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
