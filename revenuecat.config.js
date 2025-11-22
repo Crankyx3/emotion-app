@@ -12,7 +12,7 @@
 
 const REVENUECAT_CONFIG = {
   // Android Public API Key (NICHT Secret Key!)
-  androidApiKey: 'test_IjrjYiLROwkENkSZeERxRZMTJwW',
+  androidApiKey: 'goog_HUKpbgYqweutwSTgFvNHOOdZQNR',
 
   // iOS Public API Key (falls später benötigt)
   iosApiKey: 'YOUR_IOS_API_KEY_HERE',
