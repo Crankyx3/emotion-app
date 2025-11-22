@@ -14,7 +14,9 @@ import {
   Animated,
   ActivityIndicator,
   Modal,
+  StatusBar,
 } from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { collection, addDoc, Timestamp, query, where, getDocs } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
 import { getAiResponse } from "../openaiService";
@@ -30,10 +32,14 @@ import { transcribeAudioWithRetry } from "../services/whisperService";
 export default function DailyEntryScreen() {
   const navigation = useNavigation();
   const { isGuestMode, exitGuestMode } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const [selectedEmotion, setSelectedEmotion] = useState(null);
   const [text, setText] = useState("");
   const [gratitude, setGratitude] = useState("");
+
+  // OCD-spezifische Felder
+  const [compulsionPerformed, setCompulsionPerformed] = useState(false);
 
   // Ladezustand + progress für Ladebalken
   const [loading, setLoading] = useState(false);
@@ -68,50 +74,51 @@ export default function DailyEntryScreen() {
   const gratitudeRecordingInterval = useRef(null);
 
   const quickPhrases = [
-    { category: "Gefühle", phrases: [
-      "Ich fühle mich heute...",
-      "Es beschäftigt mich, dass...",
-      "Ich bin froh über...",
-      "Mir macht Sorgen, dass...",
-      "Ich habe bemerkt, dass...",
+    { category: "Zwangsgedanken", phrases: [
+      "Ich hatte den Gedanken, dass...",
+      "Es beschäftigt mich stark, dass...",
+      "Der Gedanke kam immer wieder: ...",
+      "Was, wenn... (schlimmste Befürchtung)",
+      "Ich kann nicht aufhören zu denken, dass...",
     ]},
-    { category: "Tag", phrases: [
-      "Heute war ein guter Tag, weil...",
-      "Mein Tag war herausfordernd, weil...",
-      "Ich habe heute erreicht, dass...",
-      "Was mir heute wichtig war...",
-      "Ein besonderer Moment heute war...",
+    { category: "Trigger", phrases: [
+      "Ausgelöst wurde es durch...",
+      "Besonders stark war es, als...",
+      "Die Situation, die es ausgelöst hat: ...",
+      "Es wurde schlimmer, weil...",
+      "Der Auslöser war heute...",
     ]},
-    { category: "Gedanken", phrases: [
-      "Ich denke oft darüber nach, wie...",
-      "Mir ist klar geworden, dass...",
-      "Ich frage mich, ob...",
-      "Es fällt mir schwer zu...",
-      "Ich möchte gerne...",
+    { category: "Umgang", phrases: [
+      "Ich habe versucht, dem Drang zu widerstehen...",
+      "Es fiel mir schwer, nicht zu checken/zu kontrollieren...",
+      "Ich konnte... Minuten widerstehen",
+      "Ich habe die Unsicherheit ausgehalten bei...",
+      "ERP-Versuch: Ich habe nicht gegoogelt/gefragt...",
     ]},
   ];
 
+  // Umbenannt: Dankbarkeit → Fortschritte & Erfolge bei OCD
   const quickGratitudePhrases = [
-    { category: "Personen", phrases: [
-      "Meine Familie und Freunde",
-      "Die Unterstützung von...",
-      "Zeit mit...",
-      "Ein nettes Gespräch mit...",
-      "Die Hilfe von...",
+    { category: "ERP-Erfolge", phrases: [
+      "Ich habe heute dem Drang widerstanden zu...",
+      "Ich habe nicht gecheckt/kontrolliert",
+      "Ich habe die Unsicherheit ausgehalten",
+      "Ich habe keine Beruhigung gesucht",
+      "Ich habe eine Exposition geschafft",
     ]},
-    { category: "Alltag", phrases: [
-      "Ein gemütliches Zuhause",
-      "Gutes Essen heute",
-      "Schönes Wetter",
-      "Ruhe und Entspannung",
-      "Zeit für mich selbst",
+    { category: "Fortschritte", phrases: [
+      "Ich konnte länger widerstehen als gestern",
+      "Der Gedanke war weniger intensiv",
+      "Ich habe erkannt: Es ist nur ein Gedanke",
+      "Ich war mutiger als letztes Mal",
+      "Ich habe einen guten Tag trotz Zwangsgedanken",
     ]},
-    { category: "Momente", phrases: [
-      "Ein Lächeln heute",
-      "Ein besonderer Moment",
-      "Sonnenschein am Morgen",
-      "Einen Erfolg heute",
-      "Etwas Neues gelernt",
+    { category: "Selbstfürsorge", phrases: [
+      "Ich war freundlich zu mir selbst",
+      "Ich habe mich nicht verurteilt",
+      "Ich habe Hilfe/Unterstützung angenommen",
+      "Ich habe eine Pause gemacht",
+      "Ich habe an meiner Recovery gearbeitet",
     ]},
   ];
 
@@ -309,13 +316,14 @@ export default function DailyEntryScreen() {
     };
   }, []);
 
+  // OCD-spezifische Intensitätsstufen statt allgemeine Emotionen
   const emotions = [
-    { key: "happy", emoji: "😊", label: "Glücklich", value: 85 },
-    { key: "content", emoji: "😌", label: "Zufrieden", value: 75 },
-    { key: "neutral", emoji: "😐", label: "Neutral", value: 50 },
-    { key: "stressed", emoji: "😤", label: "Gestresst", value: 35 },
-    { key: "anxious", emoji: "😟", label: "Ängstlich", value: 30 },
-    { key: "sad", emoji: "😔", label: "Traurig", value: 25 },
+    { key: "minimal", emoji: "😌", label: "Minimal", value: 85 },
+    { key: "mild", emoji: "🙂", label: "Leicht", value: 70 },
+    { key: "moderate", emoji: "😐", label: "Mittel", value: 50 },
+    { key: "strong", emoji: "😟", label: "Stark", value: 35 },
+    { key: "severe", emoji: "😰", label: "Sehr stark", value: 20 },
+    { key: "extreme", emoji: "😱", label: "Extrem", value: 10 },
   ];
 
   // Prüfen, ob heute bereits ein Eintrag erstellt wurde (bei jedem Screen-Fokus)
@@ -479,7 +487,7 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
 
       const userId = auth.currentUser?.uid;
 
-      // 1. LOKAL SPEICHERN (vollständige Daten inkl. Text & KI-Analyse)
+      // 1. LOKAL SPEICHERN (vollständige Daten inkl. Text & KI-Analyse + OCD-Tracking)
       const localEntry = await saveEntryLocally(userId, {
         emotion: selectedEmotion,
         feelScore: feelScore,
@@ -487,6 +495,8 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
         text,
         gratitude: gratitude.trim() || null,
         analysis: aiReply || null,
+        // OCD-spezifische Felder
+        compulsionPerformed: compulsionPerformed,
       });
 
       // 2. NUR METADATEN in Cloud (für Charts & Statistiken)
@@ -548,8 +558,9 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
 
   return (
     <LinearGradient colors={["#F6FBFF", "#FFFFFF"]} style={styles.background}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F6FBFF" />
       <TouchableOpacity
-        style={styles.settingsButton}
+        style={[styles.settingsButton, { top: insets.top + 10 }]}
         onPress={() => navigation.navigate("Settings")}
       >
         <Ionicons name="settings-outline" size={28} color="#007AFF" />
@@ -561,7 +572,7 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
               <TouchableOpacity style={styles.back} onPress={() => navigation.goBack()}>
                 <Ionicons name="chevron-back" size={24} color="#007AFF" />
               </TouchableOpacity>
-              <ScreenHeader title="Wie fühlst du dich?" subtitle="Nimm dir einen Moment für dich" />
+              <ScreenHeader title="Gedanken-Tagebuch" subtitle="Dokumentiere deine Zwangsgedanken" />
             </View>
 
             {/* Status: Eintrag bereits vorhanden */}
@@ -607,9 +618,9 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
               </View>
             )}
 
-            {/* Emotion-Auswahl mit großen Buttons */}
+            {/* Intensitäts-Auswahl mit großen Buttons */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Wie fühlst du dich gerade?</Text>
+              <Text style={styles.sectionTitle}>Wie stark sind deine Zwangsgedanken heute?</Text>
               <View style={styles.emotionsGrid}>
                 {emotions.map((emo) => {
                   const selected = selectedEmotion === `${emo.emoji} ${emo.label}`;
@@ -630,12 +641,12 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
               </View>
             </View>
 
-            {/* Haupttext: Was beschäftigt dich? */}
+            {/* Haupttext: Zwangsgedanken beschreiben */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Was beschäftigt dich heute?</Text>
+              <Text style={styles.sectionTitle}>Beschreibe deine Zwangsgedanken</Text>
               <TextInput
                 style={[styles.input, styles.mainTextArea]}
-                placeholder="Erzähl, was dich bewegt, wie dein Tag war, was du fühlst oder denkst..."
+                placeholder="Welche Zwangsgedanken hattest du? Was waren die Auslöser? Wie hast du reagiert?..."
                 placeholderTextColor="#999"
                 value={text}
                 onChangeText={setText}
@@ -703,17 +714,17 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
               </View>
             </View>
 
-            {/* Dankbarkeit (optional) */}
+            {/* Fortschritte & Erfolge (optional) */}
             <View style={styles.section}>
               <View style={styles.gratitudeHeader}>
-                <Text style={styles.sectionTitle}>💚 Wofür bist du dankbar?</Text>
+                <Text style={styles.sectionTitle}>🏆 Fortschritte & Erfolge heute</Text>
                 <View style={styles.optionalBadge}>
                   <Text style={styles.optionalBadgeText}>Optional</Text>
                 </View>
               </View>
               <TextInput
                 style={[styles.input, styles.gratitudeInput]}
-                placeholder="z.B. Sonnenschein, nettes Gespräch, Zeit für mich..."
+                placeholder="z.B. Ich habe dem Drang widerstanden, Ich habe nicht gegoogelt, Ich war mutig..."
                 placeholderTextColor="#999"
                 value={gratitude}
                 onChangeText={setGratitude}
@@ -778,6 +789,30 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
                     <Text style={styles.inputHelperText}>Schnell</Text>
                   </TouchableOpacity>
                 </View>
+              </View>
+            </View>
+
+            {/* OCD-spezifische Tracking-Felder */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>📊 ERP-Tracking (Optional)</Text>
+
+              {/* Kompulsion durchgeführt? */}
+              <View style={styles.ocdTrackingRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.ocdLabel}>Kompulsion/Ritual durchgeführt?</Text>
+                  <Text style={styles.ocdSubLabel}>
+                    (Checken, Googeln, Beruhigung suchen, etc.)
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.ocdToggle, compulsionPerformed && styles.ocdToggleActive]}
+                  onPress={() => setCompulsionPerformed(!compulsionPerformed)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.ocdToggleText, compulsionPerformed && styles.ocdToggleTextActive]}>
+                    {compulsionPerformed ? "✅ Ja" : "Nein"}
+                  </Text>
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -878,7 +913,7 @@ ${gratitude.trim() ? `Dankbarkeit: ${gratitude}` : ''}
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Ionicons name="heart" size={28} color="#37B24D" />
-              <Text style={styles.modalTitle}>Dankbarkeit - Schnell-Eingaben</Text>
+              <Text style={styles.modalTitle}>Fortschritte & Erfolge - Schnell-Eingaben</Text>
               <TouchableOpacity onPress={() => setShowGratitudeHelper(false)}>
                 <Ionicons name="close-circle" size={32} color="#8E8E93" />
               </TouchableOpacity>
@@ -1312,5 +1347,59 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     color: "#3C3C43",
+  },
+
+  // OCD-spezifische Tracking Styles
+  ocdTrackingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+  },
+  ocdLabel: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1C1C1E",
+    marginBottom: 4,
+  },
+  ocdSubLabel: {
+    fontSize: 13,
+    color: "#8E8E93",
+    marginTop: 2,
+  },
+  ocdToggle: {
+    backgroundColor: "#F7F9FC",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#E5E5EA",
+    minWidth: 80,
+    alignItems: "center",
+  },
+  ocdToggleActive: {
+    backgroundColor: "#E8F5E9",
+    borderColor: "#34C759",
+  },
+  ocdToggleText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#8E8E93",
+  },
+  ocdToggleTextActive: {
+    color: "#34C759",
+  },
+  ocdInput: {
+    backgroundColor: "#F7F9FC",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#E5E5EA",
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1C1C1E",
+    textAlign: "center",
+    minWidth: 80,
   },
 });

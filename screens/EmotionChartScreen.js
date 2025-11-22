@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import ScreenHeader from "../components/ScreenHeader";
 import {
   View,
@@ -10,7 +11,9 @@ import {
   TouchableOpacity,
   Modal,
   Alert,
+  StatusBar,
 } from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { collection, getDocs, orderBy, query, limit, doc, updateDoc, where } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
 import { LineChart } from "react-native-chart-kit";
@@ -25,6 +28,7 @@ const screenWidth = Dimensions.get("window").width;
 
 export default function EmotionChartScreen({ navigation }) {
   const { isGuestMode } = useAuth();
+  const insets = useSafeAreaInsets();
   const [entries, setEntries] = useState([]);
   const [allEntries, setAllEntries] = useState([]); // Für Trend & Insights
   const [loading, setLoading] = useState(true);
@@ -32,47 +36,62 @@ export default function EmotionChartScreen({ navigation }) {
   const [aiLoading, setAiLoading] = useState(false);
   const [timeframe, setTimeframe] = useState(7); // 7, 14, 30, 90
 
-  useEffect(() => {
-    (async () => {
-      try {
-        if (isGuestMode || !auth.currentUser) {
-          setLoading(false);
-          setEntries([]);
-          setAllEntries([]);
-          return;
+  // Lade Daten wenn Screen fokussiert wird (z.B. nach Tageseintrag)
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      (async () => {
+        try {
+          if (isGuestMode || !auth.currentUser) {
+            setLoading(false);
+            setEntries([]);
+            setAllEntries([]);
+            return;
+          }
+
+          // 🔒 DATENSCHUTZ: Lade alle Einträge aus lokalem Storage
+          const localEntries = await getLocalEntries(auth.currentUser.uid);
+
+          if (!isActive) return; // Verhindere State-Update nach Unmount
+
+          // Mappe alle Einträge und sortiere nach Datum
+          const all = (localEntries || [])
+            .map((e) => {
+              const ts = e.createdAt ? new Date(e.createdAt) : new Date();
+              return {
+                id: e.localId,
+                ...e,
+                date: ts.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }),
+                timestamp: ts.getTime(),
+              };
+            })
+            .sort((a, b) => b.timestamp - a.timestamp); // Neueste zuerst
+
+          setAllEntries(all);
+
+          // Filtere nach gewähltem Zeitraum
+          const filtered = all.slice(0, timeframe).reverse(); // Umdrehen für Chart (älteste -> neueste)
+          setEntries(filtered);
+        } catch (err) {
+          console.error("Fehler beim Laden:", err);
+          if (isActive) {
+            // Defensive: Setze leere Arrays bei Fehler
+            setEntries([]);
+            setAllEntries([]);
+          }
+        } finally {
+          if (isActive) {
+            setLoading(false);
+          }
         }
+      })();
 
-        // 🔒 DATENSCHUTZ: Lade alle Einträge aus lokalem Storage
-        const localEntries = await getLocalEntries(auth.currentUser.uid);
-
-        // Mappe alle Einträge und sortiere nach Datum
-        const all = (localEntries || [])
-          .map((e) => {
-            const ts = e.createdAt ? new Date(e.createdAt) : new Date();
-            return {
-              id: e.localId,
-              ...e,
-              date: ts.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }),
-              timestamp: ts.getTime(),
-            };
-          })
-          .sort((a, b) => b.timestamp - a.timestamp); // Neueste zuerst
-
-        setAllEntries(all);
-
-        // Filtere nach gewähltem Zeitraum
-        const filtered = all.slice(0, timeframe).reverse(); // Umdrehen für Chart (älteste -> neueste)
-        setEntries(filtered);
-      } catch (err) {
-        console.error("Fehler beim Laden:", err);
-        // Defensive: Setze leere Arrays bei Fehler
-        setEntries([]);
-        setAllEntries([]);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [timeframe]);
+      return () => {
+        isActive = false; // Cleanup: Verhindere State-Updates nach Unmount
+      };
+    }, [timeframe, isGuestMode])
+  );
 
   // Trend-Berechnung: Aktueller Zeitraum vs. vorheriger Zeitraum
   const calculateTrend = () => {
@@ -201,8 +220,8 @@ export default function EmotionChartScreen({ navigation }) {
 Du bist ein einfühlsamer psychologischer Berater. Gib eine kurze, aber tiefgehende Analyse dieses Tageseintrags.
 
 📊 MESSWERTE:
-• Emotion: ${emotion}
-• Wohlfühlscore: ${feelScore}/99
+• Intensität: ${emotion}
+• Intensitäts-Score: ${feelScore}/99 (niedriger = besser)
 
 📝 WAS DIE PERSON BESCHRIEBEN HAT:
 ${theme ? `Thema: "${theme}"` : 'Kein Thema'}
@@ -237,14 +256,15 @@ Sei empathisch, validierend und spezifisch. Nutze psychologische Konzepte (CBT, 
 
   return (
     <LinearGradient colors={["#F6FBFF", "#FFFFFF"]} style={styles.background}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F6FBFF" />
       <TouchableOpacity
-        style={styles.settingsButton}
+        style={[styles.settingsButton, { top: insets.top + 10 }]}
         onPress={() => navigation.navigate("Settings")}
       >
         <Ionicons name="settings-outline" size={28} color="#007AFF" />
       </TouchableOpacity>
       <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
-        <ScreenHeader title="📈 Dein Wohlfühlverlauf" subtitle={`Durchschnitt: ${avg.toFixed(1)}/99`} />
+        <ScreenHeader title="📊 Zwangsgedanken-Intensität" subtitle={`Durchschnitt: ${avg.toFixed(1)}/99`} />
 
         {/* Zeitfilter-Buttons */}
         <View style={styles.filterContainer}>
@@ -376,11 +396,23 @@ Sei empathisch, validierend und spezifisch. Nutze psychologische Konzepte (CBT, 
               </View>
 
               <View style={styles.modalBody}>
-                <Text style={styles.modalLine}>💙 Wohlfühlscore: {selectedEntry?.feelScore}/99</Text>
+                <Text style={styles.modalLine}>📊 Intensitäts-Score: {selectedEntry?.feelScore}/99</Text>
 
                 {selectedEntry?.theme ? <Text style={[styles.modalLine, { marginTop: 8 }]}>🧩 Thema: {selectedEntry?.theme}</Text> : null}
-                {selectedEntry?.text ? <Text style={[styles.modalText, { marginTop: 8 }]}>💭 {selectedEntry?.text}</Text> : null}
-                {selectedEntry?.gratitude ? <Text style={[styles.modalText, { marginTop: 8 }]}>💚 Dankbarkeit: {selectedEntry?.gratitude}</Text> : null}
+                {selectedEntry?.text ? <Text style={[styles.modalText, { marginTop: 8 }]}>💭 Zwangsgedanken: {selectedEntry?.text}</Text> : null}
+                {selectedEntry?.gratitude ? <Text style={[styles.modalText, { marginTop: 8 }]}>🏆 Fortschritte: {selectedEntry?.gratitude}</Text> : null}
+
+                {/* OCD-spezifische Tracking-Daten */}
+                {typeof selectedEntry?.compulsionPerformed === 'boolean' ? (
+                  <Text style={[styles.modalLine, { marginTop: 8 }]}>
+                    {selectedEntry.compulsionPerformed ? '⚠️ Kompulsion durchgeführt' : '✅ Keine Kompulsion durchgeführt'}
+                  </Text>
+                ) : null}
+                {selectedEntry?.resistanceMinutes ? (
+                  <Text style={[styles.modalLine, { marginTop: 8 }]}>
+                    ⏱️ Widerstanden: {selectedEntry.resistanceMinutes} Min.
+                  </Text>
+                ) : null}
 
                 {selectedEntry?.analysis ? (
                   <>

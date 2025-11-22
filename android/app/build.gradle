@@ -95,8 +95,8 @@ android {
         applicationId 'com.ki.stimmungshelfer'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 4
-        versionName "1.0.1"
+        versionCode 5
+        versionName "1.0.3"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
@@ -113,6 +113,12 @@ android {
                 storePassword MYAPP_UPLOAD_STORE_PASSWORD
                 keyAlias MYAPP_UPLOAD_KEY_ALIAS
                 keyPassword MYAPP_UPLOAD_KEY_PASSWORD
+            } else {
+                // Fallback to default keystore location
+                storeFile file("${projectDir}/ki-stimmungshelfer-upload.keystore")
+                storePassword System.getenv('KEYSTORE_PASSWORD') ?: 'android'
+                keyAlias System.getenv('KEY_ALIAS') ?: 'upload'
+                keyPassword System.getenv('KEY_PASSWORD') ?: 'android'
             }
         }
     }
@@ -121,12 +127,9 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
-            // Use release signing config if available, otherwise fall back to debug
-            if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE')) {
-                signingConfig signingConfigs.release
-            } else {
-                signingConfig signingConfigs.debug
-            }
+            // Caution! In production, you need to generate your own keystore file.
+            // see https://reactnative.dev/docs/signed-apk-android.
+            signingConfig signingConfigs.release
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds
@@ -170,25 +173,26 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
+    def frescoVersion = "3.1.3"  // Fresco version for Expo SDK 54
     def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";
     def isWebpEnabled = (findProperty('expo.webp.enabled') ?: "") == "true";
     def isWebpAnimatedEnabled = (findProperty('expo.webp.animated') ?: "") == "true";
 
     if (isGifEnabled) {
         // For animated gif support
-        implementation("com.facebook.fresco:animated-gif:${expoLibs.versions.fresco.get()}")
+        implementation("com.facebook.fresco:animated-gif:${frescoVersion}")
     }
 
     if (isWebpEnabled) {
         // For webp support
-        implementation("com.facebook.fresco:webpsupport:${expoLibs.versions.fresco.get()}")
+        implementation("com.facebook.fresco:webpsupport:${frescoVersion}")
         if (isWebpAnimatedEnabled) {
             // Animated webp support
-            implementation("com.facebook.fresco:animated-webp:${expoLibs.versions.fresco.get()}")
+            implementation("com.facebook.fresco:animated-webp:${frescoVersion}")
         }
     }
 
-    if (hermesEnabled.toBoolean()) {
+    if (rootProject.ext.hermesEnabled) {
         implementation("com.facebook.react:hermes-android")
     } else {
         implementation jscFlavor

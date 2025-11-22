@@ -178,37 +178,37 @@ export default function HomeScreen({ navigation }) {
   };
   const mainMenuItems = [
     {
-      title: "Tagesdaten eintragen",
-      subtitle: "Notiere deine Stimmung und wie du dich fühlst",
+      title: "Gedanken-Tagebuch",
+      subtitle: "Dokumentiere Zwangsgedanken und deren Intensität",
       icon: "create-outline",
       iconColor: Colors.primary,
       screen: "DailyEntry",
     },
     {
       title: "Tagesanalyse",
-      subtitle: "Erhalte deine KI-Analyse des heutigen Tages",
+      subtitle: "Erhalte deine KI-Analyse zu deinen Gedanken",
       icon: "analytics-outline",
       iconColor: Colors.success,
       screen: "DailyAnalysis",
     },
     {
-      title: "EmotionChart",
-      subtitle: "Verfolge deinen emotionalen Verlauf über Zeit",
+      title: "Gedanken-Verlauf",
+      subtitle: "Verfolge Intensität deiner Zwangsgedanken über Zeit",
       icon: "bar-chart-outline",
       iconColor: Colors.warning,
       screen: "EmotionChart",
     },
     {
-      title: "KI-Wochenanalyse",
-      subtitle: "Lass deine Woche psychologisch reflektieren",
+      title: "Wochenanalyse",
+      subtitle: "Erkenne Muster und Fortschritte bei OCD",
       icon: "brain",
       iconColor: Colors.info,
       screen: "Analysis",
       isMaterialIcon: true,
     },
     {
-      title: "KI-Chat",
-      subtitle: "Sprich über deine Analysen und stelle Fragen",
+      title: "OCD-Coach Chat",
+      subtitle: "Sprich mit dem KI-Coach über deine Zwangsgedanken",
       icon: "chatbubbles",
       iconColor: "#FF6B6B",
       screen: "ChatSelection",
@@ -224,15 +224,15 @@ export default function HomeScreen({ navigation }) {
       screen: "AppGuide",
     },
     {
-      title: "Meditation & Achtsamkeit",
-      subtitle: "Geführte Meditationen und Atemübungen (2-5 Min.)",
+      title: "ERP-Übungen & Achtsamkeit",
+      subtitle: "Expositionsübungen und Defusion-Techniken (2-5 Min.)",
       icon: "leaf-outline",
       iconColor: "#2ecc71",
       screen: "Meditation",
     },
     {
-      title: "Psycho-Edukation",
-      subtitle: "Lerne über mentale Gesundheit und Bewältigungsstrategien",
+      title: "OCD Wissen",
+      subtitle: "Verstehe Zwangsgedanken und ERP-Therapie besser",
       icon: "school-outline",
       iconColor: Colors.info,
       screen: "PsychoEducation",
@@ -244,7 +244,7 @@ export default function HomeScreen({ navigation }) {
 
     // Premium Badge (wenn nicht Premium und nicht Trial)
     if (!isPremium && !isTrialActive) {
-      const premiumFeatures = ["Tagesanalyse", "KI-Wochenanalyse", "KI-Chat", "Meditation & Achtsamkeit"];
+      const premiumFeatures = ["Tagesanalyse", "Wochenanalyse", "OCD-Coach Chat", "ERP-Übungen & Achtsamkeit"];
       if (premiumFeatures.includes(item.title)) {
         badges.push(
           <View key="premium" style={styles.premiumBadge}>
@@ -256,7 +256,7 @@ export default function HomeScreen({ navigation }) {
     }
 
     // Status Badges
-    if (item.title === "Tagesdaten eintragen" && dailyEntryDone) {
+    if (item.title === "Gedanken-Tagebuch" && dailyEntryDone) {
       badges.push(
         <View key="done" style={styles.statusBadge}>
           <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
@@ -272,7 +272,7 @@ export default function HomeScreen({ navigation }) {
         </View>
       );
     }
-    if (item.title === "KI-Wochenanalyse" && weeklyAnalysisDone) {
+    if (item.title === "Wochenanalyse" && weeklyAnalysisDone) {
       badges.push(
         <View key="weekly" style={[styles.statusBadge, styles.statusBadgeWarning]}>
           <Ionicons name="time-outline" size={16} color={Colors.warning} />
@@ -322,7 +322,7 @@ export default function HomeScreen({ navigation }) {
       )}
 
       <ScrollView contentContainerStyle={styles.container}>
-        <ScreenHeader title="KI-Stimmungshelfer" subtitle="Dein persönliches Stimmungs-Dashboard" />
+        <ScreenHeader title="Zwangsgedanken Helfer" subtitle="Dein Begleiter bei Zwangsgedanken" />
 
         {/* Kompakte Info-Leiste: Streak + Premium Status */}
         <View style={styles.compactInfoRow}>

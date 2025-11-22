@@ -27,6 +27,8 @@ import OnboardingScreen from "./screens/OnboardingScreen";
 
 import { AuthProvider, useAuth } from "./components/AuthProvider";
 import { PremiumProvider } from "./components/PremiumProvider";
+import { SecurityProvider, useSecurity } from "./components/SecurityProvider";
+import LockScreen from "./screens/LockScreen";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const Tab = createBottomTabNavigator();
@@ -108,6 +110,7 @@ function MainTabs() {
 
 function RootNavigator() {
   const { user, initializing, isGuestMode } = useAuth();
+  const { isLocked, securityEnabled } = useSecurity();
   const [needsOnboarding, setNeedsOnboarding] = React.useState(false);
   const [checkingOnboarding, setCheckingOnboarding] = React.useState(true);
 
@@ -149,6 +152,11 @@ function RootNavigator() {
   // Zeige Main App wenn eingeloggt ODER im Guest Mode
   const showMainApp = user || isGuestMode;
 
+  // Zeige LockScreen wenn App gesperrt ist und Security aktiviert ist
+  if (showMainApp && securityEnabled && isLocked) {
+    return <LockScreen />;
+  }
+
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -189,7 +197,9 @@ export default function App() {
   return (
     <AuthProvider>
       <PremiumProvider>
-        <RootNavigator />
+        <SecurityProvider>
+          <RootNavigator />
+        </SecurityProvider>
       </PremiumProvider>
     </AuthProvider>
   );

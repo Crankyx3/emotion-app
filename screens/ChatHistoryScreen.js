@@ -9,10 +9,11 @@ import {
   ActivityIndicator,
   Modal,
   Alert,
+  TextInput,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { collection, getDocs, query, where, addDoc, Timestamp } from "firebase/firestore";
+import { collection, getDocs, query, where, addDoc, Timestamp, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import { db, auth } from "../firebaseconfig";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -35,6 +36,12 @@ export default function ChatHistoryScreen() {
 
   // Guest Mode
   const [showGuestModal, setShowGuestModal] = useState(false);
+
+  // Chat-Aktionen (Löschen, Umbenennen)
+  const [selectedChat, setSelectedChat] = useState(null);
+  const [showOptionsModal, setShowOptionsModal] = useState(false);
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [newChatName, setNewChatName] = useState("");
 
   useEffect(() => {
     loadChatHistory();
@@ -206,6 +213,63 @@ export default function ChatHistoryScreen() {
     });
   };
 
+  const openChatOptions = (chat, e) => {
+    e.stopPropagation();
+    setSelectedChat(chat);
+    setShowOptionsModal(true);
+  };
+
+  const deleteChat = async () => {
+    try {
+      if (!selectedChat) return;
+
+      Alert.alert(
+        "Chat löschen?",
+        "Dieser Chat wird unwiderruflich gelöscht.",
+        [
+          { text: "Abbrechen", style: "cancel" },
+          {
+            text: "Löschen",
+            style: "destructive",
+            onPress: async () => {
+              await deleteDoc(doc(db, "chats", selectedChat.id));
+              setShowOptionsModal(false);
+              setSelectedChat(null);
+              loadChatHistory();
+            }
+          }
+        ]
+      );
+    } catch (err) {
+      console.error("Fehler beim Löschen:", err);
+      Alert.alert("Fehler", "Der Chat konnte nicht gelöscht werden.");
+    }
+  };
+
+  const openRenameModal = () => {
+    setShowOptionsModal(false);
+    setNewChatName(selectedChat?.customName || "");
+    setShowRenameModal(true);
+  };
+
+  const renameChat = async () => {
+    try {
+      if (!selectedChat || !newChatName.trim()) return;
+
+      await updateDoc(doc(db, "chats", selectedChat.id), {
+        customName: newChatName.trim()
+      });
+
+      setShowRenameModal(false);
+      setSelectedChat(null);
+      setNewChatName("");
+      loadChatHistory();
+    } catch (err) {
+      console.error("Fehler beim Umbenennen:", err);
+      Alert.alert("Fehler", "Der Chat konnte nicht umbenannt werden.");
+    }
+  };
+
   const formatDate = (timestamp) => {
     if (!timestamp) return "Unbekannt";
     const date = timestamp.toDate();
@@ -274,15 +338,23 @@ export default function ChatHistoryScreen() {
                   </View>
                   <View style={styles.chatContent}>
                     <Text style={styles.chatTitle}>
-                      {chat.type === "all"
-                        ? "Alle letzten 14 Tage"
-                        : chat.type === "weekly"
-                        ? `Wochenanalyse`
-                        : `Tagesanalyse`}
+                      {chat.customName || (
+                        chat.type === "all"
+                          ? "Alle letzten 14 Tage"
+                          : chat.type === "weekly"
+                          ? `Wochenanalyse`
+                          : `Tagesanalyse`
+                      )}
                     </Text>
                     <Text style={styles.chatDate}>{chat.date || formatDate(chat.createdAt)}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={24} color="#8E8E93" />
+                  <TouchableOpacity
+                    onPress={(e) => openChatOptions(chat, e)}
+                    style={styles.chatOptionsButton}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Ionicons name="ellipsis-vertical" size={20} color="#8E8E93" />
+                  </TouchableOpacity>
                 </TouchableOpacity>
               ))
             )}
@@ -412,6 +484,101 @@ export default function ChatHistoryScreen() {
           }}
           featureName="KI-Chat"
         />
+
+        {/* Chat-Optionen Modal */}
+        <Modal
+          visible={showOptionsModal}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={() => setShowOptionsModal(false)}
+        >
+          <TouchableOpacity
+            style={styles.optionsModalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowOptionsModal(false)}
+          >
+            <View style={styles.optionsModalContent}>
+              <Text style={styles.optionsModalTitle}>Chat-Aktionen</Text>
+
+              <TouchableOpacity
+                style={styles.optionButton}
+                onPress={openRenameModal}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="create-outline" size={24} color="#007AFF" />
+                <Text style={styles.optionButtonText}>Umbenennen</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.optionButton, styles.deleteButton]}
+                onPress={deleteChat}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="trash-outline" size={24} color="#E03131" />
+                <Text style={[styles.optionButtonText, styles.deleteButtonText]}>Löschen</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setShowOptionsModal(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.cancelButtonText}>Abbrechen</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* Umbenennen Modal */}
+        <Modal
+          visible={showRenameModal}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={() => setShowRenameModal(false)}
+        >
+          <TouchableOpacity
+            style={styles.optionsModalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowRenameModal(false)}
+          >
+            <TouchableOpacity
+              style={styles.renameModalContent}
+              activeOpacity={1}
+            >
+              <Text style={styles.renameModalTitle}>Chat umbenennen</Text>
+
+              <TextInput
+                style={styles.renameInput}
+                placeholder="Neuer Name..."
+                placeholderTextColor="#8E8E93"
+                value={newChatName}
+                onChangeText={setNewChatName}
+                autoFocus={true}
+              />
+
+              <View style={styles.renameModalButtons}>
+                <TouchableOpacity
+                  style={[styles.renameButton, styles.renameButtonCancel]}
+                  onPress={() => {
+                    setShowRenameModal(false);
+                    setNewChatName("");
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.renameButtonCancelText}>Abbrechen</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.renameButton, styles.renameButtonSave]}
+                  onPress={renameChat}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.renameButtonSaveText}>Speichern</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -526,6 +693,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#8E8E93",
   },
+  chatOptionsButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
   // Modal Styles
   modalOverlay: {
     flex: 1,
@@ -593,5 +764,110 @@ const styles = StyleSheet.create({
   },
   emotionIcon: {
     fontSize: 24,
+  },
+  // Chat-Optionen Modal
+  optionsModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  optionsModalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    width: "100%",
+    maxWidth: 340,
+  },
+  optionsModalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1C1C1E",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  optionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F7F9FC",
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  deleteButton: {
+    backgroundColor: "#FFEBEE",
+  },
+  optionButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#007AFF",
+    marginLeft: 12,
+  },
+  deleteButtonText: {
+    color: "#E03131",
+  },
+  cancelButton: {
+    backgroundColor: "#F7F9FC",
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 6,
+    alignItems: "center",
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#8E8E93",
+  },
+  // Umbenennen Modal
+  renameModalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 24,
+    width: "100%",
+    maxWidth: 340,
+  },
+  renameModalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1C1C1E",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  renameInput: {
+    backgroundColor: "#F7F9FC",
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 16,
+    color: "#1C1C1E",
+    borderWidth: 1.5,
+    borderColor: "#E5E5EA",
+    marginBottom: 20,
+  },
+  renameModalButtons: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  renameButton: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  renameButtonCancel: {
+    backgroundColor: "#F7F9FC",
+  },
+  renameButtonCancelText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#8E8E93",
+  },
+  renameButtonSave: {
+    backgroundColor: "#007AFF",
+  },
+  renameButtonSaveText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#fff",
   },
 });
