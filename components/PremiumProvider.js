@@ -80,10 +80,11 @@ export const PremiumProvider = ({ children }) => {
         return;
       }
 
-      // RevenueCat konfigurieren
+      // RevenueCat konfigurieren mit Debug-Modus
+      Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG); // Aktiviere ausführliche Logs
       Purchases.configure({ apiKey });
 
-      console.log('✅ RevenueCat initialisiert');
+      console.log('✅ RevenueCat initialisiert mit API Key:', apiKey.substring(0, 10) + '...');
       setIsRevenueCatConfigured(true);
 
       // Listener für Käufe
@@ -217,11 +218,28 @@ export const PremiumProvider = ({ children }) => {
       if (isRevenueCatConfigured) {
         try {
           // Hole verfügbare Offerings
+          console.log('🔍 Hole RevenueCat Offerings...');
           const offerings = await Purchases.getOfferings();
 
+          console.log('📦 Offerings erhalten:', {
+            current: offerings.current?.identifier,
+            availablePackages: offerings.current?.availablePackages.length
+          });
+
           if (offerings.current === null || offerings.current.availablePackages.length === 0) {
-            throw new Error('Keine Packages verfügbar');
+            console.error('❌ Keine Packages verfügbar. Prüfe:');
+            console.error('1. Service Account in RevenueCat verbunden?');
+            console.error('2. Products in Google Play Console erstellt?');
+            console.error('3. Products in RevenueCat importiert?');
+            console.error('4. Offering "default" erstellt?');
+            throw new Error('Keine Packages verfügbar - siehe Console-Logs für Details');
           }
+
+          // Debug: Zeige alle verfügbaren Packages
+          console.log('📦 Verfügbare Packages:');
+          offerings.current.availablePackages.forEach(pkg => {
+            console.log(`  - ${pkg.identifier}: ${pkg.product.identifier} (${pkg.product.title})`);
+          });
 
           // Finde das richtige Package (monthly oder yearly)
           const selectedPackage = offerings.current.availablePackages.find(
@@ -235,7 +253,9 @@ export const PremiumProvider = ({ children }) => {
           );
 
           if (!selectedPackage) {
-            throw new Error(`Package für Plan "${plan}" nicht gefunden`);
+            console.error(`❌ Package für Plan "${plan}" nicht gefunden!`);
+            console.error('Erwartete Product ID:', plan === 'monthly' ? REVENUECAT_CONFIG.products.monthly : REVENUECAT_CONFIG.products.yearly);
+            throw new Error(`Package für Plan "${plan}" nicht gefunden - siehe Console-Logs`);
           }
 
           console.log(`🛒 Kaufe Package: ${selectedPackage.identifier}`);
