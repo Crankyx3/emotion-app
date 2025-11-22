@@ -21,8 +21,8 @@ const REVENUECAT_CONFIG = {
   // 🚀 FÜR RELEASE BUILD / INTERNER TEST (AAB für Play Store):
   //    → Production Key aktivieren, Test-Key auskommentieren
   //
-  androidApiKey: 'test_IjrjYiLROwkENkSZeERxRZMTJwW',  // ← Test-Key (für Expo Go)
-  // androidApiKey: 'goog_HUKpbgYqweutwSTgFvNHOOdZQNR',  // ← Production Key (VOR AAB BUILD aktivieren!)
+  // androidApiKey: 'test_IjrjYiLROwkENkSZeERxRZMTJwW',  // ← Test-Key (für Expo Go)
+  androidApiKey: 'goog_HUKpbgYqweutwSTgFvNHOOdZQNR',  // ← Production Key (VOR AAB BUILD aktivieren!)
 
   // iOS Public API Key (falls später benötigt)
   iosApiKey: 'YOUR_IOS_API_KEY_HERE',
