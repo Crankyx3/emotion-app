@@ -14,7 +14,8 @@ module.exports = function (api) {
         "module-resolver",
         {
           alias: {
-            "^react-native$": "react-native"
+            "^react-native$": "react-native",
+            "react-native-worklets/plugin": "react-native-worklets-core/plugin"
           }
         }
       ],
