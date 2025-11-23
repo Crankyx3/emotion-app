@@ -74,10 +74,26 @@ export const PremiumProvider = ({ children }) => {
         ? REVENUECAT_CONFIG.iosApiKey
         : REVENUECAT_CONFIG.androidApiKey;
 
+      // Test-Keys sind nur in Production nicht erlaubt
+      const isTestKey = apiKey && apiKey.startsWith('test_');
+      const isProductionBuild = !__DEV__;
+
       if (!apiKey || apiKey.includes('YOUR_')) {
         console.warn('⚠️ RevenueCat API Key nicht konfiguriert. Siehe revenuecat.config.js');
+        console.warn('ℹ️  App läuft im Fallback-Modus: Trial funktioniert, aber keine echten In-App-Käufe möglich.');
         setIsRevenueCatConfigured(false);
         return;
+      }
+
+      if (isTestKey && isProductionBuild) {
+        console.warn('⚠️ Test-Key in Production Build nicht erlaubt!');
+        console.warn('ℹ️  App läuft im Fallback-Modus: Trial funktioniert, aber keine echten In-App-Käufe möglich.');
+        setIsRevenueCatConfigured(false);
+        return;
+      }
+
+      if (isTestKey) {
+        console.log('🧪 RevenueCat Test-Modus aktiv (Development)');
       }
 
       // RevenueCat konfigurieren
@@ -216,6 +232,28 @@ export const PremiumProvider = ({ children }) => {
       // Falls RevenueCat konfiguriert ist, nutze echten Purchase Flow
       if (isRevenueCatConfigured) {
         try {
+          // Prüfe ob Test-Key verwendet wird
+          const apiKey = Platform.OS === 'ios'
+            ? REVENUECAT_CONFIG.iosApiKey
+            : REVENUECAT_CONFIG.androidApiKey;
+          const isTestKey = apiKey && apiKey.startsWith('test_');
+
+          // Im Test-Modus: Simuliere Kauf
+          if (isTestKey && __DEV__) {
+            console.log('🧪 Test-Modus: Simuliere Kauf von', plan);
+            console.log('ℹ️  Für echte In-App-Käufe: Production API Key konfigurieren und Products in RevenueCat einrichten');
+
+            // Simuliere erfolgreichen Kauf
+            setIsPremium(true);
+            setIsTrialActive(false);
+
+            await AsyncStorage.setItem(`isPremium_${userId}`, 'true');
+            await AsyncStorage.setItem(`premiumPlan_${userId}`, plan);
+            await AsyncStorage.setItem(`premiumStartDate_${userId}`, new Date().toISOString());
+
+            return { success: true, simulated: true };
+          }
+
           // Hole verfügbare Offerings
           const offerings = await Purchases.getOfferings();
 

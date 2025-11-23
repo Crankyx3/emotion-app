@@ -11,7 +11,9 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Alert,
+  StatusBar,
 } from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { getAiResponse, getAiResponseStreaming } from "../openaiService";
@@ -23,6 +25,7 @@ import { usePremium } from "../components/PremiumProvider";
 
 export default function ChatScreen({ route }) {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const { canUseFeature, getTrialText, isPremium, isTrialActive } = usePremium();
   const { chatId, context, type, date } = route.params || {};
   // chatId = ID des gespeicherten Chats (falls vorhanden)
@@ -395,16 +398,24 @@ Antworte empathisch und duze den Nutzer konsequent.
     }
   };
 
+  // Nur scrollen wenn neue Nachricht hinzugefügt wurde (nicht bei jedem Re-render)
+  const prevMessageCountRef = useRef(0);
   useEffect(() => {
-    // immer ans Ende scrollen, wenn Messages sich ändern
-    scrollRef.current?.scrollToEnd({ animated: true });
+    if (messages.length > prevMessageCountRef.current) {
+      // Kurze Verzögerung für Android, damit Keyboard bereits offen ist
+      setTimeout(() => {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }, Platform.OS === 'android' ? 100 : 0);
+    }
+    prevMessageCountRef.current = messages.length;
   }, [messages]);
 
   return (
     <LinearGradient colors={["#EAF4FF", "#FFFFFF"]} style={styles.gradient}>
+      <StatusBar barStyle="dark-content" backgroundColor="#EAF4FF" />
       <SafeAreaView style={{ flex: 1 }}>
         {/* Topbar mit Zurück-Button */}
-        <View style={styles.topBar}>
+        <View style={[styles.topBar, { paddingTop: insets.top }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Ionicons name="chevron-back" size={24} color="#007AFF" />
           </TouchableOpacity>
@@ -449,12 +460,14 @@ Antworte empathisch und duze den Nutzer konsequent.
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
         >
           <ScrollView
             ref={scrollRef}
             contentContainerStyle={styles.chatContainer}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            removeClippedSubviews={Platform.OS === 'android'}
           >
             {messages.map((msg, i) => (
               <View
@@ -484,7 +497,7 @@ Antworte empathisch und duze den Nutzer konsequent.
             ))}
           </ScrollView>
 
-          <View style={styles.inputContainer}>
+          <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 10) }]}>
             <TextInput
               style={styles.input}
               placeholder="Schreib deine Gedanken..."

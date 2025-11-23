@@ -12,7 +12,9 @@ import {
   SafeAreaView,
   Modal,
   Linking,
+  StatusBar,
 } from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedCircularProgress } from "react-native-circular-progress";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -35,6 +37,7 @@ import { useAuth } from "../components/AuthProvider";
 export default function DailyAnalysisScreen({ route, navigation }) {
   const { canUseFeature, getTrialText, isTrialActive, trialDaysLeft } = usePremium();
   const { isGuestMode } = useAuth();
+  const insets = useSafeAreaInsets();
   const paramsData = route.params || {};
 
   // Lokale States für alle Werte (aus route.params oder Firestore)
@@ -53,6 +56,7 @@ export default function DailyAnalysisScreen({ route, navigation }) {
   const [actionSuggestions, setActionSuggestions] = useState([]); // Konkrete Handlungsvorschläge
   const [showCrisisModal, setShowCrisisModal] = useState(false); // Modal für Notfall-Strategien
   const [suggestionFeedback, setSuggestionFeedback] = useState({}); // Feedback für jeden Vorschlag: {0: "helpful", 1: "not_helpful", ...}
+  const [expandedSections, setExpandedSections] = useState({}); // Welche Sektionen sind aufgeklappt: {0: true, 1: false, ...}
 
   // progress für Ladebalken
   const progress = useRef(new Animated.Value(0)).current;
@@ -436,8 +440,9 @@ Die Vorschläge sollen sofort umsetzbar sein (5-15 Minuten) und zur aktuellen Em
 
   return (
     <LinearGradient colors={["#f0f4ff", "#ffffff"]} style={styles.gradient}>
+      <StatusBar barStyle="dark-content" backgroundColor="#f0f4ff" />
       <TouchableOpacity
-        style={styles.settingsButton}
+        style={[styles.settingsButton, { top: insets.top + 10 }]}
         onPress={() => navigation.navigate("Settings")}
       >
         <Ionicons name="settings-outline" size={28} color="#007AFF" />
@@ -613,7 +618,7 @@ Die Vorschläge sollen sofort umsetzbar sein (5-15 Minuten) und zur aktuellen Em
                 <Text style={styles.analysisHeaderTitle}>Deine KI-Analyse</Text>
               </LinearGradient>
 
-              {/* Absätze mit Icons und unterschiedlichen Farben */}
+              {/* Aufklappbare Sektionen */}
               {aiText.split('\n\n').filter(para => para.trim()).map((paragraph, index) => {
                 const trimmedPara = paragraph.trim();
                 const headingMatch = trimmedPara.match(/^([^:]+):\s*(.*)$/s);
@@ -621,6 +626,7 @@ Die Vorschläge sollen sofort umsetzbar sein (5-15 Minuten) und zur aktuellen Em
                 if (headingMatch) {
                   const heading = headingMatch[1];
                   const content = headingMatch[2];
+                  const isExpanded = expandedSections[index];
 
                   // Bestimme Icon und Farbe basierend auf Überschrift
                   let icon = "information-circle";
@@ -628,7 +634,7 @@ Die Vorschläge sollen sofort umsetzbar sein (5-15 Minuten) und zur aktuellen Em
                   let borderColor = "#007AFF";
                   let bgColor = "#F0F7FF";
 
-                  if (heading.toLowerCase().includes("emotional") || heading.toLowerCase().includes("gefühl")) {
+                  if (heading.toLowerCase().includes("emotional") || heading.toLowerCase().includes("gefühl") || heading.toLowerCase().includes("lage")) {
                     icon = "heart";
                     iconColor = "#FF6B9D";
                     borderColor = "#FF6B9D";
@@ -646,17 +652,29 @@ Die Vorschläge sollen sofort umsetzbar sein (5-15 Minuten) und zur aktuellen Em
                   }
 
                   return (
-                    <View key={index} style={[styles.analysisSectionCard, { backgroundColor: bgColor, borderLeftColor: borderColor }]}>
+                    <TouchableOpacity
+                      key={index}
+                      style={[styles.analysisSectionCard, { backgroundColor: bgColor, borderLeftColor: borderColor }]}
+                      onPress={() => setExpandedSections(prev => ({ ...prev, [index]: !prev[index] }))}
+                      activeOpacity={0.7}
+                    >
                       <View style={styles.analysisSectionHeader}>
                         <View style={[styles.analysisSectionIconBg, { backgroundColor: iconColor + '20' }]}>
                           <Ionicons name={icon} size={20} color={iconColor} />
                         </View>
-                        <Text style={[styles.analysisSectionTitle, { color: iconColor }]}>
+                        <Text style={[styles.analysisSectionTitle, { color: iconColor, flex: 1 }]}>
                           {heading}
                         </Text>
+                        <Ionicons
+                          name={isExpanded ? "chevron-up" : "chevron-down"}
+                          size={24}
+                          color={iconColor}
+                        />
                       </View>
-                      <Text style={styles.analysisSectionContent}>{content}</Text>
-                    </View>
+                      {isExpanded && (
+                        <Text style={[styles.analysisSectionContent, { marginTop: 12 }]}>{content}</Text>
+                      )}
+                    </TouchableOpacity>
                   );
                 }
 
@@ -757,6 +775,30 @@ Die Vorschläge sollen sofort umsetzbar sein (5-15 Minuten) und zur aktuellen Em
                     );
                   })}
                 </View>
+              )}
+
+              {/* Button: Mit OCD-Coach über Analyse sprechen */}
+              {analysisValid && todayAnalysis && (
+                <TouchableOpacity
+                  style={styles.chatButton}
+                  onPress={() => navigation.navigate('Chat', {
+                    context: todayAnalysis.analysis,
+                    type: 'daily',
+                    date: new Date().toLocaleDateString('de-DE'),
+                  })}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient
+                    colors={['#667eea', '#764ba2']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.chatButtonGradient}
+                  >
+                    <Ionicons name="chatbubbles" size={22} color="#fff" />
+                    <Text style={styles.chatButtonText}>Mit OCD-Coach über Analyse sprechen</Text>
+                    <Ionicons name="arrow-forward" size={20} color="#fff" />
+                  </LinearGradient>
+                </TouchableOpacity>
               )}
             </View>
           )}
@@ -1407,5 +1449,33 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 17,
     fontWeight: "600",
+  },
+
+  // Chat Button Styles
+  chatButton: {
+    marginTop: 24,
+    marginBottom: 20,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#667eea',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  chatButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  chatButtonText: {
+    flex: 1,
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });

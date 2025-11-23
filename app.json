@@ -1,13 +1,13 @@
 {
   "expo": {
-    "name": "Zwangsgedankenhelfer",
-    "slug": "zwangsgedankenhelfer",
-    "version": "1.0.1",
+    "name": "Zwangsgedanken Helfer",
+    "slug": "ki-stimmungshelfer",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "scheme": "ki-stimmungshelfer",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -21,14 +21,15 @@
     },
     "android": {
       "package": "com.ki.stimmungshelfer",
-      "versionCode": 4,
+      "versionCode": 5,
       "permissions": [
         "RECORD_AUDIO"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
       "favicon": "./assets/favicon.png"

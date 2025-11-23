@@ -585,6 +585,28 @@ Abschluss: Beende mit genau einem Wort in einer neuen Zeile: POSITIV, NEUTRAL od
                 {expanded ? "Weniger anzeigen ↑" : "Mehr anzeigen ↓"}
               </Text>
             </TouchableOpacity>
+
+            {/* Button: Mit OCD-Coach über Wochenanalyse sprechen */}
+            <TouchableOpacity
+              style={styles.chatButton}
+              onPress={() => navigation.navigate('Chat', {
+                context: aiText,
+                type: 'weekly',
+                date: new Date().toLocaleDateString('de-DE'),
+              })}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={['#667eea', '#764ba2']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.chatButtonGradient}
+              >
+                <Ionicons name="chatbubbles" size={22} color="#fff" />
+                <Text style={styles.chatButtonText}>Mit OCD-Coach über Wochenanalyse sprechen</Text>
+                <Ionicons name="arrow-forward" size={20} color="#fff" />
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -982,5 +1004,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#3C3C43",
     lineHeight: 20,
+  },
+
+  // Chat Button Styles
+  chatButton: {
+    marginTop: 24,
+    marginBottom: 20,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#667eea',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  chatButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  chatButtonText: {
+    flex: 1,
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });

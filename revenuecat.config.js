@@ -12,7 +12,17 @@
 
 const REVENUECAT_CONFIG = {
   // Android Public API Key (NICHT Secret Key!)
-  androidApiKey: 'test_IjrjYiLROwkENkSZeERxRZMTJwW',
+  //
+  // ⚠️ WICHTIG: Wähle den richtigen Key je nach Umgebung:
+  //
+  // 🧪 FÜR EXPO GO DEVELOPMENT (npx expo start):
+  //    → Test-Key verwenden (aktiv unten)
+  //
+  // 🚀 FÜR RELEASE BUILD / INTERNER TEST (AAB für Play Store):
+  //    → Production Key aktivieren, Test-Key auskommentieren
+  //
+  // androidApiKey: 'test_IjrjYiLROwkENkSZeERxRZMTJwW',  // ← Test-Key (für Expo Go)
+  androidApiKey: 'goog_HUKpbgYqweutwSTgFvNHOOdZQNR',  // ← Production Key (VOR AAB BUILD aktivieren!)
 
   // iOS Public API Key (falls später benötigt)
   iosApiKey: 'YOUR_IOS_API_KEY_HERE',

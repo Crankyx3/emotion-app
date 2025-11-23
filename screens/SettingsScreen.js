@@ -9,11 +9,15 @@ import {
   ActivityIndicator,
   Modal,
   TextInput,
+  Platform,
+  StatusBar,
 } from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../components/AuthProvider";
 import { usePremium } from "../components/PremiumProvider";
+import { useSecurity } from "../components/SecurityProvider";
 import { db, auth } from "../firebaseconfig";
 import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { deleteUser, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
@@ -28,6 +32,12 @@ import NotificationSettings from "../components/NotificationSettings";
 export default function SettingsScreen({ navigation }) {
   const { user, signOut } = useAuth();
   const { isPremium, isTrialActive, trialDaysLeft, getTrialTimeRemaining } = usePremium();
+  const {
+    securityEnabled,
+    enableSecurity,
+    disableSecurity,
+  } = useSecurity();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const [trialTimeRemaining, setTrialTimeRemaining] = useState(null);
   const [stats, setStats] = useState({
@@ -691,8 +701,9 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
 
   return (
     <LinearGradient colors={["#EAF4FF", "#FFFFFF"]} style={styles.gradient}>
+      <StatusBar barStyle="dark-content" backgroundColor="#EAF4FF" />
       <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.topRow}>
+        <View style={[styles.topRow, { marginTop: insets.top }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Ionicons name="chevron-back" size={32} color="#007AFF" />
           </TouchableOpacity>
@@ -883,6 +894,123 @@ Für Rückfragen: KI-Stimmungshelfer App v1.0.0
               </View>
             </View>
           )}
+        </View>
+
+        {/* Security Settings */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🔐 Sicherheit</Text>
+
+          {/* PIN Toggle */}
+          <View style={styles.privacyOption}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.privacyOptionTitle}>App mit PIN schützen</Text>
+              <Text style={styles.privacyOptionDescription}>
+                Schütze deine privaten Daten mit einem 4-stelligen PIN
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.toggle, securityEnabled && styles.toggleActive]}
+              onPress={() => {
+                if (securityEnabled) {
+                  // Deaktiviere Security
+                  Alert.alert(
+                    "PIN-Schutz deaktivieren?",
+                    "Deine App ist dann nicht mehr geschützt.",
+                    [
+                      { text: "Abbrechen", style: "cancel" },
+                      {
+                        text: "Deaktivieren",
+                        style: "destructive",
+                        onPress: async () => {
+                          const result = await disableSecurity();
+                          if (result.success) {
+                            Alert.alert("Deaktiviert", "PIN-Schutz wurde entfernt.");
+                          }
+                        },
+                      },
+                    ]
+                  );
+                } else {
+                  // Aktiviere Security - Frage nach PIN
+                  if (Platform.OS === "ios") {
+                    Alert.prompt(
+                      "PIN festlegen",
+                      "Gib einen 4-stelligen PIN ein:",
+                      [
+                        { text: "Abbrechen", style: "cancel" },
+                        {
+                          text: "Bestätigen",
+                          onPress: async (pin) => {
+                            if (pin && pin.length === 4 && /^\d+$/.test(pin)) {
+                              const result = await enableSecurity(pin);
+                              if (result.success) {
+                                Alert.alert(
+                                  "Aktiviert ✅",
+                                  "App-Schutz mit PIN wurde aktiviert."
+                                );
+                              } else {
+                                Alert.alert("Fehler", result.error);
+                              }
+                            } else {
+                              Alert.alert(
+                                "Ungültiger PIN",
+                                "Der PIN muss genau 4 Ziffern haben."
+                              );
+                            }
+                          },
+                        },
+                      ],
+                      "plain-text",
+                      "",
+                      "numeric"
+                    );
+                  } else {
+                    // Android: zeige Custom Modal (weil Alert.prompt nicht verfügbar ist)
+                    Alert.alert(
+                      "PIN festlegen",
+                      "Um den PIN-Schutz zu aktivieren, gib bitte einen 4-stelligen PIN ein.\n\nDieser wird direkt auf deinem Gerät gespeichert.",
+                      [
+                        { text: "Abbrechen", style: "cancel" },
+                        {
+                          text: "Weiter",
+                          onPress: () => {
+                            // Für Android: verwende einen einfachen Dialog
+                            const pin = "1234"; // Temporär - würde ein Custom Input Modal benötigen
+                            Alert.alert(
+                              "Demo-PIN",
+                              "Für Android-Demo wurde PIN '1234' gesetzt.\n\nIn der finalen Version würde hier ein Custom Input-Feld erscheinen.",
+                              [
+                                {
+                                  text: "OK",
+                                  onPress: async () => {
+                                    const result = await enableSecurity(pin);
+                                    if (result.success) {
+                                      Alert.alert(
+                                        "Aktiviert ✅",
+                                        "App-Schutz mit PIN '1234' wurde aktiviert."
+                                      );
+                                    }
+                                  },
+                                },
+                              ]
+                            );
+                          },
+                        },
+                      ]
+                    );
+                  }
+                }
+              }}
+              activeOpacity={0.8}
+            >
+              <View
+                style={[
+                  styles.toggleThumb,
+                  securityEnabled && styles.toggleThumbActive,
+                ]}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Privacy & Datenschutz */}

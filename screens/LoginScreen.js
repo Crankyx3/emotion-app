@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -21,7 +22,7 @@ import { auth } from "../firebaseconfig";
 
 export default function LoginScreen() {
   const navigation = useNavigation();
-  const { signIn, signUp, signInWithGoogle, googleLoading, enterGuestMode } = useAuth();
+  const { signIn, signUp, enterGuestMode } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -167,10 +168,11 @@ export default function LoginScreen() {
           >
             {/* Header */}
             <View style={styles.header}>
-              <View style={styles.iconCircle}>
-                <Ionicons name="happy-outline" size={40} color="#007AFF" />
-              </View>
-              <Text style={styles.title}>KI-Stimmungshelfer</Text>
+              <Image
+                source={require('../assets/icon.png')}
+                style={styles.appIcon}
+              />
+              <Text style={styles.title}>Zwangsgedanken Helfer</Text>
               <Text style={styles.subtitle}>
                 {mode === "login"
                   ? "Willkommen zurück!"
@@ -334,29 +336,6 @@ export default function LoginScreen() {
                 )}
               </TouchableOpacity>
 
-              {/* Divider */}
-              <View style={styles.dividerContainer}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>oder</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              {/* Google Sign-In Button */}
-              <TouchableOpacity
-                style={[
-                  styles.googleButton,
-                  googleLoading && styles.buttonDisabled,
-                ]}
-                onPress={signInWithGoogle}
-                disabled={googleLoading || loading}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="logo-google" size={20} color="#DB4437" />
-                <Text style={styles.googleButtonText}>
-                  Mit Google anmelden
-                </Text>
-              </TouchableOpacity>
-
               {/* Mode Switch */}
               <View style={styles.switchContainer}>
                 <Text style={styles.switchLabel}>
@@ -424,17 +403,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 40,
   },
-  iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
+  appIcon: {
+    width: 100,
+    height: 100,
+    borderRadius: 22,
     marginBottom: 16,
     shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
     elevation: 5,
   },
   title: {

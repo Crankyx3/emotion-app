@@ -77,6 +77,42 @@ export default function EmergencyScreen({ navigation }) {
 
   const immediateStrategies = [
     {
+      title: "⚠️ KEINE Beruhigung suchen!",
+      icon: "close-circle",
+      color: "#E03131",
+      steps: [
+        "❌ NICHT googeln oder nachforschen",
+        "❌ NICHT andere um Beruhigung fragen",
+        "❌ NICHT checken oder kontrollieren",
+        "✅ Der Drang ist stark - das ist OK",
+        "✅ Lass die Unsicherheit da sein",
+      ],
+    },
+    {
+      title: "Gedanken-Defusion",
+      icon: "cloud-outline",
+      color: "#667eea",
+      steps: [
+        "Sage: 'Ich habe den Gedanken, dass...'",
+        "Nicht: 'Es ist so', sondern: 'Ich denke, dass...'",
+        "Der Gedanke ist wie eine Wolke am Himmel",
+        "Er kommt und geht - du bist nicht der Gedanke",
+        "Beobachte ihn ohne zu kämpfen",
+      ],
+    },
+    {
+      title: "Unsicherheit akzeptieren",
+      icon: "help-circle",
+      color: "#FF9500",
+      steps: [
+        "Sage laut: 'Vielleicht, vielleicht auch nicht'",
+        "Oder: 'Ich weiß es nicht - und das ist OK'",
+        "Unsicherheit ist Teil des Lebens",
+        "Du musst es nicht zu 100% wissen",
+        "Kannst du mit diesem Vielleicht leben?",
+      ],
+    },
+    {
       title: "5-4-3-2-1 Grounding",
       icon: "eye",
       color: "#007AFF",
@@ -101,27 +137,15 @@ export default function EmergencyScreen({ navigation }) {
       ],
     },
     {
-      title: "Eiswürfel-Methode",
-      icon: "snow",
+      title: "Gedanken vorbeiziehen lassen",
+      icon: "water",
       color: "#5AC8FA",
       steps: [
-        "Nimm einen Eiswürfel in die Hand",
-        "Drücke ihn fest",
-        "Spüre die Kälte intensiv",
-        "Konzentriere dich nur auf das Gefühl",
-        "Atme dabei langsam weiter",
-      ],
-    },
-    {
-      title: "Sicherer Ort (Visualisierung)",
-      icon: "home",
-      color: "#FF9500",
-      steps: [
-        "Schließe die Augen",
-        "Stelle dir einen sicheren, ruhigen Ort vor",
-        "Was siehst du dort?",
-        "Was hörst du?",
-        "Bleibe dort, bis du ruhiger bist",
+        "Stelle dir vor: Gedanken sind Blätter auf einem Fluss",
+        "Sie kommen... und treiben vorbei",
+        "Du musst sie nicht festhalten oder wegstoßen",
+        "Beobachte sie einfach beim Vorbeifließen",
+        "Atme dabei ruhig weiter",
       ],
     },
   ];
@@ -137,8 +161,8 @@ export default function EmergencyScreen({ navigation }) {
         </TouchableOpacity>
 
         <ScreenHeader
-          title="🆘 Notfall-Hilfe"
-          subtitle="Du bist nicht allein"
+          title="🆘 OCD Notfall-Hilfe"
+          subtitle="Bei starken Zwangsgedanken - Du bist nicht allein"
         />
 
         <ScrollView contentContainerStyle={styles.container}>
