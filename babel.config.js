@@ -10,15 +10,6 @@ module.exports = function (api) {
           path: "./openAi.env",
         },
       ],
-      [
-        "module-resolver",
-        {
-          alias: {
-            "^react-native$": "react-native",
-            "react-native-worklets/plugin": "react-native-worklets-core/plugin"
-          }
-        }
-      ],
       "react-native-reanimated/plugin"
     ],
   };
