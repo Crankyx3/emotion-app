@@ -9,8 +9,7 @@ module.exports = function (api) {
           moduleName: "@env",
           path: "./openAi.env",
         },
-      ],
-      "react-native-reanimated/plugin"
+      ]
     ],
   };
 };
