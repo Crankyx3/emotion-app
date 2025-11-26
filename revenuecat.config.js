@@ -29,8 +29,8 @@ const REVENUECAT_CONFIG = {
 
   // Product IDs (müssen mit Google Play Console übereinstimmen)
   products: {
-    monthly: 'premium_monthly',
-    yearly: 'premium_yearly',
+    monthly: 'premium_monthly:p1m-monthly-1',
+    yearly: 'premium_yearly:p1y-yearly-1',
   },
 
   // Offering ID (aus RevenueCat Dashboard)
