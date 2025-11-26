@@ -265,7 +265,15 @@ export const PremiumProvider = ({ children }) => {
             console.error('   2. Offering nicht als "Current" markiert');
             console.error('   3. Service Account nicht korrekt verbunden');
             console.error('   4. Package Name stimmt nicht überein');
-            throw new Error('Keine Packages verfügbar. Bitte prüfe die RevenueCat Konfiguration.');
+
+            const errorDetails = 'FEHLER: Keine Packages verfügbar\n\n' +
+              'Mögliche Ursachen:\n' +
+              '• Products nicht in RevenueCat importiert\n' +
+              '• Offering nicht als "Current" markiert\n' +
+              '• Service Account nicht verbunden\n' +
+              '• Package Name stimmt nicht überein (muss com.ki.stimmungshelfer sein)';
+
+            return { success: false, error: errorDetails, errorCode: 'NO_PACKAGES' };
           }
 
           console.log('✅ Offerings geladen:', offerings.current.availablePackages.length, 'Packages gefunden');
@@ -284,15 +292,23 @@ export const PremiumProvider = ({ children }) => {
 
           if (!selectedPackage) {
             console.error(`❌ Package für Plan "${plan}" nicht gefunden!`);
-            console.error('📦 Verfügbare Packages:', offerings.current.availablePackages.map(p => ({
+            const availablePackages = offerings.current.availablePackages.map(p => ({
               id: p.identifier,
               productId: p.product.identifier
-            })));
+            }));
+            console.error('📦 Verfügbare Packages:', availablePackages);
             console.error('🔍 Gesuchte Product IDs:', {
               monthly: REVENUECAT_CONFIG.products.monthly,
               yearly: REVENUECAT_CONFIG.products.yearly
             });
-            throw new Error(`Package für Plan "${plan}" nicht gefunden. Prüfe die Product IDs in RevenueCat.`);
+
+            const errorDetails = `FEHLER: Package "${plan}" nicht gefunden\n\n` +
+              `Verfügbare Packages:\n${availablePackages.map(p => `• ${p.id} (${p.productId})`).join('\n')}\n\n` +
+              `Gesuchte Product IDs:\n` +
+              `• monthly: ${REVENUECAT_CONFIG.products.monthly}\n` +
+              `• yearly: ${REVENUECAT_CONFIG.products.yearly}`;
+
+            return { success: false, error: errorDetails, errorCode: 'PACKAGE_NOT_FOUND' };
           }
 
           console.log(`🛒 Kaufe Package: ${selectedPackage.identifier} (Product: ${selectedPackage.product.identifier})`);
@@ -332,17 +348,28 @@ export const PremiumProvider = ({ children }) => {
           console.error('Error Message:', error.message);
           console.error('Underlying Error:', error.underlyingErrorMessage);
 
-          // Spezifische Fehlermeldungen
-          let userMessage = 'Ein Fehler ist aufgetreten beim Kauf.';
+          // Spezifische Fehlermeldungen mit Details
+          let userMessage = `Fehler beim Kauf\n\nError Code: ${error.code || 'UNKNOWN'}\n`;
 
           if (error.code === 'STORE_PROBLEM') {
-            userMessage = 'Problem mit dem Play Store. Bitte stelle sicher, dass du mit dem Google-Konto eingeloggt bist und versuche es erneut.';
+            userMessage += '\n🏪 Play Store Problem\n\nMögliche Lösungen:\n' +
+              '• Mit Google-Konto einloggen\n' +
+              '• Play Store App aktualisieren\n' +
+              '• Play Store Cache leeren';
           } else if (error.code === 'PURCHASE_NOT_ALLOWED') {
-            userMessage = 'Kauf nicht erlaubt. Bitte prüfe deine Play Store Einstellungen.';
+            userMessage += '\n🚫 Kauf nicht erlaubt\n\nPrüfe:\n' +
+              '• Play Store Einstellungen\n' +
+              '• Zahlungsmethode hinterlegt\n' +
+              '• Kein anderes Abo aktiv';
           } else if (error.code === 'PURCHASE_INVALID') {
-            userMessage = 'Ungültiger Kauf. Bitte versuche es erneut oder kontaktiere den Support.';
+            userMessage += '\n❌ Ungültiger Kauf\n\nBitte versuche es erneut oder kontaktiere den Support.';
           } else if (error.code === 'NETWORK_ERROR') {
-            userMessage = 'Netzwerkfehler. Bitte prüfe deine Internetverbindung.';
+            userMessage += '\n📡 Netzwerkfehler\n\nPrüfe deine Internetverbindung.';
+          } else {
+            userMessage += `\n${error.message || 'Unbekannter Fehler'}`;
+            if (error.underlyingErrorMessage) {
+              userMessage += `\n\nDetails: ${error.underlyingErrorMessage}`;
+            }
           }
 
           return { success: false, error: userMessage, errorCode: error.code };
@@ -355,7 +382,14 @@ export const PremiumProvider = ({ children }) => {
 
       return {
         success: false,
-        error: 'In-App-Käufe sind momentan nicht verfügbar. Bitte versuche es später erneut oder kontaktiere den Support.'
+        error: 'RevenueCat nicht konfiguriert\n\n' +
+          'In-App-Käufe sind momentan nicht verfügbar.\n\n' +
+          'Mögliche Ursachen:\n' +
+          '• API Key nicht konfiguriert\n' +
+          '• RevenueCat SDK nicht initialisiert\n' +
+          '• Netzwerkfehler bei Initialisierung\n\n' +
+          'Bitte versuche es später erneut oder kontaktiere den Support.',
+        errorCode: 'NOT_CONFIGURED'
       };
 
     } catch (error) {

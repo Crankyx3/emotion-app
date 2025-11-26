@@ -63,12 +63,15 @@ export default function PaywallScreen({ navigation }) {
         // Kauf wurde vom User abgebrochen - keine Fehlermeldung
         return;
       } else {
-        // Zeige spezifische Fehlermeldung
+        // Zeige spezifische Fehlermeldung mit Error Code
         const errorMessage = result.error || 'Der Kauf konnte nicht abgeschlossen werden. Bitte versuche es erneut.';
+        const errorCode = result.errorCode ? `\n[${result.errorCode}]` : '';
+
         Alert.alert(
-          'Fehler beim Kauf',
-          errorMessage,
-          [{ text: 'OK' }]
+          '❌ Fehler beim Kauf',
+          errorMessage + errorCode,
+          [{ text: 'OK' }],
+          { cancelable: true }
         );
       }
     } catch (error) {
