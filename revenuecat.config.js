@@ -34,7 +34,7 @@ const REVENUECAT_CONFIG = {
   },
 
   // Entitlement ID (aus RevenueCat Dashboard)
-  entitlementId: 'KI-Stimmungshelfer',
+  entitlementId: 'premium',
 
   // Offering ID (aus RevenueCat Dashboard)
   defaultOffering: 'default',
