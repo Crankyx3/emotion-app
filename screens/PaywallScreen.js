@@ -59,10 +59,16 @@ export default function PaywallScreen({ navigation }) {
             },
           ]
         );
+      } else if (result.cancelled) {
+        // Kauf wurde vom User abgebrochen - keine Fehlermeldung
+        return;
       } else {
+        // Zeige spezifische Fehlermeldung
+        const errorMessage = result.error || 'Der Kauf konnte nicht abgeschlossen werden. Bitte versuche es erneut.';
         Alert.alert(
-          'Fehler',
-          'Der Kauf konnte nicht abgeschlossen werden. Bitte versuche es erneut.'
+          'Fehler beim Kauf',
+          errorMessage,
+          [{ text: 'OK' }]
         );
       }
     } catch (error) {
