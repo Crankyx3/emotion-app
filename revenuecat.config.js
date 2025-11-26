@@ -33,6 +33,9 @@ const REVENUECAT_CONFIG = {
     yearly: 'premium_yearly:p1y-yearly-1',
   },
 
+  // Entitlement ID (aus RevenueCat Dashboard)
+  entitlementId: 'KI-Stimmungshelfer',
+
   // Offering ID (aus RevenueCat Dashboard)
   defaultOffering: 'default',
 };

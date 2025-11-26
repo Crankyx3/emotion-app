@@ -116,15 +116,17 @@ export const PremiumProvider = ({ children }) => {
   const updatePremiumStatusFromRevenueCat = (customerInfo) => {
     try {
       // Prüfe ob User aktives Entitlement hat
+      // Entitlement ID aus Config verwenden
+      const entitlementId = REVENUECAT_CONFIG.entitlementId || 'premium';
       const hasActiveEntitlement =
-        typeof customerInfo.entitlements.active['premium'] !== 'undefined';
+        typeof customerInfo.entitlements.active[entitlementId] !== 'undefined';
 
       if (hasActiveEntitlement) {
-        console.log('✅ Premium Entitlement aktiv');
+        console.log(`✅ ${entitlementId} Entitlement aktiv`);
         setIsPremium(true);
         setIsTrialActive(false);
       } else {
-        console.log('❌ Kein aktives Premium Entitlement');
+        console.log(`❌ Kein aktives ${entitlementId} Entitlement`);
         setIsPremium(false);
       }
     } catch (error) {
@@ -317,8 +319,9 @@ export const PremiumProvider = ({ children }) => {
           const purchaseResult = await Purchases.purchasePackage(selectedPackage);
 
           // Prüfe ob erfolgreich
+          const entitlementId = REVENUECAT_CONFIG.entitlementId || 'premium';
           const hasActiveEntitlement =
-            typeof purchaseResult.customerInfo.entitlements.active['premium'] !== 'undefined';
+            typeof purchaseResult.customerInfo.entitlements.active[entitlementId] !== 'undefined';
 
           if (hasActiveEntitlement) {
             console.log('✅ Kauf erfolgreich!');
@@ -427,8 +430,9 @@ export const PremiumProvider = ({ children }) => {
           // Prüfe ob Premium aktiv ist
           updatePremiumStatusFromRevenueCat(customerInfo);
 
+          const entitlementId = REVENUECAT_CONFIG.entitlementId || 'premium';
           const hasActiveEntitlement =
-            typeof customerInfo.entitlements.active['premium'] !== 'undefined';
+            typeof customerInfo.entitlements.active[entitlementId] !== 'undefined';
 
           if (hasActiveEntitlement) {
             console.log('✅ Käufe wiederhergestellt!');
