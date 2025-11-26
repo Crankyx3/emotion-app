@@ -351,7 +351,18 @@ export const PremiumProvider = ({ children }) => {
           // Spezifische Fehlermeldungen mit Details
           let userMessage = `Fehler beim Kauf\n\nError Code: ${error.code || 'UNKNOWN'}\n`;
 
-          if (error.code === 'STORE_PROBLEM') {
+          if (error.code === '23' || error.code === 23 || error.message?.includes('configuration')) {
+            userMessage = '⚠️ KONFIGURATIONSFEHLER (Code 23)\n\n' +
+              'RevenueCat Konfiguration stimmt nicht!\n\n' +
+              'Mögliche Ursachen:\n' +
+              '• API Key passt nicht zur App\n' +
+              '• Package Name in RevenueCat: com.ki.stimmungshelfer?\n' +
+              '• Falscher API Key (iOS statt Android?)\n' +
+              '• Service Account nicht verbunden\n\n';
+            if (error.underlyingErrorMessage) {
+              userMessage += `Details:\n${error.underlyingErrorMessage}`;
+            }
+          } else if (error.code === 'STORE_PROBLEM') {
             userMessage += '\n🏪 Play Store Problem\n\nMögliche Lösungen:\n' +
               '• Mit Google-Konto einloggen\n' +
               '• Play Store App aktualisieren\n' +
