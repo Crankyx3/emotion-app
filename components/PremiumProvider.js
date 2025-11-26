@@ -354,7 +354,20 @@ export const PremiumProvider = ({ children }) => {
           // Spezifische Fehlermeldungen mit Details
           let userMessage = `Fehler beim Kauf\n\nError Code: ${error.code || 'UNKNOWN'}\n`;
 
-          if (error.code === '23' || error.code === 23 || error.message?.includes('configuration')) {
+          if (error.code === '4' || error.code === 4) {
+            userMessage = '⚠️ ITEM NICHT VERFÜGBAR (Code 4)\n\n' +
+              'Die Subscription kann nicht gekauft werden!\n\n' +
+              'Mögliche Ursachen:\n' +
+              '• Subscription nicht für Internal Testing aktiviert\n' +
+              '• Base Plan ist inaktiv\n' +
+              '• Subscription nicht für dein Land verfügbar\n' +
+              '• Play Store Cache muss geleert werden\n\n' +
+              'Lösung:\n' +
+              '1. Play Store: Subscriptions für "Internal testing" aktivieren\n' +
+              '2. 10 Min warten\n' +
+              '3. Play Store Cache löschen\n' +
+              '4. Handy neu starten';
+          } else if (error.code === '23' || error.code === 23 || error.message?.includes('configuration')) {
             userMessage = '⚠️ KONFIGURATIONSFEHLER (Code 23)\n\n' +
               'RevenueCat Konfiguration stimmt nicht!\n\n' +
               'Mögliche Ursachen:\n' +
