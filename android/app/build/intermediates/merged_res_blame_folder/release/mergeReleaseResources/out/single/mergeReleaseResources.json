@@ -1,0 +1,286 @@
+[
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\raw_node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_fontawesome6_solid.ttf.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\raw\\node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_fontawesome6_solid.ttf"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\raw_node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_fontawesome6_regular.ttf.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\raw\\node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_fontawesome6_regular.ttf"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\drawable_ic_launcher_background.xml.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-main-63:\\drawable\\ic_launcher_background.xml"
+    },
+    {
+        "merged": "com.ki.stimmungshelfer.app-release-62:/mipmap-xhdpi_ic_launcher_foreground.png.flat",
+        "source": "com.ki.stimmungshelfer.app-main-63:/mipmap-xhdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\drawable-mdpi_node_modules_reactnavigation_elements_src_assets_backiconmask.png.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\drawable-mdpi\\node_modules_reactnavigation_elements_src_assets_backiconmask.png"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\drawable-xhdpi_splashscreen_logo.png.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-main-63:\\drawable-xhdpi\\splashscreen_logo.png"
+    },
+    {
+        "merged": "com.ki.stimmungshelfer.app-release-62:/mipmap-xxxhdpi_ic_launcher_round.png.flat",
+        "source": "com.ki.stimmungshelfer.app-main-63:/mipmap-xxxhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\raw_node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_materialcommunityicons.ttf.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\raw\\node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_materialcommunityicons.ttf"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\mipmap-xhdpi_ic_launcher_foreground.webp.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-main-63:\\mipmap-xhdpi\\ic_launcher_foreground.webp"
+    },
+    {
+        "merged": "com.ki.stimmungshelfer.app-release-62:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.ki.stimmungshelfer.app-main-63:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\raw_node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_fontawesome6_brands.ttf.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\raw\\node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_fontawesome6_brands.ttf"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\raw_node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_octicons.ttf.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\raw\\node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_octicons.ttf"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\mipmap-xxhdpi_ic_launcher_round.webp.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-main-63:\\mipmap-xxhdpi\\ic_launcher_round.webp"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\raw_node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_fontawesome5_regular.ttf.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\raw\\node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_fontawesome5_regular.ttf"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\drawable-mdpi_assets_icon.png.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\drawable-mdpi\\assets_icon.png"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\mipmap-mdpi_ic_launcher.webp.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-main-63:\\mipmap-mdpi\\ic_launcher.webp"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\drawable-xxhdpi_splashscreen_logo.png.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-main-63:\\drawable-xxhdpi\\splashscreen_logo.png"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-main-63:\\mipmap-anydpi-v26\\ic_launcher_round.xml"
+    },
+    {
+        "merged": "com.ki.stimmungshelfer.app-release-62:/mipmap-hdpi_ic_launcher.png.flat",
+        "source": "com.ki.stimmungshelfer.app-main-63:/mipmap-hdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.ki.stimmungshelfer.app-release-62:/mipmap-mdpi_ic_launcher_round.png.flat",
+        "source": "com.ki.stimmungshelfer.app-main-63:/mipmap-mdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.ki.stimmungshelfer.app-release-62:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "com.ki.stimmungshelfer.app-main-63:/mipmap-anydpi-v26/ic_launcher_round.xml"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\drawable-xxxhdpi_splashscreen_logo.png.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-main-63:\\drawable-xxxhdpi\\splashscreen_logo.png"
+    },
+    {
+        "merged": "com.ki.stimmungshelfer.app-release-62:/mipmap-mdpi_ic_launcher.png.flat",
+        "source": "com.ki.stimmungshelfer.app-main-63:/mipmap-mdpi/ic_launcher.png"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\drawable-hdpi_splashscreen_logo.png.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-main-63:\\drawable-hdpi\\splashscreen_logo.png"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\mipmap-xxhdpi_ic_launcher_foreground.webp.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-main-63:\\mipmap-xxhdpi\\ic_launcher_foreground.webp"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\raw_node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_ionicons.ttf.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\raw\\node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_ionicons.ttf"
+    },
+    {
+        "merged": "com.ki.stimmungshelfer.app-release-62:/mipmap-mdpi_ic_launcher_foreground.png.flat",
+        "source": "com.ki.stimmungshelfer.app-main-63:/mipmap-mdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\drawable-mdpi_node_modules_reactnavigation_elements_src_assets_backicon.png.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\drawable-mdpi\\node_modules_reactnavigation_elements_src_assets_backicon.png"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\mipmap-xxhdpi_ic_launcher.webp.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-main-63:\\mipmap-xxhdpi\\ic_launcher.webp"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\raw_node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_antdesign.ttf.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\raw\\node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_antdesign.ttf"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\raw_node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_fontisto.ttf.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\raw\\node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_fontisto.ttf"
+    },
+    {
+        "merged": "com.ki.stimmungshelfer.app-release-62:/mipmap-ldpi_ic_launcher.png.flat",
+        "source": "com.ki.stimmungshelfer.app-main-63:/mipmap-ldpi/ic_launcher.png"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\drawable_rn_edit_text_material.xml.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-main-63:\\drawable\\rn_edit_text_material.xml"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\raw_node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_fontawesome5_solid.ttf.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\raw\\node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_fontawesome5_solid.ttf"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\mipmap-mdpi_ic_launcher_foreground.webp.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-main-63:\\mipmap-mdpi\\ic_launcher_foreground.webp"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\mipmap-xxxhdpi_ic_launcher.webp.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-main-63:\\mipmap-xxxhdpi\\ic_launcher.webp"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\raw_node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_simplelineicons.ttf.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\raw\\node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_simplelineicons.ttf"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\mipmap-xhdpi_ic_launcher.webp.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-main-63:\\mipmap-xhdpi\\ic_launcher.webp"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\raw_keep.xml.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\raw\\keep.xml"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\raw_node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_materialicons.ttf.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\raw\\node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_materialicons.ttf"
+    },
+    {
+        "merged": "com.ki.stimmungshelfer.app-release-62:/mipmap-xxhdpi_ic_launcher_foreground.png.flat",
+        "source": "com.ki.stimmungshelfer.app-main-63:/mipmap-xxhdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\raw_node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_fontawesome.ttf.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\raw\\node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_fontawesome.ttf"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\mipmap-hdpi_ic_launcher_foreground.webp.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-main-63:\\mipmap-hdpi\\ic_launcher_foreground.webp"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\raw_node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_evilicons.ttf.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\raw\\node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_evilicons.ttf"
+    },
+    {
+        "merged": "com.ki.stimmungshelfer.app-release-62:/mipmap-hdpi_ic_launcher_round.png.flat",
+        "source": "com.ki.stimmungshelfer.app-main-63:/mipmap-hdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.ki.stimmungshelfer.app-release-62:/mipmap-xxhdpi_ic_launcher.png.flat",
+        "source": "com.ki.stimmungshelfer.app-main-63:/mipmap-xxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\mipmap-mdpi_ic_launcher_round.webp.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-main-63:\\mipmap-mdpi\\ic_launcher_round.webp"
+    },
+    {
+        "merged": "com.ki.stimmungshelfer.app-release-62:/mipmap-xxhdpi_ic_launcher_round.png.flat",
+        "source": "com.ki.stimmungshelfer.app-main-63:/mipmap-xxhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\drawable-xxhdpi_node_modules_reactnavigation_elements_src_assets_backicon.png.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\drawable-xxhdpi\\node_modules_reactnavigation_elements_src_assets_backicon.png"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\drawable-xxxhdpi_node_modules_reactnavigation_elements_src_assets_backicon.png.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\drawable-xxxhdpi\\node_modules_reactnavigation_elements_src_assets_backicon.png"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-main-63:\\mipmap-anydpi-v26\\ic_launcher.xml"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\raw_node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_feather.ttf.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\raw\\node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_feather.ttf"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\raw_node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_entypo.ttf.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\raw\\node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_entypo.ttf"
+    },
+    {
+        "merged": "com.ki.stimmungshelfer.app-release-62:/mipmap-xhdpi_ic_launcher.png.flat",
+        "source": "com.ki.stimmungshelfer.app-main-63:/mipmap-xhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\drawable-xhdpi_node_modules_reactnavigation_elements_src_assets_backicon.png.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\drawable-xhdpi\\node_modules_reactnavigation_elements_src_assets_backicon.png"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\raw_node_modules_idb_build_index.cjs.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\raw\\node_modules_idb_build_index.cjs"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\mipmap-hdpi_ic_launcher_round.webp.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-main-63:\\mipmap-hdpi\\ic_launcher_round.webp"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\mipmap-xxxhdpi_ic_launcher_foreground.webp.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-main-63:\\mipmap-xxxhdpi\\ic_launcher_foreground.webp"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\raw_node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_foundation.ttf.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\raw\\node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_foundation.ttf"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\raw_node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_fontawesome5_brands.ttf.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\raw\\node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_fontawesome5_brands.ttf"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\drawable-hdpi_node_modules_reactnavigation_elements_src_assets_backicon.png.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\drawable-hdpi\\node_modules_reactnavigation_elements_src_assets_backicon.png"
+    },
+    {
+        "merged": "com.ki.stimmungshelfer.app-release-62:/mipmap-ldpi_ic_launcher_round.png.flat",
+        "source": "com.ki.stimmungshelfer.app-main-63:/mipmap-ldpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\mipmap-xxxhdpi_ic_launcher_round.webp.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-main-63:\\mipmap-xxxhdpi\\ic_launcher_round.webp"
+    },
+    {
+        "merged": "com.ki.stimmungshelfer.app-release-62:/mipmap-xhdpi_ic_launcher_round.png.flat",
+        "source": "com.ki.stimmungshelfer.app-main-63:/mipmap-xhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.ki.stimmungshelfer.app-release-62:/mipmap-hdpi_ic_launcher_foreground.png.flat",
+        "source": "com.ki.stimmungshelfer.app-main-63:/mipmap-hdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\drawable-mdpi_splashscreen_logo.png.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-main-63:\\drawable-mdpi\\splashscreen_logo.png"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\mipmap-xhdpi_ic_launcher_round.webp.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-main-63:\\mipmap-xhdpi\\ic_launcher_round.webp"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\raw_node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_zocial.ttf.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-res-57:\\raw\\node_modules_expo_vectoricons_build_vendor_reactnativevectoricons_fonts_zocial.ttf"
+    },
+    {
+        "merged": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-release-62:\\mipmap-hdpi_ic_launcher.webp.flat",
+        "source": "C:\\Users\\finn_\\.gradle\\daemon\\8.14.3\\com.ki.stimmungshelfer.app-main-63:\\mipmap-hdpi\\ic_launcher.webp"
+    },
+    {
+        "merged": "com.ki.stimmungshelfer.app-release-62:/mipmap-xxxhdpi_ic_launcher.png.flat",
+        "source": "com.ki.stimmungshelfer.app-main-63:/mipmap-xxxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.ki.stimmungshelfer.app-release-62:/mipmap-xxxhdpi_ic_launcher_foreground.png.flat",
+        "source": "com.ki.stimmungshelfer.app-main-63:/mipmap-xxxhdpi/ic_launcher_foreground.png"
+    }
+]
