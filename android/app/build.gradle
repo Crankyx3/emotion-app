@@ -95,8 +95,8 @@ android {
         applicationId 'com.ki.stimmungshelfer'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 8
-        versionName "1.0.6"
+        versionCode 9
+        versionName "1.0.7"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
 
@@ -145,8 +145,9 @@ android {
     }
     packagingOptions {
         jniLibs {
-            def enableLegacyPackaging = findProperty('expo.useLegacyPackaging') ?: 'false'
-            useLegacyPackaging enableLegacyPackaging.toBoolean()
+            // Disable legacy packaging to support 16 KB page size
+            // This ensures native libraries use proper alignment for modern Android devices
+            useLegacyPackaging false
         }
     }
     androidResources {
