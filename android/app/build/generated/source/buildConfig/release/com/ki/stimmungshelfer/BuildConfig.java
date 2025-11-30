@@ -7,8 +7,8 @@ public final class BuildConfig {
   public static final boolean DEBUG = false;
   public static final String APPLICATION_ID = "com.ki.stimmungshelfer";
   public static final String BUILD_TYPE = "release";
-  public static final int VERSION_CODE = 10;
-  public static final String VERSION_NAME = "1.0.8";
+  public static final int VERSION_CODE = 11;
+  public static final String VERSION_NAME = "1.0.9";
   // Field from default config.
   public static final boolean IS_EDGE_TO_EDGE_ENABLED = true;
   // Field from default config.
