@@ -81,6 +81,9 @@ def enableMinifyInReleaseBuilds = (findProperty('android.enableMinifyInReleaseBu
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
+// Define hermesEnabled with a default value
+def hermesEnabled = (findProperty('hermesEnabled') ?: 'true')
+
 android {
     ndkVersion rootProject.ext.ndkVersion
 
