@@ -4,7 +4,7 @@
             "outputFile": "com.ki.stimmungshelfer.app-mergeReleaseResources-60:/values-v21/values-v21.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\finn_\\.gradle\\caches\\8.14.3\\transforms\\ca04056151afd913ea61ede1753c62fc\\transformed\\purchases-9.14.1\\res\\values-v21\\values-v21.xml",
+                    "source": "C:\\Users\\finn_\\.gradle\\caches\\8.14.3\\transforms\\e3d86d14c6e6703a978d0d24784b1f87\\transformed\\purchases-9.12.2\\res\\values-v21\\values-v21.xml",
                     "from": {
                         "startLines": "2",
                         "startColumns": "4",

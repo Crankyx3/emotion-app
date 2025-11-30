@@ -2,7 +2,6 @@
 <resources xmlns:ns1="http://schemas.android.com/tools">
     <color name="colorPrimary">#023c69</color>
     <color name="colorPrimaryDark">#ffffff</color>
-    <color name="ic_launcher_background">#ffffff</color>
     <color name="iconBackground">#ffffff</color>
     <color name="splashscreen_background">#ffffff</color>
     <integer name="react_native_dev_server_port">8081</integer>
